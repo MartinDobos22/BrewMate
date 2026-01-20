@@ -4,10 +4,10 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "android": "react-native run-android",
-    "ios": "react-native run-ios",
+    "android": "react-native run-android --config metro.config.cjs",
+    "ios": "react-native run-ios --config metro.config.cjs",
     "lint": "eslint .",
-    "start": "react-native start",
+    "start": "react-native start --config metro.config.cjs",
     "test": "jest"
   },
   "dependencies": {
