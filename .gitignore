@@ -1,75 +1,180 @@
-# OSX
-#
+# =========================
+# React Native (CLI) iOS + Android + Node backend helpers
+# Stack: RN 0.80, Firebase Auth (Google/Apple), Supabase, dotenv, jest
+# =========================
+
+# ---------- OS ----------
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Xcode
-#
-build/
-*.pbxuser
-!default.pbxuser
-*.mode1v3
-!default.mode1v3
-*.mode2v3
-!default.mode2v3
-*.perspectivev3
-!default.perspectivev3
-xcuserdata
-*.xccheckout
-*.moved-aside
-DerivedData
-*.hmap
-*.ipa
-*.xcuserstate
-**/.xcode.env.local
-
-# Android/IntelliJ
-#
-build/
-.idea
-.gradle
-local.properties
+# ---------- Editors ----------
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
 *.iml
-*.hprof
-.cxx/
-*.keystore
-!debug.keystore
-.kotlin/
 
-# node.js
-#
+# ---------- Logs ----------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+metro-debug.log*
+expo-debug.log*
+
+# ---------- Node / JS tooling ----------
 node_modules/
-npm-debug.log
-yarn-error.log
+dist/
+build/
+out/
+coverage/
+.tmp/
+.temp/
+.cache/
 
-# fastlane
-#
-# It is recommended to not store the screenshots in the git repo. Instead, use fastlane to re-generate the
-# screenshots whenever they are needed.
-# For more information about the recommended setup visit:
-# https://docs.fastlane.tools/best-practices/source-control/
+# TS
+*.tsbuildinfo
 
-**/fastlane/report.xml
-**/fastlane/Preview.html
-**/fastlane/screenshots
-**/fastlane/test_output
-
-# Bundle artifact
-*.jsbundle
-
-# Ruby / CocoaPods
-**/Pods/
-/vendor/bundle/
-
-# Temporary files created by Metro to check the health of the file watcher
-.metro-health-check*
-
-# testing
-/coverage
-
-# Yarn
+# Yarn / PnP (safe defaults)
+.pnp/
+.pnp.js
+.pnpm-store/
+.npm/
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Jest
+junit.xml
+
+# ---------- Env / Secrets ----------
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+# Firebase Admin SDK service account (NEVER commit)
+firebase-adminsdk*.json
+**/firebase-adminsdk*.json
+google-services*.json
+
+# (optional) any other service-account style json keys
+**/*serviceAccount*.json
+**/*service-account*.json
+
+
+# Common secret/key formats
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.mobileprovision
+*.cer
+*.p8
+
+# ---------- React Native / Metro ----------
+.metro-cache/
+haste-map-*
+.react-native/
+watchman-state/
+*.hbc
+
+# ---------- Android ----------
+android/.gradle/
+android/local.properties
+android/**/build/
+android/**/.cxx/
+android/**/.externalNativeBuild/
+android/**/.idea/
+android/**/.settings/
+android/**/.project
+android/**/.classpath
+android/**/captures/
+android/**/generated/
+
+# APK / AAB
+*.apk
+*.aab
+
+# Signing (keep debug.keystore if you have it)
+android/keystores/
+android/app/*.jks
+android/app/*.keystore
+!android/app/debug.keystore
+android/app/signing.properties
+
+# Gradle properties can contain secrets (tokeny, signing config)
+android/gradle.properties
+
+# ---------- iOS ----------
+ios/Pods/
+ios/build/
+ios/DerivedData/
+ios/**/*.xcuserdata/
+ios/**/*.xcuserstate
+ios/**/*.xccheckout
+ios/**/*.xcscmblueprint
+ios/**/*.moved-aside
+
+# Xcode archives / symbols
+*.xcarchive
+*.ipa
+*.dSYM*
+*.linkmap
+
+# CocoaPods / Ruby tooling (if used)
+vendor/bundle/
+.bundle/
+
+# NOTE: Podfile.lock is typically TRACKED for apps.
+# Uncomment only if you intentionally don't want it versioned.
+# ios/Podfile.lock
+
+# ---------- Fastlane ----------
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+fastlane/.env
+fastlane/.env.*
+
+# ---------- Supabase ----------
+# Ignore local supabase state/cache, but TRACK migrations/config
+.supabase/
+supabase/.temp/
+supabase/.branches/
+supabase/.cache/
+supabase/.config/
+
+!supabase/config.toml
+!supabase/migrations/
+!supabase/migrations/**
+!supabase/seed.sql
+
+# ---------- Databases / local artifacts ----------
+*.sqlite
+*.sqlite3
+*.db
+
+# ---------- Optional: Firebase configs ----------
+# These are usually SAFE to track (contain public identifiers, not secrets).
+# If you decide NOT to commit them, uncomment:
+# android/app/google-services.json
+# ios/GoogleService-Info.plist
+
+# ---------- Misc ----------
+*.swp
+*.swo
+*.orig
