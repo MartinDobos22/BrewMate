@@ -50,6 +50,66 @@ const buildOpenAiPayload = (rawText) => ({
   ],
 });
 
+const buildCoffeeProfilePayload = (text) => ({
+  model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  temperature: 0.3,
+  response_format: {
+    type: 'json_schema',
+    json_schema: {
+      name: 'coffee_profile',
+      strict: true,
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        required: [
+          'flavorNotes',
+          'tasteProfile',
+          'expertSummary',
+          'laymanSummary',
+          'preferenceHint',
+          'confidence',
+          'source',
+          'reasoning',
+        ],
+        properties: {
+          flavorNotes: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+          tasteProfile: { type: 'string' },
+          expertSummary: { type: 'string' },
+          laymanSummary: { type: 'string' },
+          preferenceHint: { type: 'string' },
+          confidence: { type: 'number', minimum: 0, maximum: 1 },
+          source: {
+            type: 'string',
+            enum: ['label', 'inferred', 'mixed', 'low_info'],
+          },
+          reasoning: { type: 'string' },
+          missingInfo: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+        },
+      },
+    },
+  },
+  messages: [
+    {
+      role: 'system',
+      content:
+        'You are a coffee sensory analyst. Infer a coffee flavor profile from the provided package text. '
+        + 'If flavor notes are explicitly stated, use them verbatim. If not, infer likely notes from origin, '
+        + 'processing, and roast if present. If the text is sparse, provide a cautious guess with low confidence. '
+        + 'Explain briefly why the notes were chosen. Output must match the JSON schema exactly.',
+    },
+    {
+      role: 'user',
+      content: `Analyze this package text and produce the coffee flavor profile JSON:\n\n${text}`,
+    },
+  ],
+});
+
 router.post('/api/ocr-correct', async (req, res, next) => {
   try {
     const { imageBase64, languageHints } = req.body || {};
@@ -165,6 +225,80 @@ router.post('/api/ocr-correct', async (req, res, next) => {
     });
   } catch (error) {
     console.error('[OCR] Unexpected error', error);
+    return next(error);
+  }
+});
+
+router.post('/api/coffee-profile', async (req, res, next) => {
+  try {
+    const { text, rawText } = req.body || {};
+    const sourceText = typeof text === 'string' && text.trim()
+      ? text.trim()
+      : typeof rawText === 'string'
+        ? rawText.trim()
+        : '';
+
+    console.log('[CoffeeProfile] request received', {
+      textLength: sourceText.length,
+    });
+
+    if (!sourceText) {
+      return res.status(400).json({ error: 'text is required.' });
+    }
+
+    const openAiApiKey = process.env.OPENAI_API_KEY;
+    if (!openAiApiKey) {
+      console.error('[CoffeeProfile] OpenAI API key missing');
+      return res.status(500).json({ error: 'OpenAI API key is not configured.' });
+    }
+
+    const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${openAiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(buildCoffeeProfilePayload(sourceText)),
+    });
+
+    const openAiData = await openAiResponse.json();
+
+    if (!openAiResponse.ok) {
+      console.error('[CoffeeProfile] OpenAI request failed', {
+        status: openAiResponse.status,
+        details: openAiData,
+      });
+      return res.status(502).json({
+        error: 'OpenAI API request failed.',
+        details: openAiData,
+      });
+    }
+
+    const profileContent = openAiData?.choices?.[0]?.message?.content?.trim();
+    if (!profileContent) {
+      console.error('[CoffeeProfile] OpenAI response missing profile content', {
+        openAiData,
+      });
+      return res.status(502).json({ error: 'OpenAI did not return a coffee profile.' });
+    }
+
+    let profile;
+    try {
+      profile = JSON.parse(profileContent);
+    } catch (parseError) {
+      console.error('[CoffeeProfile] Failed to parse profile JSON', {
+        profileContent,
+        parseError,
+      });
+      return res.status(502).json({
+        error: 'Failed to parse coffee profile response.',
+        rawProfile: profileContent,
+      });
+    }
+
+    return res.status(200).json({ profile });
+  } catch (error) {
+    console.error('[CoffeeProfile] Unexpected error', error);
     return next(error);
   }
 });
