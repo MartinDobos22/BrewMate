@@ -23,11 +23,15 @@ import { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeeScanner'>;
 
-const DEFAULT_API_HOST = Platform.select({
-  android: 'http://10.0.2.2:3000',
-  ios: 'http://localhost:3000',
-  default: 'http://localhost:3000',
-});
+const LOCAL_API_HOST =
+  Platform.select({
+    android: 'http://10.0.2.2:3000',
+    ios: 'http://localhost:3000',
+    default: 'http://localhost:3000',
+  }) ?? 'http://localhost:3000';
+const RENDER_API_HOST = 'https://brewmat.onrender.com';
+const DEFAULT_API_HOST =
+  process.env.API_HOST?.trim() || (__DEV__ ? LOCAL_API_HOST : RENDER_API_HOST);
 
 const PICKER_TIMEOUT_MS = 20000;
 
