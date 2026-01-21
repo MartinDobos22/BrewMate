@@ -54,22 +54,34 @@ router.post('/api/ocr-correct', async (req, res, next) => {
   try {
     const { imageBase64, languageHints } = req.body || {};
 
+    console.log('[OCR] request received', {
+      imageBase64Length: imageBase64?.length ?? 0,
+      languageHints,
+    });
+
     if (!imageBase64) {
+      console.warn('[OCR] missing imageBase64');
       return res.status(400).json({ error: 'imageBase64 is required.' });
     }
 
     const visionApiKey = process.env.GOOGLE_VISION_API_KEY;
     if (!visionApiKey) {
+      console.error('[OCR] Google Vision API key missing');
       return res.status(500).json({ error: 'Google Vision API key is not configured.' });
     }
 
     const openAiApiKey = process.env.OPENAI_API_KEY;
     if (!openAiApiKey) {
+      console.error('[OCR] OpenAI API key missing');
       return res.status(500).json({ error: 'OpenAI API key is not configured.' });
     }
 
     const cleanedBase64 = stripDataUrlPrefix(imageBase64);
     const visionPayload = buildVisionPayload(cleanedBase64, Array.isArray(languageHints) ? languageHints : []);
+
+    console.log('[OCR] sending Google Vision request', {
+      payloadSize: JSON.stringify(visionPayload).length,
+    });
 
     const visionResponse = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${visionApiKey}`,
@@ -85,6 +97,10 @@ router.post('/api/ocr-correct', async (req, res, next) => {
     const visionData = await visionResponse.json();
 
     if (!visionResponse.ok) {
+      console.error('[OCR] Google Vision request failed', {
+        status: visionResponse.status,
+        details: visionData,
+      });
       return res.status(502).json({
         error: 'Google Vision API request failed.',
         details: visionData,
@@ -92,6 +108,7 @@ router.post('/api/ocr-correct', async (req, res, next) => {
     }
 
     if (visionData?.responses?.[0]?.error) {
+      console.error('[OCR] Google Vision returned error', visionData.responses[0].error);
       return res.status(502).json({
         error: 'Google Vision API returned an error.',
         details: visionData.responses[0].error,
@@ -100,8 +117,13 @@ router.post('/api/ocr-correct', async (req, res, next) => {
 
     const rawText = extractVisionText(visionData).trim();
     if (!rawText) {
+      console.warn('[OCR] No text detected in image');
       return res.status(422).json({ error: 'No text detected in the image.' });
     }
+
+    console.log('[OCR] Vision OCR text extracted', {
+      rawTextLength: rawText.length,
+    });
 
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -115,6 +137,10 @@ router.post('/api/ocr-correct', async (req, res, next) => {
     const openAiData = await openAiResponse.json();
 
     if (!openAiResponse.ok) {
+      console.error('[OCR] OpenAI request failed', {
+        status: openAiResponse.status,
+        details: openAiData,
+      });
       return res.status(502).json({
         error: 'OpenAI API request failed.',
         details: openAiData,
@@ -123,14 +149,22 @@ router.post('/api/ocr-correct', async (req, res, next) => {
 
     const correctedText = openAiData?.choices?.[0]?.message?.content?.trim();
     if (!correctedText) {
+      console.error('[OCR] OpenAI response missing corrected text', {
+        openAiData,
+      });
       return res.status(502).json({ error: 'OpenAI did not return corrected text.' });
     }
+
+    console.log('[OCR] OpenAI corrected text ready', {
+      correctedTextLength: correctedText.length,
+    });
 
     return res.status(200).json({
       rawText,
       correctedText,
     });
   } catch (error) {
+    console.error('[OCR] Unexpected error', error);
     return next(error);
   }
 });

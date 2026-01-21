@@ -29,6 +29,8 @@ const DEFAULT_API_HOST = Platform.select({
   default: 'http://localhost:3000',
 });
 
+const PICKER_TIMEOUT_MS = 20000;
+
 function CoffeeScannerScreen({ navigation }: Props) {
   const [imageBase64, setImageBase64] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -55,6 +57,12 @@ function CoffeeScannerScreen({ navigation }: Props) {
     setErrorMessage('');
     setIsSubmitting(true);
 
+    console.log('[CoffeeScanner] Submitting OCR request', {
+      imageBase64Length: imageBase64.trim().length,
+      languageHintList,
+      apiHost: DEFAULT_API_HOST,
+    });
+
     try {
       const response = await fetch(`${DEFAULT_API_HOST}/api/ocr-correct`, {
         method: 'POST',
@@ -65,6 +73,10 @@ function CoffeeScannerScreen({ navigation }: Props) {
           imageBase64: imageBase64.trim(),
           languageHints: languageHintList,
         }),
+      });
+
+      console.log('[CoffeeScanner] OCR response received', {
+        status: response.status,
       });
 
       const payload = await response.json();
@@ -80,6 +92,7 @@ function CoffeeScannerScreen({ navigation }: Props) {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'OCR request failed.';
+      console.error('[CoffeeScanner] OCR request failed', error);
       setErrorMessage(message);
     } finally {
       setIsSubmitting(false);
@@ -87,6 +100,12 @@ function CoffeeScannerScreen({ navigation }: Props) {
   };
 
   const handlePickerResponse = (response: ImagePickerResponse) => {
+    console.log('[CoffeeScanner] Image picker response', {
+      didCancel: response.didCancel,
+      errorCode: response.errorCode,
+      assetsCount: response.assets?.length,
+    });
+
     if (response.didCancel) {
       setErrorMessage('Výber bol zrušený.');
       return;
@@ -101,6 +120,12 @@ function CoffeeScannerScreen({ navigation }: Props) {
 
     const asset: Asset | undefined = response.assets?.[0];
     if (!asset?.base64) {
+      console.warn('[CoffeeScanner] Missing base64 data in asset', {
+        uri: asset?.uri,
+        fileName: asset?.fileName,
+        fileSize: asset?.fileSize,
+        type: asset?.type,
+      });
       setErrorMessage('Nepodarilo sa načítať obrázok. Skúste znova.');
       return;
     }
@@ -110,15 +135,32 @@ function CoffeeScannerScreen({ navigation }: Props) {
     setImageUri(asset.uri ?? null);
   };
 
+  const withPickerTimeout = async <T,>(promise: Promise<T>): Promise<T> =>
+    Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        const timeoutId = setTimeout(() => {
+          clearTimeout(timeoutId);
+          reject(new Error('Image picker timed out.'));
+        }, PICKER_TIMEOUT_MS);
+      }),
+    ]);
+
   const handleSelectFromGallery = async () => {
     setIsPicking(true);
     try {
-      const response = await launchImageLibrary({
-        mediaType: 'photo',
-        includeBase64: true,
-        quality: 0.9,
-      });
+      console.log('[CoffeeScanner] Opening image library');
+      const response = await withPickerTimeout(
+        launchImageLibrary({
+          mediaType: 'photo',
+          includeBase64: true,
+          quality: 0.9,
+        }),
+      );
       handlePickerResponse(response);
+    } catch (error) {
+      console.error('[CoffeeScanner] Image library failed', error);
+      setErrorMessage('Načítanie obrázka trvalo príliš dlho. Skúste znova.');
     } finally {
       setIsPicking(false);
     }
@@ -127,13 +169,19 @@ function CoffeeScannerScreen({ navigation }: Props) {
   const handleTakePhoto = async () => {
     setIsPicking(true);
     try {
-      const response = await launchCamera({
-        mediaType: 'photo',
-        includeBase64: true,
-        quality: 0.9,
-        saveToPhotos: true,
-      });
+      console.log('[CoffeeScanner] Opening camera');
+      const response = await withPickerTimeout(
+        launchCamera({
+          mediaType: 'photo',
+          includeBase64: true,
+          quality: 0.9,
+          saveToPhotos: true,
+        }),
+      );
       handlePickerResponse(response);
+    } catch (error) {
+      console.error('[CoffeeScanner] Camera capture failed', error);
+      setErrorMessage('Načítanie fotky trvalo príliš dlho. Skúste znova.');
     } finally {
       setIsPicking(false);
     }
