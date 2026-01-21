@@ -99,9 +99,27 @@ function CoffeeScannerScreen({ navigation }: Props) {
         throw new Error(payload?.error || 'OCR request failed.');
       }
 
+      const profileResponse = await fetch(`${DEFAULT_API_HOST}/api/coffee-profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: payload.correctedText,
+          rawText: payload.rawText,
+        }),
+      });
+
+      const profilePayload = await profileResponse.json();
+
+      if (!profileResponse.ok) {
+        throw new Error(profilePayload?.error || 'Coffee profile request failed.');
+      }
+
       navigation.navigate('OcrResult', {
         rawText: payload.rawText,
         correctedText: payload.correctedText,
+        coffeeProfile: profilePayload.profile,
       });
     } catch (error) {
       const message =
@@ -237,7 +255,7 @@ function CoffeeScannerScreen({ navigation }: Props) {
           <Text style={styles.description}>
             Vyberte alebo odfoťte obrázok etikety a odošlite ho na backend.
             Server použije Google Vision OCR a následne opraví text cez OpenAI
-            API.
+            API. Následne vráti odhad chuťového profilu bez hardcoded slovníkov.
           </Text>
 
           <View style={styles.field}>
