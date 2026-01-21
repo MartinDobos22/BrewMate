@@ -1,6 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -48,6 +47,8 @@ function CoffeeScannerScreen({ navigation }: Props) {
   const [errorMessage, setErrorMessage] = useState('');
   const [isPicking, setIsPicking] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitProgress, setSubmitProgress] = useState(0);
+  const [submitElapsedMs, setSubmitElapsedMs] = useState(0);
 
   const languageHintList = useMemo(
     () =>
@@ -57,6 +58,32 @@ function CoffeeScannerScreen({ navigation }: Props) {
         .filter(Boolean),
     [languageHints],
   );
+
+  useEffect(() => {
+    if (!isSubmitting) {
+      setSubmitProgress(0);
+      setSubmitElapsedMs(0);
+      return;
+    }
+
+    const startTime = Date.now();
+    setSubmitProgress(0);
+    setSubmitElapsedMs(0);
+
+    const intervalId = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const estimatedDurationMs = 18000;
+      const nextProgress = Math.min(
+        95,
+        Math.round((elapsed / estimatedDurationMs) * 100),
+      );
+
+      setSubmitElapsedMs(elapsed);
+      setSubmitProgress((current) => Math.max(current, nextProgress));
+    }, 250);
+
+    return () => clearInterval(intervalId);
+  }, [isSubmitting]);
 
   const handleSubmit = async () => {
     if (isSubmitting) {
@@ -129,6 +156,11 @@ function CoffeeScannerScreen({ navigation }: Props) {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const formatElapsed = (elapsedMs: number) => {
+    const seconds = Math.max(0, elapsedMs) / 1000;
+    return `${seconds.toFixed(1)} s`;
   };
 
   const handlePickerResponse = (response: ImagePickerResponse) => {
@@ -309,7 +341,22 @@ function CoffeeScannerScreen({ navigation }: Props) {
             disabled={isSubmitting || isPicking}
           >
             {isSubmitting ? (
-              <ActivityIndicator color="#ffffff" />
+              <View style={styles.loadingContainer}>
+                <View style={styles.progressTrack}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { width: `${submitProgress}%` },
+                    ]}
+                  />
+                </View>
+                <View style={styles.loadingMetaRow}>
+                  <Text style={styles.loadingText}>{submitProgress}%</Text>
+                  <Text style={styles.loadingText}>
+                    Trvanie: {formatElapsed(submitElapsedMs)}
+                  </Text>
+                </View>
+              </View>
             ) : (
               <Text style={styles.buttonText}>Odoslať na OCR</Text>
             )}
@@ -403,6 +450,31 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#ffffff',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    alignItems: 'stretch',
+    alignSelf: 'stretch',
+    gap: 6,
+  },
+  progressTrack: {
+    height: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#ffffff',
+    borderRadius: 999,
+  },
+  loadingMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  loadingText: {
+    color: '#ffffff',
+    fontSize: 12,
     fontWeight: '600',
   },
 });
