@@ -70,6 +70,7 @@ const buildCoffeeProfilePayload = (text) => ({
           'confidence',
           'source',
           'reasoning',
+          'missingInfo',
         ],
         properties: {
           flavorNotes: {
