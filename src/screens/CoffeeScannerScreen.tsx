@@ -34,6 +34,12 @@ const DEFAULT_API_HOST =
   process.env.API_HOST?.trim() || (__DEV__ ? LOCAL_API_HOST : RENDER_API_HOST);
 
 const PICKER_TIMEOUT_MS = 20000;
+const MAX_IMAGE_DIMENSION = 1600;
+const IMAGE_QUALITY = 0.6;
+const MAX_BASE64_BYTES = 2_000_000;
+
+const estimateBase64Bytes = (base64: string) =>
+  Math.ceil((base64.length * 3) / 4);
 
 function CoffeeScannerScreen({ navigation }: Props) {
   const [imageBase64, setImageBase64] = useState('');
@@ -138,6 +144,24 @@ function CoffeeScannerScreen({ navigation }: Props) {
       return;
     }
 
+    const base64Length = asset.base64.length;
+    const base64Bytes = estimateBase64Bytes(asset.base64);
+
+    console.log('[CoffeeScanner] Prepared resized image payload', {
+      base64Length,
+      estimatedBytes: base64Bytes,
+      fileSize: asset.fileSize,
+      width: asset.width,
+      height: asset.height,
+    });
+
+    if (base64Bytes > MAX_BASE64_BYTES) {
+      setErrorMessage(
+        'Obrázok je stále príliš veľký. Skúste prosím menší záber alebo orežte etiketu.',
+      );
+      return;
+    }
+
     setErrorMessage('');
     setImageBase64(asset.base64);
     setImageUri(asset.uri ?? null);
@@ -162,7 +186,9 @@ function CoffeeScannerScreen({ navigation }: Props) {
         launchImageLibrary({
           mediaType: 'photo',
           includeBase64: true,
-          quality: 0.9,
+          quality: IMAGE_QUALITY,
+          maxWidth: MAX_IMAGE_DIMENSION,
+          maxHeight: MAX_IMAGE_DIMENSION,
         }),
       );
       handlePickerResponse(response);
@@ -182,7 +208,9 @@ function CoffeeScannerScreen({ navigation }: Props) {
         launchCamera({
           mediaType: 'photo',
           includeBase64: true,
-          quality: 0.9,
+          quality: IMAGE_QUALITY,
+          maxWidth: MAX_IMAGE_DIMENSION,
+          maxHeight: MAX_IMAGE_DIMENSION,
           saveToPhotos: true,
         }),
       );
