@@ -18,7 +18,7 @@ import {
   launchCamera,
   launchImageLibrary,
 } from 'react-native-image-picker';
-
+import Config from 'react-native-config';
 import { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeeScanner'>;
@@ -31,7 +31,7 @@ const LOCAL_API_HOST =
   }) ?? 'http://localhost:3000';
 const RENDER_API_HOST = 'https://brewmate-fe.onrender.com';
 const DEFAULT_API_HOST =
-  process.env.API_HOST?.trim() || (__DEV__ ? LOCAL_API_HOST : RENDER_API_HOST);
+  Config.EXPO_PUBLIC_API_HOST?.trim() || (__DEV__ ? LOCAL_API_HOST : RENDER_API_HOST);
 
 const PICKER_TIMEOUT_MS = 20000;
 const MAX_IMAGE_DIMENSION = 1600;
