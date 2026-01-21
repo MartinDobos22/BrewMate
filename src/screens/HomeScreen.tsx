@@ -12,12 +12,19 @@ function HomeScreen({ navigation }: Props) {
     navigation.navigate('CoffeeScanner');
   };
 
+  const handleQuestionnairePress = () => {
+    navigation.navigate('CoffeeQuestionnaire');
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <View style={styles.container}>
         <Text style={styles.title}>BrewMate</Text>
         <Pressable style={styles.button} onPress={handleScanPress}>
           <Text style={styles.buttonText}>Scan Coffee</Text>
+        </Pressable>
+        <Pressable style={styles.buttonSecondary} onPress={handleQuestionnairePress}>
+          <Text style={styles.buttonText}>Chuťový dotazník</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -44,6 +51,17 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
+    marginBottom: 12,
+    minWidth: 200,
+    alignItems: 'center',
+  },
+  buttonSecondary: {
+    backgroundColor: '#0f172a',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    minWidth: 200,
+    alignItems: 'center',
   },
   buttonText: {
     color: '#ffffff',

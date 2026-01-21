@@ -111,6 +111,47 @@ const buildCoffeeProfilePayload = (text) => ({
   ],
 });
 
+const buildCoffeeQuestionnairePayload = (answers) => ({
+  model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  temperature: 0.3,
+  response_format: {
+    type: 'json_schema',
+    json_schema: {
+      name: 'coffee_questionnaire',
+      strict: true,
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        required: [
+          'profileSummary',
+          'recommendedStyle',
+          'recommendedOrigins',
+          'brewingTips',
+        ],
+        properties: {
+          profileSummary: { type: 'string' },
+          recommendedStyle: { type: 'string' },
+          recommendedOrigins: { type: 'string' },
+          brewingTips: { type: 'string' },
+        },
+      },
+    },
+  },
+  messages: [
+    {
+      role: 'system',
+      content:
+        'Si coffee sensory analytik pre baristu. Z odpovedí zákazníka odhadni profil chutí '
+        + 'a odporuč štýl kávy. Odpovedaj po slovensky a drž sa stručných odstavcov. '
+        + 'Výstup musí presne sedieť na JSON schému.',
+    },
+    {
+      role: 'user',
+      content: `Vyhodnoť chuťový dotazník zákazníka a odporuč kávu. Odpovede:\n\n${answers}`,
+    },
+  ],
+});
+
 router.post('/api/ocr-correct', async (req, res, next) => {
   try {
     const { imageBase64, languageHints } = req.body || {};
@@ -300,6 +341,75 @@ router.post('/api/coffee-profile', async (req, res, next) => {
     return res.status(200).json({ profile });
   } catch (error) {
     console.error('[CoffeeProfile] Unexpected error', error);
+    return next(error);
+  }
+});
+
+router.post('/api/coffee-questionnaire', async (req, res, next) => {
+  try {
+    const { answers } = req.body || {};
+
+    if (!Array.isArray(answers) || answers.length === 0) {
+      return res.status(400).json({ error: 'answers are required.' });
+    }
+
+    const openAiApiKey = process.env.OPENAI_API_KEY;
+    if (!openAiApiKey) {
+      console.error('[CoffeeQuestionnaire] OpenAI API key missing');
+      return res.status(500).json({ error: 'OpenAI API key is not configured.' });
+    }
+
+    const formattedAnswers = answers
+      .map((item, index) => `${index + 1}. ${item.question}: ${item.answer}`)
+      .join('\n');
+
+    const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${openAiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(buildCoffeeQuestionnairePayload(formattedAnswers)),
+    });
+
+    const openAiData = await openAiResponse.json();
+
+    if (!openAiResponse.ok) {
+      console.error('[CoffeeQuestionnaire] OpenAI request failed', {
+        status: openAiResponse.status,
+        details: openAiData,
+      });
+      return res.status(502).json({
+        error: 'OpenAI API request failed.',
+        details: openAiData,
+      });
+    }
+
+    const profileContent = openAiData?.choices?.[0]?.message?.content?.trim();
+    if (!profileContent) {
+      console.error('[CoffeeQuestionnaire] OpenAI response missing content', {
+        openAiData,
+      });
+      return res.status(502).json({ error: 'OpenAI did not return a questionnaire profile.' });
+    }
+
+    let profile;
+    try {
+      profile = JSON.parse(profileContent);
+    } catch (parseError) {
+      console.error('[CoffeeQuestionnaire] Failed to parse response JSON', {
+        profileContent,
+        parseError,
+      });
+      return res.status(502).json({
+        error: 'Failed to parse questionnaire response.',
+        rawProfile: profileContent,
+      });
+    }
+
+    return res.status(200).json({ profile });
+  } catch (error) {
+    console.error('[CoffeeQuestionnaire] Unexpected error', error);
     return next(error);
   }
 });

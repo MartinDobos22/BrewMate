@@ -4,6 +4,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from '../screens/HomeScreen';
 import CoffeeScannerScreen from '../screens/CoffeeScannerScreen';
 import OcrResultScreen from '../screens/OcrResultScreen';
+import CoffeeQuestionnaireScreen from '../screens/CoffeeQuestionnaireScreen';
+import CoffeeQuestionnaireResultScreen from '../screens/CoffeeQuestionnaireResultScreen';
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -24,6 +26,20 @@ function AppNavigator() {
         component={CoffeeScannerScreen}
         options={{
           title: 'Coffee Scanner',
+        }}
+      />
+      <Stack.Screen
+        name="CoffeeQuestionnaire"
+        component={CoffeeQuestionnaireScreen}
+        options={{
+          title: 'Chuťový dotazník',
+        }}
+      />
+      <Stack.Screen
+        name="CoffeeQuestionnaireResult"
+        component={CoffeeQuestionnaireResultScreen}
+        options={{
+          title: 'Výsledok dotazníka',
         }}
       />
       <Stack.Screen
