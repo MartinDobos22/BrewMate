@@ -1,6 +1,19 @@
 export type RootStackParamList = {
   Home: undefined;
   CoffeeScanner: undefined;
+  CoffeeQuestionnaire: undefined;
+  CoffeeQuestionnaireResult: {
+    answers: Array<{
+      question: string;
+      answer: string;
+    }>;
+    profile: {
+      profileSummary: string;
+      recommendedStyle: string;
+      recommendedOrigins: string;
+      brewingTips: string;
+    };
+  };
   OcrResult: {
     rawText: string;
     correctedText: string;
