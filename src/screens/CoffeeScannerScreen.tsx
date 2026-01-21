@@ -53,6 +53,10 @@ function CoffeeScannerScreen({ navigation }: Props) {
   );
 
   const handleSubmit = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
     if (!imageBase64.trim()) {
       setErrorMessage('Najprv vyberte alebo odfoťte obrázok.');
       return;
