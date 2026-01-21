@@ -29,7 +29,7 @@ const LOCAL_API_HOST =
     ios: 'http://localhost:3000',
     default: 'http://localhost:3000',
   }) ?? 'http://localhost:3000';
-const RENDER_API_HOST = 'https://brewmat.onrender.com';
+const RENDER_API_HOST = 'https://brewmate-fe.onrender.com';
 const DEFAULT_API_HOST =
   process.env.API_HOST?.trim() || (__DEV__ ? LOCAL_API_HOST : RENDER_API_HOST);
 
