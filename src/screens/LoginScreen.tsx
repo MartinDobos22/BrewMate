@@ -14,7 +14,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
 import { AuthStackParamList } from '../navigation/types';
-import { auth } from '../utils/firebase';
+import { getAuthOrThrow } from '../utils/firebase';
 import { signInWithApple, signInWithGoogle } from '../utils/socialAuth';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
@@ -30,7 +30,8 @@ function LoginScreen({ navigation }: Props) {
     setErrorMessage('');
 
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      const authInstance = getAuthOrThrow();
+      await signInWithEmailAndPassword(authInstance, email.trim(), password);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Login failed.';
       setErrorMessage(message);

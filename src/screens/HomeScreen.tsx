@@ -5,7 +5,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { signOut } from 'firebase/auth';
 
 import { RootStackParamList } from '../navigation/types';
-import { auth } from '../utils/firebase';
+import { getAuthOrThrow } from '../utils/firebase';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -19,7 +19,8 @@ function HomeScreen({ navigation }: Props) {
   };
 
   const handleLogout = () => {
-    signOut(auth);
+    const authInstance = getAuthOrThrow();
+    signOut(authInstance);
   };
 
   return (

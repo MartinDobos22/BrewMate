@@ -3,7 +3,7 @@ import appleAuth from '@invertase/react-native-apple-authentication';
 import { GoogleAuthProvider, OAuthProvider, signInWithCredential } from 'firebase/auth';
 import Config from 'react-native-config';
 
-import { auth } from './firebase';
+import { getAuthOrThrow } from './firebase';
 
 let googleConfigured = false;
 
@@ -28,7 +28,8 @@ export const signInWithGoogle = async () => {
   }
 
   const credential = GoogleAuthProvider.credential(idToken);
-  return signInWithCredential(auth, credential);
+  const authInstance = getAuthOrThrow();
+  return signInWithCredential(authInstance, credential);
 };
 
 export const signInWithApple = async () => {
@@ -49,5 +50,6 @@ export const signInWithApple = async () => {
     rawNonce: nonce,
   });
 
-  return signInWithCredential(auth, credential);
+  const authInstance = getAuthOrThrow();
+  return signInWithCredential(authInstance, credential);
 };

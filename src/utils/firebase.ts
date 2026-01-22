@@ -1,5 +1,5 @@
 import { getApps, initializeApp } from 'firebase/app';
-import { inMemoryPersistence,initializeAuth } from 'firebase/auth';
+import { Auth, inMemoryPersistence, initializeAuth } from 'firebase/auth';
 
 import Config from 'react-native-config';
 
@@ -12,11 +12,39 @@ const firebaseConfig = {
   appId: Config.FIREBASE_APP_ID,
 };
 
+const missingConfig = Object.entries(firebaseConfig)
+  .filter(([, value]) => !value)
+  .map(([key]) => key);
+
+if (missingConfig.length) {
+  console.warn(
+    `Missing Firebase config values: ${missingConfig.join(', ')}. Check your FIREBASE_* environment variables.`,
+  );
+}
+
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
-export const auth = initializeAuth(app, {
-  persistence: inMemoryPersistence,
-    }
-);
+let auth: Auth | null = null;
+
+try {
+  auth = initializeAuth(app, {
+    persistence: inMemoryPersistence,
+  });
+} catch (error) {
+  console.error(
+    'Failed to initialize Firebase auth. Verify your FIREBASE_* environment variables.',
+    error,
+  );
+}
+
+export { auth };
+
+export const getAuthOrThrow = () => {
+  if (!auth) {
+    throw new Error('Firebase auth is not configured. Verify FIREBASE_* environment variables.');
+  }
+
+  return auth;
+};
 
 export default app;
