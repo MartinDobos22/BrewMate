@@ -1,8 +1,9 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { saveQuestionnaireResult } from '../utils/localSave';
 
 const SECTION_LABELS = {
   profileSummary: 'Profil chutí',
@@ -15,11 +16,45 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CoffeeQuestionnaireResu
 
 function CoffeeQuestionnaireResultScreen({ route }: Props) {
   const { answers, profile } = route.params;
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  const handleSave = useCallback(async () => {
+    try {
+      setSaveState('saving');
+      await saveQuestionnaireResult({ answers, profile });
+      setSaveState('saved');
+    } catch (error) {
+      console.error('[QuestionnaireResult] Failed to save locally', error);
+      setSaveState('error');
+    }
+  }, [answers, profile]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Výsledok dotazníka</Text>
+
+        <View style={styles.saveRow}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.saveButton,
+              pressed && styles.saveButtonPressed,
+              saveState === 'saving' && styles.saveButtonDisabled,
+            ]}
+            onPress={handleSave}
+            disabled={saveState === 'saving'}
+          >
+            <Text style={styles.saveButtonText}>
+              {saveState === 'saving' ? 'Ukladám...' : 'Uložiť lokálne'}
+            </Text>
+          </Pressable>
+          {saveState === 'saved' ? (
+            <Text style={styles.saveHint}>Uložené do zariadenia.</Text>
+          ) : null}
+          {saveState === 'error' ? (
+            <Text style={styles.saveError}>Uloženie zlyhalo.</Text>
+          ) : null}
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>AI odporúčanie</Text>
@@ -59,6 +94,36 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     marginBottom: 16,
+  },
+  saveRow: {
+    marginBottom: 16,
+  },
+  saveButton: {
+    backgroundColor: '#1f6f5b',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  saveButtonPressed: {
+    opacity: 0.8,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  saveHint: {
+    marginTop: 8,
+    color: '#14532d',
+    fontWeight: '600',
+  },
+  saveError: {
+    marginTop: 8,
+    color: '#b91c1c',
+    fontWeight: '600',
   },
   section: {
     marginBottom: 24,
