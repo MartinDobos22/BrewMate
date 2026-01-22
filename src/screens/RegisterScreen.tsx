@@ -11,10 +11,9 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 import { AuthStackParamList } from '../navigation/types';
-import { getAuthOrThrow } from '../utils/firebase';
+import { DEFAULT_API_HOST } from '../utils/api';
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -26,6 +25,22 @@ function RegisterScreen({ navigation }: Props) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const getBackendErrorMessage = async (response: Response) => {
+    try {
+      const data = await response.json();
+      if (data?.error) {
+        return data.error as string;
+      }
+      if (data?.message) {
+        return data.message as string;
+      }
+    } catch (parseError) {
+      console.warn('Failed to parse error response.', parseError);
+    }
+
+    return 'Registrácia zlyhala.';
+  };
 
   const validate = () => {
     if (!email.trim()) {
@@ -55,8 +70,21 @@ function RegisterScreen({ navigation }: Props) {
     setErrorMessage('');
 
     try {
-      const authInstance = getAuthOrThrow();
-      await createUserWithEmailAndPassword(authInstance, email.trim(), password);
+      const response = await fetch(`${DEFAULT_API_HOST}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      });
+
+      if (!response.ok) {
+        const message = await getBackendErrorMessage(response);
+        setErrorMessage(message);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Registrácia zlyhala.';
       setErrorMessage(message);
