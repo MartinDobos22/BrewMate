@@ -1,9 +1,8 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import appleAuth from '@invertase/react-native-apple-authentication';
-import { GoogleAuthProvider, OAuthProvider, signInWithCredential } from 'firebase/auth';
 import Config from 'react-native-config';
 
-import { getAuthOrThrow } from './firebase';
+import { DEFAULT_API_HOST } from './api';
 
 let googleConfigured = false;
 
@@ -27,9 +26,22 @@ export const signInWithGoogle = async () => {
     throw new Error('Google sign-in failed: missing id token.');
   }
 
-  const credential = GoogleAuthProvider.credential(idToken);
-  const authInstance = getAuthOrThrow();
-  return signInWithCredential(authInstance, credential);
+  const response = await fetch(`${DEFAULT_API_HOST}/auth/google`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      idToken,
+    }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.error || 'Google sign-in failed.');
+  }
+
+  return response.json().catch(() => null);
 };
 
 export const signInWithApple = async () => {
@@ -44,12 +56,21 @@ export const signInWithApple = async () => {
     throw new Error('Apple sign-in failed: missing identity token.');
   }
 
-  const provider = new OAuthProvider('apple.com');
-  const credential = provider.credential({
-    idToken: identityToken,
-    rawNonce: nonce,
+  const response = await fetch(`${DEFAULT_API_HOST}/auth/apple`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      idToken: identityToken,
+      nonce,
+    }),
   });
 
-  const authInstance = getAuthOrThrow();
-  return signInWithCredential(authInstance, credential);
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.error || 'Apple sign-in failed.');
+  }
+
+  return response.json().catch(() => null);
 };

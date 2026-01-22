@@ -5,6 +5,7 @@ import { admin } from './firebase.js';
 const router = express.Router();
 
 const PASSWORD_MIN_LENGTH = 6;
+const SESSION_COOKIE_EXPIRES_IN = 1000 * 60 * 60 * 24 * 5;
 
 const getFirebaseErrorMessage = (error) => {
   switch (error?.code) {
@@ -68,6 +69,18 @@ const verifyPassword = async (email, password) => {
   return data;
 };
 
+const createSessionForIdToken = async (idToken) => {
+  const decodedToken = await admin.auth().verifyIdToken(idToken);
+  const sessionCookie = await admin.auth().createSessionCookie(idToken, {
+    expiresIn: SESSION_COOKIE_EXPIRES_IN,
+  });
+
+  return {
+    uid: decodedToken.uid,
+    sessionCookie,
+  };
+};
+
 router.post('/auth/register', async (req, res) => {
   try {
     const email = String(req.body?.email ?? '').trim();
@@ -127,6 +140,38 @@ router.post('/auth/login', async (req, res) => {
 
     const message = getFirebaseErrorMessage(error);
     return res.status(400).json({ error: message });
+  }
+});
+
+router.post('/auth/google', async (req, res) => {
+  try {
+    const idToken = String(req.body?.idToken ?? '').trim();
+
+    if (!idToken) {
+      return res.status(400).json({ error: 'Chýba Google token.' });
+    }
+
+    const session = await createSessionForIdToken(idToken);
+    return res.status(200).json(session);
+  } catch (error) {
+    const message = error?.message || 'Google prihlásenie zlyhalo.';
+    return res.status(401).json({ error: message });
+  }
+});
+
+router.post('/auth/apple', async (req, res) => {
+  try {
+    const idToken = String(req.body?.idToken ?? '').trim();
+
+    if (!idToken) {
+      return res.status(400).json({ error: 'Chýba Apple token.' });
+    }
+
+    const session = await createSessionForIdToken(idToken);
+    return res.status(200).json(session);
+  } catch (error) {
+    const message = error?.message || 'Apple prihlásenie zlyhalo.';
+    return res.status(401).json({ error: message });
   }
 });
 
