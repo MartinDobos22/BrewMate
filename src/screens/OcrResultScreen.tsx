@@ -1,16 +1,40 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../navigation/types';
-import { saveCoffeeProfile } from '../utils/localSave';
+import {
+  loadLatestQuestionnaireResult,
+  QuestionnaireResultPayload,
+  SaveEntry,
+  saveCoffeeProfile,
+} from '../utils/localSave';
+import { DEFAULT_API_HOST } from '../utils/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OcrResult'>;
+
+type MatchResult = {
+  willLike: boolean;
+  confidence: number;
+  baristaSummary: string;
+  laymanSummary: string;
+  keyMatches: string[];
+  keyConflicts: string[];
+  suggestedAdjustments: string;
+};
 
 function OcrResultScreen({ route }: Props) {
   const { rawText, correctedText, coffeeProfile } = route.params;
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [matchState, setMatchState] = useState<
+    'idle' | 'loading' | 'ready' | 'missing' | 'error'
+  >('idle');
+  const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
+  const [matchError, setMatchError] = useState('');
+  const [questionnaireSnapshot, setQuestionnaireSnapshot] = useState<
+    SaveEntry<QuestionnaireResultPayload> | null
+  >(null);
 
   const handleSave = useCallback(async () => {
     try {
@@ -22,6 +46,77 @@ function OcrResultScreen({ route }: Props) {
       setSaveState('error');
     }
   }, [coffeeProfile, correctedText, rawText]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadMatch = async () => {
+      setMatchState('loading');
+      setMatchError('');
+      setMatchResult(null);
+      setQuestionnaireSnapshot(null);
+
+      const latestQuestionnaire = await loadLatestQuestionnaireResult();
+      if (!latestQuestionnaire?.payload) {
+        if (isActive) {
+          setMatchState('missing');
+        }
+        return;
+      }
+
+      if (isActive) {
+        setQuestionnaireSnapshot(latestQuestionnaire);
+      }
+
+      try {
+        const response = await fetch(`${DEFAULT_API_HOST}/api/coffee-match`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            questionnaire: latestQuestionnaire.payload,
+            coffeeProfile,
+          }),
+        });
+
+        const payload = await response.json();
+
+        if (!response.ok) {
+          throw new Error(payload?.error || 'Nepodarilo sa porovnať kávu s dotazníkom.');
+        }
+
+        if (isActive) {
+          setMatchResult(payload.match);
+          setMatchState('ready');
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Nepodarilo sa porovnať kávu s dotazníkom.';
+        if (isActive) {
+          setMatchError(message);
+          setMatchState('error');
+        }
+      }
+    };
+
+    loadMatch();
+
+    return () => {
+      isActive = false;
+    };
+  }, [coffeeProfile]);
+
+  const verdictLabel = useMemo(() => {
+    if (!matchResult) {
+      return '';
+    }
+    return matchResult.willLike
+      ? 'Táto káva ti pravdepodobne bude chutiť.'
+      : 'Táto káva ti pravdepodobne chutiť nebude.';
+  }, [matchResult]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -88,6 +183,66 @@ function OcrResultScreen({ route }: Props) {
               <Text style={styles.text}>
                 {coffeeProfile.missingInfo.join(', ')}
               </Text>
+            </>
+          ) : null}
+        </View>
+
+        <View style={styles.block}>
+          <Text style={styles.label}>Zhoda s dotazníkom</Text>
+          {matchState === 'loading' ? (
+            <Text style={styles.text}>Porovnávam s dotazníkom…</Text>
+          ) : null}
+          {matchState === 'missing' ? (
+            <Text style={styles.text}>
+              Zatiaľ nemám uložený výsledok dotazníka. Najprv ho vyplňte a uložte,
+              aby som vedel porovnávať.
+            </Text>
+          ) : null}
+          {matchState === 'error' ? (
+            <Text style={styles.errorText}>{matchError}</Text>
+          ) : null}
+          {matchState === 'ready' && matchResult ? (
+            <>
+              <View
+                style={[
+                  styles.verdictBadge,
+                  matchResult.willLike
+                    ? styles.verdictPositive
+                    : styles.verdictNegative,
+                ]}
+              >
+                <Text style={styles.verdictText}>{verdictLabel}</Text>
+                <Text style={styles.verdictSubText}>
+                  Istota: {Math.round(matchResult.confidence * 100)}%
+                </Text>
+              </View>
+              <Text style={styles.profileTitle}>Pre baristu</Text>
+              <Text style={styles.text}>{matchResult.baristaSummary}</Text>
+              <Text style={styles.profileTitle}>Pre laika</Text>
+              <Text style={styles.text}>{matchResult.laymanSummary}</Text>
+              <Text style={styles.profileTitle}>Kľúčové zhody</Text>
+              <Text style={styles.text}>
+                {matchResult.keyMatches.length
+                  ? matchResult.keyMatches.join(', ')
+                  : 'Žiadne výrazné zhody.'}
+              </Text>
+              <Text style={styles.profileTitle}>Potenciálne konflikty</Text>
+              <Text style={styles.text}>
+                {matchResult.keyConflicts.length
+                  ? matchResult.keyConflicts.join(', ')
+                  : 'Žiadne výrazné konflikty.'}
+              </Text>
+              <Text style={styles.profileTitle}>Ako si ju upraviť</Text>
+              <Text style={styles.text}>{matchResult.suggestedAdjustments}</Text>
+              {questionnaireSnapshot ? (
+                <Text style={styles.helperNote}>
+                  Porovnávané s posledným uloženým dotazníkom z{' '}
+                  {new Date(questionnaireSnapshot.savedAt).toLocaleDateString(
+                    'sk-SK',
+                  )}
+                  .
+                </Text>
+              ) : null}
             </>
           ) : null}
         </View>
@@ -158,6 +313,41 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: '#2b2b2b',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#b91c1c',
+    fontWeight: '600',
+  },
+  verdictBadge: {
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  verdictPositive: {
+    backgroundColor: '#dcfce7',
+    borderWidth: 1,
+    borderColor: '#16a34a',
+  },
+  verdictNegative: {
+    backgroundColor: '#fee2e2',
+    borderWidth: 1,
+    borderColor: '#ef4444',
+  },
+  verdictText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  verdictSubText: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#374151',
+  },
+  helperNote: {
+    marginTop: 12,
+    fontSize: 12,
+    color: '#6b7280',
   },
 });
 
