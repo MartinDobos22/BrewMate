@@ -11,10 +11,9 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { signInWithEmailAndPassword } from 'firebase/auth';
 
 import { AuthStackParamList } from '../navigation/types';
-import { getAuthOrThrow } from '../utils/firebase';
+import { DEFAULT_API_HOST } from '../utils/api';
 import { signInWithApple, signInWithGoogle } from '../utils/socialAuth';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
@@ -25,13 +24,42 @@ function LoginScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  const getBackendErrorMessage = async (response: Response) => {
+    try {
+      const data = await response.json();
+      if (data?.error) {
+        return data.error as string;
+      }
+      if (data?.message) {
+        return data.message as string;
+      }
+    } catch (parseError) {
+      console.warn('Failed to parse error response.', parseError);
+    }
+
+    return 'Login failed.';
+  };
+
   const handleLogin = async () => {
     setLoading(true);
     setErrorMessage('');
 
     try {
-      const authInstance = getAuthOrThrow();
-      await signInWithEmailAndPassword(authInstance, email.trim(), password);
+      const response = await fetch(`${DEFAULT_API_HOST}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      });
+
+      if (!response.ok) {
+        const message = await getBackendErrorMessage(response);
+        setErrorMessage(message);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Login failed.';
       setErrorMessage(message);
