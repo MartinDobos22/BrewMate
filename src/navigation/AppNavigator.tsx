@@ -6,14 +6,36 @@ import CoffeeScannerScreen from '../screens/CoffeeScannerScreen';
 import OcrResultScreen from '../screens/OcrResultScreen';
 import CoffeeQuestionnaireScreen from '../screens/CoffeeQuestionnaireScreen';
 import CoffeeQuestionnaireResultScreen from '../screens/CoffeeQuestionnaireResultScreen';
-import { RootStackParamList } from './types';
+import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
+import AuthLoadingScreen from '../screens/AuthLoadingScreen';
+import { AuthStackParamList, RootStackParamList } from './types';
+import { useAuth } from '../context/AuthContext';
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+const AppStack = createNativeStackNavigator<RootStackParamList>();
+const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 
-function AppNavigator() {
+function AuthNavigator() {
   return (
-    <Stack.Navigator>
-      <Stack.Screen
+    <AuthStack.Navigator>
+      <AuthStack.Screen
+        name="Login"
+        component={LoginScreen}
+        options={{ headerShown: false }}
+      />
+      <AuthStack.Screen
+        name="Register"
+        component={RegisterScreen}
+        options={{ headerShown: false }}
+      />
+    </AuthStack.Navigator>
+  );
+}
+
+function MainNavigator() {
+  return (
+    <AppStack.Navigator>
+      <AppStack.Screen
         name="Home"
         component={HomeScreen}
         options={{
@@ -21,35 +43,47 @@ function AppNavigator() {
           headerBackVisible: false,
         }}
       />
-      <Stack.Screen
+      <AppStack.Screen
         name="CoffeeScanner"
         component={CoffeeScannerScreen}
         options={{
           title: 'Coffee Scanner',
         }}
       />
-      <Stack.Screen
+      <AppStack.Screen
         name="CoffeeQuestionnaire"
         component={CoffeeQuestionnaireScreen}
         options={{
           title: 'Chuťový dotazník',
         }}
       />
-      <Stack.Screen
+      <AppStack.Screen
         name="CoffeeQuestionnaireResult"
         component={CoffeeQuestionnaireResultScreen}
         options={{
           title: 'Výsledok dotazníka',
         }}
       />
-      <Stack.Screen
+      <AppStack.Screen
         name="OcrResult"
         component={OcrResultScreen}
         options={{
           title: 'OCR Result',
         }}
       />
-    </Stack.Navigator>
+    </AppStack.Navigator>
+  );
+}
+
+function AppNavigator() {
+  const { user, initializing } = useAuth();
+
+  if (initializing) {
+    return <AuthLoadingScreen />;
+  }
+
+  return (
+    user ? <MainNavigator /> : <AuthNavigator />
   );
 }
 
