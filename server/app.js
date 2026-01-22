@@ -10,6 +10,26 @@ app.use(express.json({ limit: '20mb' }));
 
 app.use(cors(corsOptions));
 
+app.use((req, res, next) => {
+  const startedAt = Date.now();
+  console.log('[Request] started', {
+    method: req.method,
+    path: req.originalUrl,
+    ip: req.ip,
+  });
+
+  res.on('finish', () => {
+    console.log('[Request] completed', {
+      method: req.method,
+      path: req.originalUrl,
+      status: res.statusCode,
+      durationMs: Date.now() - startedAt,
+    });
+  });
+
+  next();
+});
+
 
 app.get('/', (req, res) => {
   res.send('Google Vision OCR backend beží.');

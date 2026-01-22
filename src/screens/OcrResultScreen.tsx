@@ -38,9 +38,11 @@ function OcrResultScreen({ route }: Props) {
 
   const handleSave = useCallback(async () => {
     try {
+      console.log('[OcrResult] Saving coffee profile locally');
       setSaveState('saving');
       await saveCoffeeProfile({ rawText, correctedText, coffeeProfile });
       setSaveState('saved');
+      console.log('[OcrResult] Coffee profile saved locally');
     } catch (error) {
       console.error('[OcrResult] Failed to save locally', error);
       setSaveState('error');
@@ -51,6 +53,7 @@ function OcrResultScreen({ route }: Props) {
     let isActive = true;
 
     const loadMatch = async () => {
+      console.log('[OcrResult] Loading latest questionnaire snapshot');
       setMatchState('loading');
       setMatchError('');
       setMatchResult(null);
@@ -59,6 +62,7 @@ function OcrResultScreen({ route }: Props) {
       const latestQuestionnaire = await loadLatestQuestionnaireResult();
       if (!latestQuestionnaire?.payload) {
         if (isActive) {
+          console.warn('[OcrResult] Missing questionnaire snapshot for match');
           setMatchState('missing');
         }
         return;
@@ -69,6 +73,10 @@ function OcrResultScreen({ route }: Props) {
       }
 
       try {
+        const matchRequestStart = Date.now();
+        console.log('[OcrResult] Requesting coffee match', {
+          apiHost: DEFAULT_API_HOST,
+        });
         const response = await fetch(`${DEFAULT_API_HOST}/api/coffee-match`, {
           method: 'POST',
           headers: {
@@ -89,6 +97,9 @@ function OcrResultScreen({ route }: Props) {
         if (isActive) {
           setMatchResult(payload.match);
           setMatchState('ready');
+          console.log('[OcrResult] Coffee match ready', {
+            durationMs: Date.now() - matchRequestStart,
+          });
         }
       } catch (error) {
         const message =
@@ -99,6 +110,7 @@ function OcrResultScreen({ route }: Props) {
           setMatchError(message);
           setMatchState('error');
         }
+        console.error('[OcrResult] Coffee match failed', error);
       }
     };
 
