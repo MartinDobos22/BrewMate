@@ -2,8 +2,10 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { signOut } from 'firebase/auth';
 
 import { RootStackParamList } from '../navigation/types';
+import { auth } from '../utils/firebase';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -16,6 +18,10 @@ function HomeScreen({ navigation }: Props) {
     navigation.navigate('CoffeeQuestionnaire');
   };
 
+  const handleLogout = () => {
+    signOut(auth);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <View style={styles.container}>
@@ -25,6 +31,9 @@ function HomeScreen({ navigation }: Props) {
         </Pressable>
         <Pressable style={styles.buttonSecondary} onPress={handleQuestionnairePress}>
           <Text style={styles.buttonText}>Chuťový dotazník</Text>
+        </Pressable>
+        <Pressable style={styles.buttonOutline} onPress={handleLogout}>
+          <Text style={styles.buttonOutlineText}>Odhlásiť sa</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -65,6 +74,21 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  buttonOutline: {
+    borderColor: '#1f6f5b',
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    minWidth: 200,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  buttonOutlineText: {
+    color: '#1f6f5b',
     fontSize: 16,
     fontWeight: '600',
   },
