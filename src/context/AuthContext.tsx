@@ -1,10 +1,7 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { User, onAuthStateChanged } from 'firebase/auth';
-
-import { auth } from '../utils/firebase';
+import React, { createContext, useContext, useMemo, useState } from 'react';
 
 type AuthContextValue = {
-  user: User | null;
+  user: null;
   initializing: boolean;
 };
 
@@ -14,22 +11,8 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [initializing, setInitializing] = useState(true);
-
-  useEffect(() => {
-    if (!auth) {
-      setInitializing(false);
-      return;
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, currentUser => {
-      setUser(currentUser);
-      setInitializing(false);
-    });
-
-    return unsubscribe;
-  }, []);
+  const [user] = useState<null>(null);
+  const [initializing] = useState(false);
 
   const value = useMemo(
     () => ({

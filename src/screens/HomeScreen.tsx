@@ -2,10 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { signOut } from 'firebase/auth';
-
 import { RootStackParamList } from '../navigation/types';
-import { getAuthOrThrow } from '../utils/firebase';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -19,8 +16,7 @@ function HomeScreen({ navigation }: Props) {
   };
 
   const handleLogout = () => {
-    const authInstance = getAuthOrThrow();
-    signOut(authInstance);
+    // Firebase auth removed; no-op until backend logout is wired.
   };
 
   return (
