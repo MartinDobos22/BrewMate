@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -39,6 +39,20 @@ function CoffeeScannerScreen({ navigation }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitProgress, setSubmitProgress] = useState(0);
   const [submitElapsedMs, setSubmitElapsedMs] = useState(0);
+  const [submitStage, setSubmitStage] = useState<
+    'idle' | 'upload' | 'ocr' | 'profile' | 'done'
+  >('idle');
+  const submitStartRef = useRef<number | null>(null);
+
+  const submitStageTarget = useMemo(
+    () => ({
+      upload: 25,
+      ocr: 70,
+      profile: 95,
+      done: 100,
+    }),
+    [],
+  );
 
   const languageHintList = useMemo(
     () =>
@@ -51,29 +65,35 @@ function CoffeeScannerScreen({ navigation }: Props) {
 
   useEffect(() => {
     if (!isSubmitting) {
+      submitStartRef.current = null;
       setSubmitProgress(0);
       setSubmitElapsedMs(0);
+      setSubmitStage('idle');
       return;
     }
 
-    const startTime = Date.now();
-    setSubmitProgress(0);
-    setSubmitElapsedMs(0);
+    if (!submitStartRef.current) {
+      submitStartRef.current = Date.now();
+    }
 
     const intervalId = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const estimatedDurationMs = 18000;
-      const nextProgress = Math.min(
-        95,
-        Math.round((elapsed / estimatedDurationMs) * 100),
-      );
+      const startedAt = submitStartRef.current ?? Date.now();
+      const elapsed = Date.now() - startedAt;
+      const target =
+        submitStage === 'idle' ? 0 : submitStageTarget[submitStage];
 
       setSubmitElapsedMs(elapsed);
-      setSubmitProgress((current) => Math.max(current, nextProgress));
-    }, 250);
+      setSubmitProgress((current) => {
+        if (current >= target) {
+          return current;
+        }
+        const increment = target === 100 ? 6 : 2;
+        return Math.min(target, current + increment);
+      });
+    }, 200);
 
     return () => clearInterval(intervalId);
-  }, [isSubmitting]);
+  }, [isSubmitting, submitStage, submitStageTarget]);
 
   const handleSubmit = async () => {
     if (isSubmitting) {
@@ -87,6 +107,9 @@ function CoffeeScannerScreen({ navigation }: Props) {
 
     setErrorMessage('');
     setIsSubmitting(true);
+    setSubmitStage('upload');
+    setSubmitProgress((current) => Math.max(current, 5));
+    const submitStartedAt = Date.now();
 
     console.log('[CoffeeScanner] Submitting OCR request', {
       imageBase64Length: imageBase64.trim().length,
@@ -95,6 +118,8 @@ function CoffeeScannerScreen({ navigation }: Props) {
     });
 
     try {
+      const ocrRequestStart = Date.now();
+      setSubmitStage('ocr');
       const response = await fetch(`${DEFAULT_API_HOST}/api/ocr-correct`, {
         method: 'POST',
         headers: {
@@ -108,6 +133,7 @@ function CoffeeScannerScreen({ navigation }: Props) {
 
       console.log('[CoffeeScanner] OCR response received', {
         status: response.status,
+        durationMs: Date.now() - ocrRequestStart,
       });
 
       const payload = await response.json();
@@ -116,6 +142,8 @@ function CoffeeScannerScreen({ navigation }: Props) {
         throw new Error(payload?.error || 'OCR request failed.');
       }
 
+      setSubmitStage('profile');
+      const profileRequestStart = Date.now();
       const profileResponse = await fetch(`${DEFAULT_API_HOST}/api/coffee-profile`, {
         method: 'POST',
         headers: {
@@ -127,11 +155,22 @@ function CoffeeScannerScreen({ navigation }: Props) {
         }),
       });
 
+      console.log('[CoffeeScanner] Coffee profile response received', {
+        status: profileResponse.status,
+        durationMs: Date.now() - profileRequestStart,
+      });
+
       const profilePayload = await profileResponse.json();
 
       if (!profileResponse.ok) {
         throw new Error(profilePayload?.error || 'Coffee profile request failed.');
       }
+
+      setSubmitStage('done');
+      setSubmitProgress(100);
+      console.log('[CoffeeScanner] OCR flow completed', {
+        totalDurationMs: Date.now() - submitStartedAt,
+      });
 
       navigation.navigate('OcrResult', {
         rawText: payload.rawText,
@@ -147,6 +186,21 @@ function CoffeeScannerScreen({ navigation }: Props) {
       setIsSubmitting(false);
     }
   };
+
+  const stageLabel = useMemo(() => {
+    switch (submitStage) {
+      case 'upload':
+        return 'Nahrávam obrázok';
+      case 'ocr':
+        return 'Spracúvam OCR';
+      case 'profile':
+        return 'Tvorím chuťový profil';
+      case 'done':
+        return 'Hotovo';
+      default:
+        return 'Pripravujem požiadavku';
+    }
+  }, [submitStage]);
 
   const formatElapsed = (elapsedMs: number) => {
     const seconds = Math.max(0, elapsedMs) / 1000;
@@ -346,6 +400,7 @@ function CoffeeScannerScreen({ navigation }: Props) {
                     Trvanie: {formatElapsed(submitElapsedMs)}
                   </Text>
                 </View>
+                <Text style={styles.loadingStageText}>{stageLabel}</Text>
               </View>
             ) : (
               <Text style={styles.buttonText}>Odoslať na OCR</Text>
@@ -466,6 +521,11 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 12,
     fontWeight: '600',
+  },
+  loadingStageText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '500',
   },
 });
 

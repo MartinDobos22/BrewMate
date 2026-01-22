@@ -237,6 +237,7 @@ router.post('/api/ocr-correct', async (req, res, next) => {
       payloadSize: JSON.stringify(visionPayload).length,
     });
 
+    const visionRequestStart = Date.now();
     const visionResponse = await fetch(
       `https://vision.googleapis.com/v1/images:annotate?key=${visionApiKey}`,
       {
@@ -249,6 +250,10 @@ router.post('/api/ocr-correct', async (req, res, next) => {
     );
 
     const visionData = await visionResponse.json();
+    console.log('[OCR] Google Vision response received', {
+      status: visionResponse.status,
+      durationMs: Date.now() - visionRequestStart,
+    });
 
     if (!visionResponse.ok) {
       console.error('[OCR] Google Vision request failed', {
@@ -279,6 +284,7 @@ router.post('/api/ocr-correct', async (req, res, next) => {
       rawTextLength: rawText.length,
     });
 
+    const openAiRequestStart = Date.now();
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -289,6 +295,10 @@ router.post('/api/ocr-correct', async (req, res, next) => {
     });
 
     const openAiData = await openAiResponse.json();
+    console.log('[OCR] OpenAI correction response received', {
+      status: openAiResponse.status,
+      durationMs: Date.now() - openAiRequestStart,
+    });
 
     if (!openAiResponse.ok) {
       console.error('[OCR] OpenAI request failed', {
@@ -346,6 +356,7 @@ router.post('/api/coffee-profile', async (req, res, next) => {
       return res.status(500).json({ error: 'OpenAI API key is not configured.' });
     }
 
+    const openAiRequestStart = Date.now();
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -356,6 +367,10 @@ router.post('/api/coffee-profile', async (req, res, next) => {
     });
 
     const openAiData = await openAiResponse.json();
+    console.log('[CoffeeProfile] OpenAI response received', {
+      status: openAiResponse.status,
+      durationMs: Date.now() - openAiRequestStart,
+    });
 
     if (!openAiResponse.ok) {
       console.error('[CoffeeProfile] OpenAI request failed', {
@@ -415,6 +430,7 @@ router.post('/api/coffee-questionnaire', async (req, res, next) => {
       .map((item, index) => `${index + 1}. ${item.question}: ${item.answer}`)
       .join('\n');
 
+    const openAiRequestStart = Date.now();
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -425,6 +441,10 @@ router.post('/api/coffee-questionnaire', async (req, res, next) => {
     });
 
     const openAiData = await openAiResponse.json();
+    console.log('[CoffeeQuestionnaire] OpenAI response received', {
+      status: openAiResponse.status,
+      durationMs: Date.now() - openAiRequestStart,
+    });
 
     if (!openAiResponse.ok) {
       console.error('[CoffeeQuestionnaire] OpenAI request failed', {
@@ -482,6 +502,7 @@ router.post('/api/coffee-match', async (req, res, next) => {
       return res.status(500).json({ error: 'OpenAI API key is not configured.' });
     }
 
+    const openAiRequestStart = Date.now();
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -492,6 +513,10 @@ router.post('/api/coffee-match', async (req, res, next) => {
     });
 
     const openAiData = await openAiResponse.json();
+    console.log('[CoffeeMatch] OpenAI response received', {
+      status: openAiResponse.status,
+      durationMs: Date.now() - openAiRequestStart,
+    });
 
     if (!openAiResponse.ok) {
       console.error('[CoffeeMatch] OpenAI request failed', {
