@@ -14,7 +14,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 import { AuthStackParamList } from '../navigation/types';
-import { auth } from '../utils/firebase';
+import { getAuthOrThrow } from '../utils/firebase';
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -55,7 +55,8 @@ function RegisterScreen({ navigation }: Props) {
     setErrorMessage('');
 
     try {
-      await createUserWithEmailAndPassword(auth, email.trim(), password);
+      const authInstance = getAuthOrThrow();
+      await createUserWithEmailAndPassword(authInstance, email.trim(), password);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Registrácia zlyhala.';
       setErrorMessage(message);
