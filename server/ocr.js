@@ -152,6 +152,58 @@ const buildCoffeeQuestionnairePayload = (answers) => ({
   ],
 });
 
+const buildCoffeeMatchPayload = (questionnaire, coffeeProfile) => ({
+  model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  temperature: 0.2,
+  response_format: {
+    type: 'json_schema',
+    json_schema: {
+      name: 'coffee_match',
+      strict: true,
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        required: [
+          'willLike',
+          'confidence',
+          'baristaSummary',
+          'laymanSummary',
+          'keyMatches',
+          'keyConflicts',
+          'suggestedAdjustments',
+        ],
+        properties: {
+          willLike: { type: 'boolean' },
+          confidence: { type: 'number', minimum: 0, maximum: 1 },
+          baristaSummary: { type: 'string' },
+          laymanSummary: { type: 'string' },
+          keyMatches: { type: 'array', items: { type: 'string' } },
+          keyConflicts: { type: 'array', items: { type: 'string' } },
+          suggestedAdjustments: { type: 'string' },
+        },
+      },
+    },
+  },
+  messages: [
+    {
+      role: 'system',
+      content:
+        'Si coffee sensory analytik. Porovnaj profil chutí z dotazníka s profilom kávy z etikety. '
+        + 'Vráť verdikt či bude káva chutiť, s istotou, a vysvetlenie pre baristu aj laika. '
+        + 'Buď konkrétny, odkazuj na zhody/konflikty v preferenciách (kyslosť, horkosť, telo, sladkosť, ovocnosť, intenzita). '
+        + 'Výstup musí presne sedieť na JSON schému.',
+    },
+    {
+      role: 'user',
+      content: `Dotazník (profil + odpovede):\n${JSON.stringify(
+        questionnaire,
+        null,
+        2,
+      )}\n\nProfil kávy:\n${JSON.stringify(coffeeProfile, null, 2)}`,
+    },
+  ],
+});
+
 router.post('/api/ocr-correct', async (req, res, next) => {
   try {
     const { imageBase64, languageHints } = req.body || {};
@@ -410,6 +462,73 @@ router.post('/api/coffee-questionnaire', async (req, res, next) => {
     return res.status(200).json({ profile });
   } catch (error) {
     console.error('[CoffeeQuestionnaire] Unexpected error', error);
+    return next(error);
+  }
+});
+
+router.post('/api/coffee-match', async (req, res, next) => {
+  try {
+    const { questionnaire, coffeeProfile } = req.body || {};
+
+    if (!questionnaire || !coffeeProfile) {
+      return res.status(400).json({
+        error: 'questionnaire and coffeeProfile are required.',
+      });
+    }
+
+    const openAiApiKey = process.env.OPENAI_API_KEY;
+    if (!openAiApiKey) {
+      console.error('[CoffeeMatch] OpenAI API key missing');
+      return res.status(500).json({ error: 'OpenAI API key is not configured.' });
+    }
+
+    const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${openAiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(buildCoffeeMatchPayload(questionnaire, coffeeProfile)),
+    });
+
+    const openAiData = await openAiResponse.json();
+
+    if (!openAiResponse.ok) {
+      console.error('[CoffeeMatch] OpenAI request failed', {
+        status: openAiResponse.status,
+        details: openAiData,
+      });
+      return res.status(502).json({
+        error: 'OpenAI API request failed.',
+        details: openAiData,
+      });
+    }
+
+    const matchContent = openAiData?.choices?.[0]?.message?.content?.trim();
+    if (!matchContent) {
+      console.error('[CoffeeMatch] OpenAI response missing content', {
+        openAiData,
+      });
+      return res.status(502).json({ error: 'OpenAI did not return a match result.' });
+    }
+
+    let match;
+    try {
+      match = JSON.parse(matchContent);
+    } catch (parseError) {
+      console.error('[CoffeeMatch] Failed to parse response JSON', {
+        matchContent,
+        parseError,
+      });
+      return res.status(502).json({
+        error: 'Failed to parse match response.',
+        rawMatch: matchContent,
+      });
+    }
+
+    return res.status(200).json({ match });
+  } catch (error) {
+    console.error('[CoffeeMatch] Unexpected error', error);
     return next(error);
   }
 });
