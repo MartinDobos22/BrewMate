@@ -14,6 +14,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AuthStackParamList } from '../navigation/types';
 import { DEFAULT_API_HOST } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -25,6 +26,7 @@ function RegisterScreen({ navigation }: Props) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const { refreshSession } = useAuth();
 
   const getBackendErrorMessage = async (response: Response) => {
     try {
@@ -75,6 +77,7 @@ function RegisterScreen({ navigation }: Props) {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           email: email.trim(),
           password,
@@ -84,6 +87,8 @@ function RegisterScreen({ navigation }: Props) {
       if (!response.ok) {
         const message = await getBackendErrorMessage(response);
         setErrorMessage(message);
+      } else {
+        await refreshSession();
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Registrácia zlyhala.';

@@ -6,6 +6,7 @@ const router = express.Router();
 
 const PASSWORD_MIN_LENGTH = 6;
 const SESSION_COOKIE_EXPIRES_IN = 1000 * 60 * 60 * 24 * 5;
+const SESSION_COOKIE_NAME = 'brewmate_session';
 
 const getFirebaseErrorMessage = (error) => {
   switch (error?.code) {
@@ -81,6 +82,48 @@ const createSessionForIdToken = async (idToken) => {
   };
 };
 
+const getCookieValue = (cookieHeader, name) => {
+  if (!cookieHeader) {
+    return null;
+  }
+
+  const cookie = cookieHeader
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`));
+
+  if (!cookie) {
+    return null;
+  }
+
+  return decodeURIComponent(cookie.slice(name.length + 1));
+};
+
+const getSessionCookieOptions = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  maxAge: SESSION_COOKIE_EXPIRES_IN,
+});
+
+const setSessionCookie = (res, sessionCookie) => {
+  res.cookie(SESSION_COOKIE_NAME, sessionCookie, getSessionCookieOptions());
+};
+
+const clearSessionCookie = (res) => {
+  res.clearCookie(SESSION_COOKIE_NAME, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  });
+};
+
+const mapUserRecord = (userRecord) => ({
+  id: userRecord.uid,
+  email: userRecord.email || '',
+  name: userRecord.displayName || null,
+});
+
 router.post('/auth/register', async (req, res) => {
   try {
     const email = String(req.body?.email ?? '').trim();
@@ -99,11 +142,12 @@ router.post('/auth/register', async (req, res) => {
       password,
     });
 
-    const token = await admin.auth().createCustomToken(userRecord.uid);
+    const authData = await verifyPassword(email, password);
+    const session = await createSessionForIdToken(authData.idToken);
+    setSessionCookie(res, session.sessionCookie);
 
     return res.status(201).json({
-      uid: userRecord.uid,
-      token,
+      user: mapUserRecord(userRecord),
     });
   } catch (error) {
     const message = getFirebaseErrorMessage(error);
@@ -124,14 +168,14 @@ router.post('/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Zadaj heslo.' });
     }
 
-    await verifyPassword(email, password);
+    const authData = await verifyPassword(email, password);
 
     const userRecord = await admin.auth().getUserByEmail(email);
-    const token = await admin.auth().createCustomToken(userRecord.uid);
+    const session = await createSessionForIdToken(authData.idToken);
+    setSessionCookie(res, session.sessionCookie);
 
     return res.status(200).json({
-      uid: userRecord.uid,
-      token,
+      user: mapUserRecord(userRecord),
     });
   } catch (error) {
     if (error?.status) {
@@ -152,7 +196,9 @@ router.post('/auth/google', async (req, res) => {
     }
 
     const session = await createSessionForIdToken(idToken);
-    return res.status(200).json(session);
+    const userRecord = await admin.auth().getUser(session.uid);
+    setSessionCookie(res, session.sessionCookie);
+    return res.status(200).json({ user: mapUserRecord(userRecord) });
   } catch (error) {
     const message = error?.message || 'Google prihlásenie zlyhalo.';
     return res.status(401).json({ error: message });
@@ -168,11 +214,36 @@ router.post('/auth/apple', async (req, res) => {
     }
 
     const session = await createSessionForIdToken(idToken);
-    return res.status(200).json(session);
+    const userRecord = await admin.auth().getUser(session.uid);
+    setSessionCookie(res, session.sessionCookie);
+    return res.status(200).json({ user: mapUserRecord(userRecord) });
   } catch (error) {
     const message = error?.message || 'Apple prihlásenie zlyhalo.';
     return res.status(401).json({ error: message });
   }
+});
+
+router.get('/auth/me', async (req, res) => {
+  try {
+    const sessionCookie = getCookieValue(req.headers.cookie, SESSION_COOKIE_NAME);
+
+    if (!sessionCookie) {
+      return res.status(204).send();
+    }
+
+    const decodedToken = await admin.auth().verifySessionCookie(sessionCookie, true);
+    const userRecord = await admin.auth().getUser(decodedToken.uid);
+
+    return res.status(200).json({ user: mapUserRecord(userRecord) });
+  } catch (error) {
+    clearSessionCookie(res);
+    return res.status(204).send();
+  }
+});
+
+router.post('/auth/logout', (_req, res) => {
+  clearSessionCookie(res);
+  return res.status(204).send();
 });
 
 export default router;

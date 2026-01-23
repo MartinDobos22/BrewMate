@@ -15,6 +15,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/types';
 import { DEFAULT_API_HOST } from '../utils/api';
 import { signInWithApple, signInWithGoogle } from '../utils/socialAuth';
+import { useAuth } from '../context/AuthContext';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
@@ -23,6 +24,7 @@ function LoginScreen({ navigation }: Props) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const { refreshSession } = useAuth();
 
   const getBackendErrorMessage = async (response: Response) => {
     try {
@@ -50,6 +52,7 @@ function LoginScreen({ navigation }: Props) {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           email: email.trim(),
           password,
@@ -59,6 +62,8 @@ function LoginScreen({ navigation }: Props) {
       if (!response.ok) {
         const message = await getBackendErrorMessage(response);
         setErrorMessage(message);
+      } else {
+        await refreshSession();
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Login failed.';
@@ -74,6 +79,7 @@ function LoginScreen({ navigation }: Props) {
 
     try {
       await signInWithGoogle();
+      await refreshSession();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Google sign-in failed.';
       setErrorMessage(message);
@@ -88,6 +94,7 @@ function LoginScreen({ navigation }: Props) {
 
     try {
       await signInWithApple();
+      await refreshSession();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Apple sign-in failed.';
       setErrorMessage(message);
