@@ -36,12 +36,17 @@ export const signInWithGoogle = async () => {
     }),
   });
 
+  const data = await response.json().catch(() => null);
+
   if (!response.ok) {
-    const data = await response.json().catch(() => null);
     throw new Error(data?.error || 'Google sign-in failed.');
   }
 
-  return response.json().catch(() => null);
+  if (!data?.session && !data?.token) {
+    throw new Error('Google sign-in failed: missing session data.');
+  }
+
+  return data;
 };
 
 export const signInWithApple = async () => {
@@ -67,10 +72,15 @@ export const signInWithApple = async () => {
     }),
   });
 
+  const data = await response.json().catch(() => null);
+
   if (!response.ok) {
-    const data = await response.json().catch(() => null);
     throw new Error(data?.error || 'Apple sign-in failed.');
   }
 
-  return response.json().catch(() => null);
+  if (!data?.session && !data?.token) {
+    throw new Error('Apple sign-in failed: missing session data.');
+  }
+
+  return data;
 };
