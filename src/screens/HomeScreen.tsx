@@ -3,10 +3,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { DEFAULT_API_HOST } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 function HomeScreen({ navigation }: Props) {
+  const { clearSession } = useAuth();
+
   const handleScanPress = () => {
     navigation.navigate('CoffeeScanner');
   };
@@ -15,8 +19,22 @@ function HomeScreen({ navigation }: Props) {
     navigation.navigate('CoffeeQuestionnaire');
   };
 
-  const handleLogout = () => {
-    // Firebase auth removed; no-op until backend logout is wired.
+  const handleLogout = async () => {
+    try {
+      const response = await fetch(`${DEFAULT_API_HOST}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        console.warn('[Auth] Logout failed.', response.status);
+        return;
+      }
+
+      await clearSession();
+    } catch (error) {
+      console.warn('[Auth] Logout failed.', error);
+    }
   };
 
   return (
