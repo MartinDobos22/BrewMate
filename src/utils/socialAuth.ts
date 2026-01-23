@@ -31,6 +31,7 @@ export const signInWithGoogle = async () => {
     headers: {
       'Content-Type': 'application/json',
     },
+    credentials: 'include',
     body: JSON.stringify({
       idToken,
     }),
@@ -42,11 +43,11 @@ export const signInWithGoogle = async () => {
     throw new Error(data?.error || 'Google sign-in failed.');
   }
 
-  if (!data?.session && !data?.token) {
-    throw new Error('Google sign-in failed: missing session data.');
+  if (!data?.user) {
+    throw new Error('Google sign-in failed: missing user data.');
   }
 
-  return data;
+  return data.user;
 };
 
 export const signInWithApple = async () => {
@@ -66,6 +67,7 @@ export const signInWithApple = async () => {
     headers: {
       'Content-Type': 'application/json',
     },
+    credentials: 'include',
     body: JSON.stringify({
       idToken: identityToken,
       nonce,
@@ -78,9 +80,9 @@ export const signInWithApple = async () => {
     throw new Error(data?.error || 'Apple sign-in failed.');
   }
 
-  if (!data?.session && !data?.token) {
-    throw new Error('Apple sign-in failed: missing session data.');
+  if (!data?.user) {
+    throw new Error('Apple sign-in failed: missing user data.');
   }
 
-  return data;
+  return data.user;
 };
