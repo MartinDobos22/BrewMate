@@ -2,8 +2,8 @@ import { FirebaseApp, getApps, initializeApp } from 'firebase/app';
 import {
   Auth,
   getAuth,
-  getReactNativePersistence,
   initializeAuth,
+  getReactNativePersistence
 } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Config from 'react-native-config';
@@ -60,7 +60,7 @@ export const getFirebaseAuth = () => {
     cachedAuth = initializeAuth(app, {
       persistence: getReactNativePersistence(AsyncStorage),
     });
-  } catch (error) {
+  } catch  {
     cachedAuth = getAuth(app);
   }
 
