@@ -1,7 +1,15 @@
 import { FirebaseApp, getApps, initializeApp } from 'firebase/app';
-import Config from "react-native-config";
+import {
+  Auth,
+  getAuth,
+  getReactNativePersistence,
+  initializeAuth,
+} from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Config from 'react-native-config';
 
 let cachedApp: FirebaseApp | null = null;
+let cachedAuth: Auth | null = null;
 
 
 console.log("Firebase config:", Config.FIREBASE_API_KEY, Config.FIREBASE_PROJECT_ID, Config.FIREBASE_APP_ID, Config.FIREBASE_AUTH_DOMAIN);
@@ -39,4 +47,22 @@ export const getFirebaseApp = () => {
 
   cachedApp = initializeApp(getFirebaseConfig());
   return cachedApp;
+};
+
+export const getFirebaseAuth = () => {
+  if (cachedAuth) {
+    return cachedAuth;
+  }
+
+  const app = getFirebaseApp();
+
+  try {
+    cachedAuth = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
+  } catch (error) {
+    cachedAuth = getAuth(app);
+  }
+
+  return cachedAuth;
 };
