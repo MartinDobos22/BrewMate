@@ -1,13 +1,18 @@
 import { FirebaseApp, getApps, initializeApp } from 'firebase/app';
+import Config from "react-native-config";
 
 let cachedApp: FirebaseApp | null = null;
 
+
+console.log("Firebase config:", Config.FIREBASE_API_KEY, Config.FIREBASE_PROJECT_ID, Config.FIREBASE_APP_ID, Config.FIREBASE_AUTH_DOMAIN);
+
+
 const getFirebaseConfig = () => {
-  const apiKey = process.env.FIREBASE_API_KEY?.trim()
-    || process.env.EXPO_PUBLIC_FIREBASE_API_KEY?.trim();
-  const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
-  const appId = process.env.FIREBASE_APP_ID?.trim();
-  const authDomain = process.env.FIREBASE_AUTH_DOMAIN?.trim()
+  const apiKey = Config.FIREBASE_API_KEY?.trim()
+    || Config.EXPO_PUBLIC_FIREBASE_API_KEY?.trim();
+  const projectId = Config.FIREBASE_PROJECT_ID?.trim();
+  const appId = Config.FIREBASE_APP_ID?.trim();
+  const authDomain = Config.FIREBASE_AUTH_DOMAIN?.trim()
     || (projectId ? `${projectId}.firebaseapp.com` : undefined);
 
   if (!apiKey || !projectId || !appId) {
@@ -21,7 +26,6 @@ const getFirebaseConfig = () => {
     authDomain,
   };
 };
-
 export const getFirebaseApp = () => {
   if (cachedApp) {
     return cachedApp;
