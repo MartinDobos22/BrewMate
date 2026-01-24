@@ -8,7 +8,8 @@ import {
 } from 'firebase/auth';
 
 import { DEFAULT_API_HOST } from './api';
-import { getFirebaseApp } from './firebase';
+import Config from "react-native-config";
+import {getFirebaseApp} from "./firebase.ts";
 
 let googleConfigured = false;
 
@@ -17,14 +18,14 @@ const configureGoogle = () => {
     return;
   }
 
-  if (!process.env.FIREBASE_WEB_CLIENT_ID) {
+  if (!Config.FIREBASE_WEB_CLIENT_ID) {
     throw new Error(
       'Chýba FIREBASE_WEB_CLIENT_ID. Skontroluj konfiguráciu Google Sign-In (Web client ID).',
     );
   }
 
   GoogleSignin.configure({
-    webClientId: process.env.FIREBASE_WEB_CLIENT_ID,
+    webClientId: Config.FIREBASE_WEB_CLIENT_ID,
   });
   googleConfigured = true;
 };
