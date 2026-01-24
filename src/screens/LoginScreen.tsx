@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -19,12 +19,34 @@ import { useAuth } from '../context/AuthContext';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
-function LoginScreen({ navigation }: Props) {
+function LoginScreen({ navigation, route }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [didPrefill, setDidPrefill] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const { refreshSession } = useAuth();
+
+  useEffect(() => {
+    if (didPrefill) {
+      return;
+    }
+
+    const prefillEmail = route.params?.prefillEmail;
+    const prefillPassword = route.params?.prefillPassword;
+
+    if (prefillEmail) {
+      setEmail(prefillEmail);
+    }
+
+    if (prefillPassword) {
+      setPassword(prefillPassword);
+    }
+
+    if (prefillEmail || prefillPassword) {
+      setDidPrefill(true);
+    }
+  }, [didPrefill, route.params?.prefillEmail, route.params?.prefillPassword]);
 
   const getBackendErrorMessage = async (response: Response) => {
     try {
