@@ -1,7 +1,14 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import appleAuth from '@invertase/react-native-apple-authentication';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  OAuthProvider,
+  signInWithCredential,
+} from 'firebase/auth';
 
 import { DEFAULT_API_HOST } from './api';
+import { getFirebaseApp } from './firebase';
 
 let googleConfigured = false;
 
@@ -23,6 +30,8 @@ const configureGoogle = () => {
 };
 
 export const signInWithGoogle = async () => {
+  const auth = getAuth(getFirebaseApp());
+
   try {
     configureGoogle();
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
@@ -39,11 +48,15 @@ export const signInWithGoogle = async () => {
     throw error;
   }
 
-  const { idToken } = await GoogleSignin.getTokens();
+  const { idToken, accessToken } = await GoogleSignin.getTokens();
 
   if (!idToken) {
     throw new Error('Google sign-in failed: missing id token.');
   }
+
+  const googleCredential = GoogleAuthProvider.credential(idToken, accessToken);
+  const googleUser = await signInWithCredential(auth, googleCredential);
+  const firebaseIdToken = await googleUser.user.getIdToken();
 
   const response = await fetch(`${DEFAULT_API_HOST}/auth/google`, {
     method: 'POST',
@@ -52,7 +65,7 @@ export const signInWithGoogle = async () => {
     },
     credentials: 'include',
     body: JSON.stringify({
-      idToken,
+      idToken: firebaseIdToken,
     }),
   });
 
@@ -70,6 +83,8 @@ export const signInWithGoogle = async () => {
 };
 
 export const signInWithApple = async () => {
+  const auth = getAuth(getFirebaseApp());
+
   const appleAuthRequestResponse = await appleAuth.performRequest({
     requestedOperation: appleAuth.Operation.LOGIN,
     requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
@@ -81,6 +96,14 @@ export const signInWithApple = async () => {
     throw new Error('Apple sign-in failed: missing identity token.');
   }
 
+  const appleProvider = new OAuthProvider('apple.com');
+  const appleCredential = appleProvider.credential({
+    idToken: identityToken,
+    rawNonce: nonce ?? undefined,
+  });
+  const appleUser = await signInWithCredential(auth, appleCredential);
+  const firebaseIdToken = await appleUser.user.getIdToken();
+
   const response = await fetch(`${DEFAULT_API_HOST}/auth/apple`, {
     method: 'POST',
     headers: {
@@ -88,7 +111,7 @@ export const signInWithApple = async () => {
     },
     credentials: 'include',
     body: JSON.stringify({
-      idToken: identityToken,
+      idToken: firebaseIdToken,
       nonce,
     }),
   });
