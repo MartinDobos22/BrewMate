@@ -20,7 +20,8 @@ const configureGoogle = () => {
 export const signInWithGoogle = async () => {
   configureGoogle();
   await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-  const { idToken } = await GoogleSignin.signIn();
+  await GoogleSignin.signIn();
+  const { idToken } = await GoogleSignin.getTokens();
 
   if (!idToken) {
     throw new Error('Google sign-in failed: missing id token.');
