@@ -37,7 +37,9 @@ const mapIdentityErrorMessage = (identityMessage) => {
 };
 
 const verifyPassword = async (email, password) => {
-  const apiKey = process.env.FIREBASE_API_KEY?.trim();
+  const apiKey = process.env.FIREBASE_API_KEY?.trim()
+    || process.env.FIREBASE_WEB_API_KEY?.trim()
+    || process.env.EXPO_PUBLIC_FIREBASE_API_KEY?.trim();
   if (!apiKey) {
     const error = new Error('Missing FIREBASE_API_KEY.');
     error.status = 500;
