@@ -1,6 +1,5 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import appleAuth from '@invertase/react-native-apple-authentication';
-import Config from 'react-native-config';
 
 import { DEFAULT_API_HOST } from './api';
 
@@ -11,14 +10,14 @@ const configureGoogle = () => {
     return;
   }
 
-  if (!Config.FIREBASE_WEB_CLIENT_ID) {
+  if (!process.env.FIREBASE_WEB_CLIENT_ID) {
     throw new Error(
       'Chýba FIREBASE_WEB_CLIENT_ID. Skontroluj konfiguráciu Google Sign-In (Web client ID).',
     );
   }
 
   GoogleSignin.configure({
-    webClientId: Config.FIREBASE_WEB_CLIENT_ID,
+    webClientId: process.env.FIREBASE_WEB_CLIENT_ID,
   });
   googleConfigured = true;
 };
