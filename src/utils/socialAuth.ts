@@ -11,6 +11,12 @@ const configureGoogle = () => {
     return;
   }
 
+  if (!Config.FIREBASE_WEB_CLIENT_ID) {
+    throw new Error(
+      'Chýba FIREBASE_WEB_CLIENT_ID. Skontroluj konfiguráciu Google Sign-In (Web client ID).',
+    );
+  }
+
   GoogleSignin.configure({
     webClientId: Config.FIREBASE_WEB_CLIENT_ID,
   });
@@ -18,9 +24,22 @@ const configureGoogle = () => {
 };
 
 export const signInWithGoogle = async () => {
-  configureGoogle();
-  await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-  await GoogleSignin.signIn();
+  try {
+    configureGoogle();
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    await GoogleSignin.signIn();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Google sign-in failed.';
+
+    if (message.includes('DEVELOPER_ERROR')) {
+      throw new Error(
+        'Google prihlásenie je nesprávne nakonfigurované. Skontroluj SHA-1 certifikát a OAuth klienta v Google/Firebase konzole.',
+      );
+    }
+
+    throw error;
+  }
+
   const { idToken } = await GoogleSignin.getTokens();
 
   if (!idToken) {
