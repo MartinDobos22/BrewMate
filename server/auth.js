@@ -142,12 +142,20 @@ router.post('/auth/register', async (req, res) => {
       password,
     });
 
-    const authData = await verifyPassword(email, password);
-    const session = await createSessionForIdToken(authData.idToken);
-    setSessionCookie(res, session.sessionCookie);
+    let sessionCreated = false;
+
+    try {
+      const authData = await verifyPassword(email, password);
+      const session = await createSessionForIdToken(authData.idToken);
+      setSessionCookie(res, session.sessionCookie);
+      sessionCreated = true;
+    } catch (sessionError) {
+      console.warn('Failed to create session after registration.', sessionError);
+    }
 
     return res.status(201).json({
       user: mapUserRecord(userRecord),
+      sessionCreated,
     });
   } catch (error) {
     const message = getFirebaseErrorMessage(error);

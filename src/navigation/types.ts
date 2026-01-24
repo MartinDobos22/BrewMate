@@ -32,6 +32,11 @@ export type RootStackParamList = {
 };
 
 export type AuthStackParamList = {
-  Login: undefined;
+  Login:
+    | {
+        prefillEmail?: string;
+        prefillPassword?: string;
+      }
+    | undefined;
   Register: undefined;
 };
