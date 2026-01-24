@@ -1,15 +1,10 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import appleAuth from '@invertase/react-native-apple-authentication';
-import {
-  getAuth,
-  GoogleAuthProvider,
-  OAuthProvider,
-  signInWithCredential,
-} from 'firebase/auth';
+import { GoogleAuthProvider, OAuthProvider, signInWithCredential } from 'firebase/auth';
 
 import { DEFAULT_API_HOST } from './api';
-import Config from "react-native-config";
-import {getFirebaseApp} from "./firebase.ts";
+import Config from 'react-native-config';
+import { getFirebaseAuth } from './firebase';
 
 let googleConfigured = false;
 
@@ -31,7 +26,7 @@ const configureGoogle = () => {
 };
 
 export const signInWithGoogle = async () => {
-  const auth = getAuth(getFirebaseApp());
+  const auth = getFirebaseAuth();
 
   try {
     configureGoogle();
@@ -84,7 +79,7 @@ export const signInWithGoogle = async () => {
 };
 
 export const signInWithApple = async () => {
-  const auth = getAuth(getFirebaseApp());
+  const auth = getFirebaseAuth();
 
   const appleAuthRequestResponse = await appleAuth.performRequest({
     requestedOperation: appleAuth.Operation.LOGIN,
