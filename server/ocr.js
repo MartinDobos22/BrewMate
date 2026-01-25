@@ -402,6 +402,9 @@ const runOcr = async ({ imageBase64, languageHints }) => {
     rawTextLength: rawText.length,
   });
 
+  console.log('[OCR] OpenAI correction request started', {
+    rawTextLength: rawText.length,
+  });
   const openAiRequestStart = Date.now();
   const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -486,6 +489,9 @@ router.post('/api/coffee-photo-analysis', async (req, res, next) => {
       return res.status(500).json({ error: 'OpenAI API key is not configured.' });
     }
 
+    console.log('[PhotoAnalysis] OpenAI request started', {
+      correctedTextLength: correctedText.length,
+    });
     const openAiRequestStart = Date.now();
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -569,6 +575,10 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
       return res.status(500).json({ error: 'OpenAI API key is not configured.' });
     }
 
+    console.log('[PhotoRecipe] OpenAI request started', {
+      selectedPreparation,
+      strengthPreference,
+    });
     const openAiRequestStart = Date.now();
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -654,6 +664,9 @@ router.post('/api/coffee-profile', async (req, res, next) => {
       return res.status(500).json({ error: 'OpenAI API key is not configured.' });
     }
 
+    console.log('[CoffeeProfile] OpenAI request started', {
+      textLength: sourceText.length,
+    });
     const openAiRequestStart = Date.now();
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -728,6 +741,9 @@ router.post('/api/coffee-questionnaire', async (req, res, next) => {
       .map((item, index) => `${index + 1}. ${item.question}: ${item.answer}`)
       .join('\n');
 
+    console.log('[CoffeeQuestionnaire] OpenAI request started', {
+      answersCount: answers.length,
+    });
     const openAiRequestStart = Date.now();
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -800,6 +816,9 @@ router.post('/api/coffee-match', async (req, res, next) => {
       return res.status(500).json({ error: 'OpenAI API key is not configured.' });
     }
 
+    console.log('[CoffeeMatch] OpenAI request started', {
+      questionnaireCount: Array.isArray(questionnaire) ? questionnaire.length : undefined,
+    });
     const openAiRequestStart = Date.now();
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',

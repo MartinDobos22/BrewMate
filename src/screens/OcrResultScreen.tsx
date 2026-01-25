@@ -77,6 +77,9 @@ function OcrResultScreen({ route }: Props) {
         console.log('[OcrResult] Requesting coffee match', {
           apiHost: DEFAULT_API_HOST,
         });
+        console.log('[OcrResult] OpenAI coffee match request via backend', {
+          endpoint: '/api/coffee-match',
+        });
         const response = await fetch(`${DEFAULT_API_HOST}/api/coffee-match`, {
           method: 'POST',
           headers: {

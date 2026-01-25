@@ -103,6 +103,9 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
     setIsSubmitting(true);
 
     try {
+      console.log('[CoffeeQuestionnaire] OpenAI questionnaire request via backend', {
+        endpoint: '/api/coffee-questionnaire',
+      });
       const response = await fetch(`${DEFAULT_API_HOST}/api/coffee-questionnaire`, {
         method: 'POST',
         headers: {
