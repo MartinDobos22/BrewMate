@@ -1,3 +1,5 @@
+import { CoffeeProfile, QuestionnaireProfile } from '../utils/tasteVector';
+
 export type RootStackParamList = {
   Home: undefined;
   CoffeeScanner: undefined;
@@ -34,27 +36,12 @@ export type RootStackParamList = {
       question: string;
       answer: string;
     }>;
-    profile: {
-      profileSummary: string;
-      recommendedStyle: string;
-      recommendedOrigins: string;
-      brewingTips: string;
-    };
+    profile: QuestionnaireProfile;
   };
   OcrResult: {
     rawText: string;
     correctedText: string;
-    coffeeProfile: {
-      flavorNotes: string[];
-      tasteProfile: string;
-      expertSummary: string;
-      laymanSummary: string;
-      preferenceHint: string;
-      confidence: number;
-      source: 'label' | 'inferred' | 'mixed' | 'low_info';
-      reasoning: string;
-      missingInfo?: string[];
-    };
+    coffeeProfile: CoffeeProfile;
   };
 };
 

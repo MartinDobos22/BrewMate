@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CoffeeProfile, QuestionnaireProfile } from './tasteVector';
 
 export type SaveEntry<T> = {
   id: string;
@@ -9,26 +10,12 @@ export type SaveEntry<T> = {
 export type CoffeeProfilePayload = {
   rawText: string;
   correctedText: string;
-  coffeeProfile: {
-    flavorNotes: string[];
-    tasteProfile: string;
-    expertSummary: string;
-    laymanSummary: string;
-    preferenceHint: string;
-    reasoning: string;
-    confidence: number;
-    missingInfo?: string[];
-  };
+  coffeeProfile: CoffeeProfile;
 };
 
 export type QuestionnaireResultPayload = {
   answers: Array<{ question: string; answer: string }>;
-  profile: {
-    profileSummary: string;
-    recommendedStyle: string;
-    recommendedOrigins: string;
-    brewingTips: string;
-  };
+  profile: QuestionnaireProfile;
 };
 
 const saveEntry = async <T,>(key: string, payload: T) => {
@@ -73,3 +60,6 @@ const loadLatestEntry = async <T,>(key: string): Promise<SaveEntry<T> | null> =>
 
 export const loadLatestQuestionnaireResult = async () =>
   loadLatestEntry<QuestionnaireResultPayload>(STORAGE_KEYS.questionnaireResult);
+
+export const loadLatestCoffeeProfile = async () =>
+  loadLatestEntry<CoffeeProfilePayload>(STORAGE_KEYS.coffeeProfile);

@@ -18,6 +18,7 @@ import {
   launchImageLibrary,
 } from 'react-native-image-picker';
 import { RootStackParamList } from '../navigation/types';
+import { ensureCoffeeProfile } from '../utils/tasteVector';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeeScanner'>;
@@ -198,10 +199,12 @@ function CoffeeScannerScreen({ navigation }: Props) {
         totalDurationMs: Date.now() - submitStartedAt,
       });
 
+      const coffeeProfile = ensureCoffeeProfile(profilePayload?.profile);
+
       navigation.navigate('OcrResult', {
         rawText: payload.rawText,
         correctedText: payload.correctedText,
-        coffeeProfile: profilePayload.profile,
+        coffeeProfile,
       });
     } catch (error) {
       const message =
