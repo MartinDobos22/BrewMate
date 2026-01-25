@@ -121,6 +121,9 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
       });
 
       const payload = await response.json();
+      console.log('[CoffeeQuestionnaire] OpenAI questionnaire response content', {
+        payload,
+      });
 
       if (!response.ok) {
         throw new Error(payload?.error || 'Nepodarilo sa vyhodnotiť dotazník.');

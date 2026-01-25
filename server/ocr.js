@@ -420,6 +420,9 @@ const runOcr = async ({ imageBase64, languageHints }) => {
     status: openAiResponse.status,
     durationMs: Date.now() - openAiRequestStart,
   });
+  console.log('[OCR] OpenAI correction response content', {
+    content: openAiData?.choices?.[0]?.message?.content ?? null,
+  });
 
   if (!openAiResponse.ok) {
     const error = new Error('OpenAI API request failed.');
@@ -506,6 +509,9 @@ router.post('/api/coffee-photo-analysis', async (req, res, next) => {
     console.log('[PhotoAnalysis] OpenAI response received', {
       status: openAiResponse.status,
       durationMs: Date.now() - openAiRequestStart,
+    });
+    console.log('[PhotoAnalysis] OpenAI response content', {
+      content: openAiData?.choices?.[0]?.message?.content ?? null,
     });
 
     if (!openAiResponse.ok) {
@@ -600,6 +606,9 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
       status: openAiResponse.status,
       durationMs: Date.now() - openAiRequestStart,
     });
+    console.log('[PhotoRecipe] OpenAI response content', {
+      content: openAiData?.choices?.[0]?.message?.content ?? null,
+    });
 
     if (!openAiResponse.ok) {
       console.error('[PhotoRecipe] OpenAI request failed', {
@@ -682,6 +691,9 @@ router.post('/api/coffee-profile', async (req, res, next) => {
       status: openAiResponse.status,
       durationMs: Date.now() - openAiRequestStart,
     });
+    console.log('[CoffeeProfile] OpenAI response content', {
+      content: openAiData?.choices?.[0]?.message?.content ?? null,
+    });
 
     if (!openAiResponse.ok) {
       console.error('[CoffeeProfile] OpenAI request failed', {
@@ -759,6 +771,9 @@ router.post('/api/coffee-questionnaire', async (req, res, next) => {
       status: openAiResponse.status,
       durationMs: Date.now() - openAiRequestStart,
     });
+    console.log('[CoffeeQuestionnaire] OpenAI response content', {
+      content: openAiData?.choices?.[0]?.message?.content ?? null,
+    });
 
     if (!openAiResponse.ok) {
       console.error('[CoffeeQuestionnaire] OpenAI request failed', {
@@ -833,6 +848,9 @@ router.post('/api/coffee-match', async (req, res, next) => {
     console.log('[CoffeeMatch] OpenAI response received', {
       status: openAiResponse.status,
       durationMs: Date.now() - openAiRequestStart,
+    });
+    console.log('[CoffeeMatch] OpenAI response content', {
+      content: openAiData?.choices?.[0]?.message?.content ?? null,
     });
 
     if (!openAiResponse.ok) {

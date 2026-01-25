@@ -168,6 +168,9 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
       });
 
       const payload = await response.json();
+      console.log('[PhotoRecipe] OpenAI photo analysis response content', {
+        payload,
+      });
 
       if (!response.ok) {
         throw new Error(payload?.error || 'Analýza fotky zlyhala.');
@@ -226,6 +229,9 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
       });
 
       const payload = await response.json();
+      console.log('[PhotoRecipe] OpenAI photo recipe response content', {
+        payload,
+      });
 
       if (!response.ok) {
         throw new Error(payload?.error || 'Generovanie receptu zlyhalo.');
