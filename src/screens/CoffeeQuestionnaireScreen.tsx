@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { DEFAULT_API_HOST } from '../utils/api';
+import { ensureQuestionnaireProfile } from '../utils/tasteVector';
 
 const QUESTIONNAIRE = [
   {
@@ -129,12 +130,14 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
         throw new Error(payload?.error || 'Nepodarilo sa vyhodnotiť dotazník.');
       }
 
+      const profile = ensureQuestionnaireProfile(payload?.profile);
+
       navigation.navigate('CoffeeQuestionnaireResult', {
         answers: QUESTIONNAIRE.map((question) => ({
           question: question.title,
           answer: answers[question.id],
         })),
-        profile: payload.profile,
+        profile,
       });
     } catch (error) {
       const message =

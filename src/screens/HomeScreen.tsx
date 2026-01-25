@@ -1,15 +1,33 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { DEFAULT_API_HOST } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import TasteProfileBars from '../components/TasteProfileBars';
+import {
+  DEFAULT_TASTE_VECTOR,
+  normalizeTasteVector,
+  TasteVector,
+} from '../utils/tasteVector';
+import {
+  loadLatestCoffeeProfile,
+  loadLatestQuestionnaireResult,
+  CoffeeProfilePayload,
+  QuestionnaireResultPayload,
+} from '../utils/localSave';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 function HomeScreen({ navigation }: Props) {
   const { clearSession } = useAuth();
+  const [userProfile, setUserProfile] = useState<QuestionnaireResultPayload['profile'] | null>(
+    null,
+  );
+  const [coffeeProfile, setCoffeeProfile] = useState<CoffeeProfilePayload['coffeeProfile'] | null>(
+    null,
+  );
 
   const handleScanPress = () => {
     navigation.navigate('CoffeeScanner');
@@ -41,10 +59,65 @@ function HomeScreen({ navigation }: Props) {
     }
   };
 
+  const loadSavedProfiles = useCallback(async () => {
+    const [latestQuestionnaire, latestCoffee] = await Promise.all([
+      loadLatestQuestionnaireResult(),
+      loadLatestCoffeeProfile(),
+    ]);
+    setUserProfile(latestQuestionnaire?.payload?.profile ?? null);
+    setCoffeeProfile(latestCoffee?.payload?.coffeeProfile ?? null);
+  }, []);
+
+  useEffect(() => {
+    loadSavedProfiles();
+    const unsubscribe = navigation.addListener('focus', loadSavedProfiles);
+    return unsubscribe;
+  }, [loadSavedProfiles, navigation]);
+
+  const userVector = useMemo<TasteVector>(
+    () => normalizeTasteVector(userProfile?.tasteVector ?? DEFAULT_TASTE_VECTOR),
+    [userProfile],
+  );
+
+  const matchScore = useMemo(() => {
+    if (!userProfile?.tasteVector || !coffeeProfile?.tasteVector) {
+      return null;
+    }
+
+    const user = normalizeTasteVector(userProfile.tasteVector);
+    const coffee = normalizeTasteVector(coffeeProfile.tasteVector);
+    const axes: Array<keyof TasteVector> = [
+      'acidity',
+      'sweetness',
+      'bitterness',
+      'body',
+      'fruity',
+      'roast',
+    ];
+    const avgDiff =
+      axes.reduce((sum, key) => sum + Math.abs(user[key] - coffee[key]), 0)
+      / axes.length;
+    return Math.round(100 - avgDiff);
+  }, [coffeeProfile?.tasteVector, userProfile?.tasteVector]);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>BrewMate</Text>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Tvoj chuťový profil</Text>
+          {!userProfile ? (
+            <Text style={styles.placeholder}>
+              Vyplňte dotazník, aby sme nastavili váš chuťový profil.
+            </Text>
+          ) : null}
+          <TasteProfileBars vector={userVector} />
+          {matchScore !== null ? (
+            <Text style={styles.matchScore}>Zhoda: {matchScore}%</Text>
+          ) : null}
+        </View>
+
         <Pressable style={styles.button} onPress={handleScanPress}>
           <Text style={styles.buttonText}>Scan Coffee</Text>
         </Pressable>
@@ -57,7 +130,7 @@ function HomeScreen({ navigation }: Props) {
         <Pressable style={styles.buttonOutline} onPress={handleLogout}>
           <Text style={styles.buttonOutlineText}>Odhlásiť sa</Text>
         </Pressable>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -68,14 +141,37 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     padding: 24,
   },
   title: {
     fontSize: 32,
     fontWeight: '700',
     marginBottom: 24,
+  },
+  section: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+    color: '#0f172a',
+  },
+  placeholder: {
+    fontSize: 14,
+    color: '#475569',
+    marginBottom: 12,
+  },
+  matchScore: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1f6f5b',
   },
   button: {
     backgroundColor: '#1f6f5b',
