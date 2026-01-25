@@ -1,20 +1,16 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
-import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
-import { useAuth } from '../context/AuthContext';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../navigation/types';
+import {apiFetch, DEFAULT_API_HOST} from '../utils/api';
+import {useAuth} from '../context/AuthContext';
 import TasteProfileBars from '../components/TasteProfileBars';
+import {DEFAULT_TASTE_VECTOR, normalizeTasteVector, TasteVector,} from '../utils/tasteVector';
 import {
-  DEFAULT_TASTE_VECTOR,
-  normalizeTasteVector,
-  TasteVector,
-} from '../utils/tasteVector';
-import {
+  CoffeeProfilePayload,
   loadLatestCoffeeProfile,
   loadLatestQuestionnaireResult,
-  CoffeeProfilePayload,
   QuestionnaireResultPayload,
 } from '../utils/localSave';
 
@@ -77,8 +73,7 @@ function HomeScreen({ navigation }: Props) {
 
   useEffect(() => {
     loadSavedProfiles();
-    const unsubscribe = navigation.addListener('focus', loadSavedProfiles);
-    return unsubscribe;
+    return navigation.addListener('focus', loadSavedProfiles);
   }, [loadSavedProfiles, navigation]);
 
   const userVector = useMemo<TasteVector>(
