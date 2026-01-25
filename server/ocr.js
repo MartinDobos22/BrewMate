@@ -71,6 +71,7 @@ const buildCoffeeProfilePayload = (text) => ({
           'source',
           'reasoning',
           'missingInfo',
+          'tasteVector',
         ],
         properties: {
           flavorNotes: {
@@ -91,6 +92,19 @@ const buildCoffeeProfilePayload = (text) => ({
             type: 'array',
             items: { type: 'string' },
           },
+          tasteVector: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['acidity', 'sweetness', 'bitterness', 'body', 'fruity', 'roast'],
+            properties: {
+              acidity: { type: 'number', enum: [0, 25, 50, 75, 100] },
+              sweetness: { type: 'number', enum: [0, 25, 50, 75, 100] },
+              bitterness: { type: 'number', enum: [0, 25, 50, 75, 100] },
+              body: { type: 'number', enum: [0, 25, 50, 75, 100] },
+              fruity: { type: 'number', enum: [0, 25, 50, 75, 100] },
+              roast: { type: 'number', enum: [0, 25, 50, 75, 100] },
+            },
+          },
         },
       },
     },
@@ -102,7 +116,10 @@ const buildCoffeeProfilePayload = (text) => ({
         'You are a coffee sensory analyst. Infer a coffee flavor profile from the provided package text. '
         + 'If flavor notes are explicitly stated, use them verbatim. If not, infer likely notes from origin, '
         + 'processing, and roast if present. If the text is sparse, provide a cautious guess with low confidence. '
-        + 'Explain briefly why the notes were chosen. Output must match the JSON schema exactly.',
+        + 'Explain briefly why the notes were chosen. '
+        + 'Also return tasteVector numeric profile (0, 25, 50, 75, 100 only) for acidity, sweetness, bitterness, '
+        + 'body, fruity, and roast. If unclear, set 50 and lower confidence. '
+        + 'Output must match the JSON schema exactly.',
     },
     {
       role: 'user',
@@ -127,12 +144,28 @@ const buildCoffeeQuestionnairePayload = (answers) => ({
           'recommendedStyle',
           'recommendedOrigins',
           'brewingTips',
+          'tasteVector',
+          'confidence',
         ],
         properties: {
           profileSummary: { type: 'string' },
           recommendedStyle: { type: 'string' },
           recommendedOrigins: { type: 'string' },
           brewingTips: { type: 'string' },
+          tasteVector: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['acidity', 'sweetness', 'bitterness', 'body', 'fruity', 'roast'],
+            properties: {
+              acidity: { type: 'number', enum: [0, 25, 50, 75, 100] },
+              sweetness: { type: 'number', enum: [0, 25, 50, 75, 100] },
+              bitterness: { type: 'number', enum: [0, 25, 50, 75, 100] },
+              body: { type: 'number', enum: [0, 25, 50, 75, 100] },
+              fruity: { type: 'number', enum: [0, 25, 50, 75, 100] },
+              roast: { type: 'number', enum: [0, 25, 50, 75, 100] },
+            },
+          },
+          confidence: { type: 'number', minimum: 0, maximum: 1 },
         },
       },
     },
@@ -143,6 +176,8 @@ const buildCoffeeQuestionnairePayload = (answers) => ({
       content:
         'Si coffee sensory analytik pre baristu. Z odpovedí zákazníka odhadni profil chutí '
         + 'a odporuč štýl kávy. Odpovedaj po slovensky a drž sa stručných odstavcov. '
+        + 'Zahrň tasteVector (0, 25, 50, 75, 100) pre acidity, sweetness, bitterness, body, fruity, roast. '
+        + 'Ak niečo nie je jasné, daj 50 a zníž confidence. '
         + 'Výstup musí presne sedieť na JSON schému.',
     },
     {
