@@ -134,7 +134,14 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
       });
 
       if (!response.ok) {
-        throw new Error(payload?.error || 'Nepodarilo sa vyhodnotiť dotazník.');
+        const message =
+          payload?.error || 'Nepodarilo sa vyhodnotiť dotazník.';
+        console.error('[CoffeeQuestionnaire] Questionnaire request failed', {
+          message,
+          payload,
+        });
+        setErrorMessage(message);
+        return;
       }
 
       const profile = ensureQuestionnaireProfile(payload?.profile);
