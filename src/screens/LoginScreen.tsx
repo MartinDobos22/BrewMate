@@ -13,7 +13,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AuthStackParamList } from '../navigation/types';
-import { DEFAULT_API_HOST } from '../utils/api';
+import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import { signInWithApple, signInWithGoogle } from '../utils/socialAuth';
 import { useAuth } from '../context/AuthContext';
 
@@ -69,17 +69,24 @@ function LoginScreen({ navigation, route }: Props) {
     setErrorMessage('');
 
     try {
-      const response = await fetch(`${DEFAULT_API_HOST}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await apiFetch(
+        `${DEFAULT_API_HOST}/auth/login`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            email: email.trim(),
+            password,
+          }),
         },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: email.trim(),
-          password,
-        }),
-      });
+        {
+          feature: 'Auth',
+          action: 'login',
+        },
+      );
 
       if (!response.ok) {
         const message = await getBackendErrorMessage(response);

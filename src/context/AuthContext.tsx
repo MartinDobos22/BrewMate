@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { DEFAULT_API_HOST } from '../utils/api';
+import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 
 type AuthUser = {
   id: string;
@@ -36,9 +36,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const response = await fetch(`${DEFAULT_API_HOST}/auth/me`, {
-        credentials: 'include',
-      });
+      const response = await apiFetch(
+        `${DEFAULT_API_HOST}/auth/me`,
+        {
+          credentials: 'include',
+        },
+        {
+          feature: 'Auth',
+          action: 'me',
+        },
+      );
 
       if (!response.ok || response.status === 204) {
         setUser(null);

@@ -10,7 +10,7 @@ import {
   SaveEntry,
   saveCoffeeProfile,
 } from '../utils/localSave';
-import { DEFAULT_API_HOST } from '../utils/api';
+import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OcrResult'>;
 
@@ -80,16 +80,23 @@ function OcrResultScreen({ route }: Props) {
         console.log('[OcrResult] OpenAI coffee match request via backend', {
           endpoint: '/api/coffee-match',
         });
-        const response = await fetch(`${DEFAULT_API_HOST}/api/coffee-match`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+        const response = await apiFetch(
+          `${DEFAULT_API_HOST}/api/coffee-match`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              questionnaire: latestQuestionnaire.payload,
+              coffeeProfile,
+            }),
           },
-          body: JSON.stringify({
-            questionnaire: latestQuestionnaire.payload,
-            coffeeProfile,
-          }),
-        });
+          {
+            feature: 'OcrResult',
+            action: 'coffee-match',
+          },
+        );
 
         const payload = await response.json();
         console.log('[OcrResult] OpenAI coffee match response content', {
