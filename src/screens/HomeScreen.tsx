@@ -93,7 +93,8 @@ function HomeScreen({ navigation }: Props) {
 
     const user = normalizeTasteVector(userProfile.tasteVector);
     const coffee = normalizeTasteVector(coffeeProfile.tasteVector);
-    const axes: Array<keyof TasteVector> = [
+    type TasteAxis = Exclude<keyof TasteVector, 'confidence'>;
+    const axes: TasteAxis[] = [
       'acidity',
       'sweetness',
       'bitterness',
