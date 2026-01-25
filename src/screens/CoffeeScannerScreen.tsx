@@ -18,7 +18,7 @@ import {
   launchImageLibrary,
 } from 'react-native-image-picker';
 import { RootStackParamList } from '../navigation/types';
-import { DEFAULT_API_HOST } from '../utils/api';
+import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeeScanner'>;
 
@@ -123,16 +123,23 @@ function CoffeeScannerScreen({ navigation }: Props) {
     try {
       const ocrRequestStart = Date.now();
       setSubmitStage('ocr');
-      const response = await fetch(`${DEFAULT_API_HOST}/api/ocr-correct`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await apiFetch(
+        `${DEFAULT_API_HOST}/api/ocr-correct`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            imageBase64: imageBase64.trim(),
+            languageHints: languageHintList,
+          }),
         },
-        body: JSON.stringify({
-          imageBase64: imageBase64.trim(),
-          languageHints: languageHintList,
-        }),
-      });
+        {
+          feature: 'CoffeeScanner',
+          action: 'ocr-correct',
+        },
+      );
 
       console.log('[CoffeeScanner] OCR response received', {
         status: response.status,
@@ -153,16 +160,23 @@ function CoffeeScannerScreen({ navigation }: Props) {
       console.log('[CoffeeScanner] OpenAI coffee profile request via backend', {
         endpoint: '/api/coffee-profile',
       });
-      const profileResponse = await fetch(`${DEFAULT_API_HOST}/api/coffee-profile`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const profileResponse = await apiFetch(
+        `${DEFAULT_API_HOST}/api/coffee-profile`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text: payload.correctedText,
+            rawText: payload.rawText,
+          }),
         },
-        body: JSON.stringify({
-          text: payload.correctedText,
-          rawText: payload.rawText,
-        }),
-      });
+        {
+          feature: 'CoffeeScanner',
+          action: 'coffee-profile',
+        },
+      );
 
       console.log('[CoffeeScanner] Coffee profile response received', {
         status: profileResponse.status,
