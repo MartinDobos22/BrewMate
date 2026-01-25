@@ -92,6 +92,9 @@ function OcrResultScreen({ route }: Props) {
         });
 
         const payload = await response.json();
+        console.log('[OcrResult] OpenAI coffee match response content', {
+          payload,
+        });
 
         if (!response.ok) {
           throw new Error(payload?.error || 'Nepodarilo sa porovnať kávu s dotazníkom.');

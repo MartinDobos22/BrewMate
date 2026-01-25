@@ -140,6 +140,9 @@ function CoffeeScannerScreen({ navigation }: Props) {
       });
 
       const payload = await response.json();
+      console.log('[CoffeeScanner] OCR response content', {
+        payload,
+      });
 
       if (!response.ok) {
         throw new Error(payload?.error || 'OCR request failed.');
@@ -167,6 +170,9 @@ function CoffeeScannerScreen({ navigation }: Props) {
       });
 
       const profilePayload = await profileResponse.json();
+      console.log('[CoffeeScanner] Coffee profile response content', {
+        payload: profilePayload,
+      });
 
       if (!profileResponse.ok) {
         throw new Error(profilePayload?.error || 'Coffee profile request failed.');
