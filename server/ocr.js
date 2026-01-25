@@ -204,6 +204,241 @@ const buildCoffeeMatchPayload = (questionnaire, coffeeProfile) => ({
   ],
 });
 
+const buildPhotoCoffeeAnalysisPayload = (text) => ({
+  model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  temperature: 0.3,
+  response_format: {
+    type: 'json_schema',
+    json_schema: {
+      name: 'photo_coffee_analysis',
+      strict: true,
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        required: [
+          'tasteProfile',
+          'flavorNotes',
+          'recommendedPreparations',
+          'confidence',
+          'summary',
+        ],
+        properties: {
+          tasteProfile: { type: 'string' },
+          flavorNotes: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+          recommendedPreparations: {
+            type: 'array',
+            minItems: 3,
+            maxItems: 4,
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['method', 'description'],
+              properties: {
+                method: { type: 'string' },
+                description: { type: 'string' },
+              },
+            },
+          },
+          confidence: { type: 'number', minimum: 0, maximum: 1 },
+          summary: { type: 'string' },
+        },
+      },
+    },
+  },
+  messages: [
+    {
+      role: 'system',
+      content:
+        'Si profesionálny barista a senzorický analytik. Na základe textu z etikety kávy odhadni chuťový profil '
+        + 'a navrhni 3-4 najvhodnejšie spôsoby prípravy. Odpovedaj po slovensky, stručne, bez marketingových fráz. '
+        + 'Výstup musí presne sedieť na JSON schému.',
+    },
+    {
+      role: 'user',
+      content: `Vyhodnoť chuť kávy z etikety a navrhni prípravy:\n\n${text}`,
+    },
+  ],
+});
+
+const buildPhotoCoffeeRecipePayload = (analysis, strengthPreference, selectedPreparation) => ({
+  model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  temperature: 0.35,
+  response_format: {
+    type: 'json_schema',
+    json_schema: {
+      name: 'photo_coffee_recipe',
+      strict: true,
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        required: [
+          'title',
+          'method',
+          'strengthPreference',
+          'dose',
+          'water',
+          'grind',
+          'waterTemp',
+          'totalTime',
+          'steps',
+          'baristaTips',
+        ],
+        properties: {
+          title: { type: 'string' },
+          method: { type: 'string' },
+          strengthPreference: { type: 'string' },
+          dose: { type: 'string' },
+          water: { type: 'string' },
+          grind: { type: 'string' },
+          waterTemp: { type: 'string' },
+          totalTime: { type: 'string' },
+          steps: {
+            type: 'array',
+            minItems: 4,
+            items: { type: 'string' },
+          },
+          baristaTips: {
+            type: 'array',
+            minItems: 2,
+            items: { type: 'string' },
+          },
+        },
+      },
+    },
+  },
+  messages: [
+    {
+      role: 'system',
+      content:
+        'Si profesionálny barista. Vytvor krok za krokom recept pre vybraný spôsob prípravy. '
+        + 'Recept má byť konkrétny (gramy, teplota, čas) a prispôsobený chuťovému profilu a sile kávy. '
+        + 'Odpovedaj po slovensky a drž sa JSON schémy.',
+    },
+    {
+      role: 'user',
+      content: `Chuťový profil:\n${JSON.stringify(
+        analysis,
+        null,
+        2,
+      )}\n\nVybraný spôsob prípravy: ${selectedPreparation}\nPožadovaná sila: ${strengthPreference}\n\nVytvor detailný recept.`,
+    },
+  ],
+});
+
+const runOcr = async ({ imageBase64, languageHints }) => {
+  if (!imageBase64) {
+    const error = new Error('imageBase64 is required.');
+    error.status = 400;
+    throw error;
+  }
+
+  const visionApiKey = process.env.GOOGLE_VISION_API_KEY;
+  if (!visionApiKey) {
+    const error = new Error('Google Vision API key is not configured.');
+    error.status = 500;
+    throw error;
+  }
+
+  const openAiApiKey = process.env.OPENAI_API_KEY;
+  if (!openAiApiKey) {
+    const error = new Error('OpenAI API key is not configured.');
+    error.status = 500;
+    throw error;
+  }
+
+  const cleanedBase64 = stripDataUrlPrefix(imageBase64);
+  const visionPayload = buildVisionPayload(
+    cleanedBase64,
+    Array.isArray(languageHints) ? languageHints : [],
+  );
+
+  console.log('[OCR] sending Google Vision request', {
+    payloadSize: JSON.stringify(visionPayload).length,
+  });
+
+  const visionRequestStart = Date.now();
+  const visionResponse = await fetch(
+    `https://vision.googleapis.com/v1/images:annotate?key=${visionApiKey}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(visionPayload),
+    },
+  );
+
+  const visionData = await visionResponse.json();
+  console.log('[OCR] Google Vision response received', {
+    status: visionResponse.status,
+    durationMs: Date.now() - visionRequestStart,
+  });
+
+  if (!visionResponse.ok) {
+    const error = new Error('Google Vision API request failed.');
+    error.status = 502;
+    error.details = visionData;
+    throw error;
+  }
+
+  if (visionData?.responses?.[0]?.error) {
+    const error = new Error('Google Vision API returned an error.');
+    error.status = 502;
+    error.details = visionData.responses[0].error;
+    throw error;
+  }
+
+  const rawText = extractVisionText(visionData).trim();
+  if (!rawText) {
+    const error = new Error('No text detected in the image.');
+    error.status = 422;
+    throw error;
+  }
+
+  console.log('[OCR] Vision OCR text extracted', {
+    rawTextLength: rawText.length,
+  });
+
+  const openAiRequestStart = Date.now();
+  const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${openAiApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(buildOpenAiPayload(rawText)),
+  });
+
+  const openAiData = await openAiResponse.json();
+  console.log('[OCR] OpenAI correction response received', {
+    status: openAiResponse.status,
+    durationMs: Date.now() - openAiRequestStart,
+  });
+
+  if (!openAiResponse.ok) {
+    const error = new Error('OpenAI API request failed.');
+    error.status = 502;
+    error.details = openAiData;
+    throw error;
+  }
+
+  const correctedText = openAiData?.choices?.[0]?.message?.content?.trim();
+  if (!correctedText) {
+    const error = new Error('OpenAI did not return corrected text.');
+    error.status = 502;
+    throw error;
+  }
+
+  console.log('[OCR] OpenAI corrected text ready', {
+    correctedTextLength: correctedText.length,
+  });
+
+  return { rawText, correctedText };
+};
+
 router.post('/api/ocr-correct', async (req, res, next) => {
   try {
     const { imageBase64, languageHints } = req.body || {};
@@ -213,76 +448,43 @@ router.post('/api/ocr-correct', async (req, res, next) => {
       languageHints,
     });
 
-    if (!imageBase64) {
-      console.warn('[OCR] missing imageBase64');
-      return res.status(400).json({ error: 'imageBase64 is required.' });
-    }
+    const { rawText, correctedText } = await runOcr({
+      imageBase64,
+      languageHints,
+    });
 
-    const visionApiKey = process.env.GOOGLE_VISION_API_KEY;
-    if (!visionApiKey) {
-      console.error('[OCR] Google Vision API key missing');
-      return res.status(500).json({ error: 'Google Vision API key is not configured.' });
+    return res.status(200).json({ rawText, correctedText });
+  } catch (error) {
+    if (error.status) {
+      console.error('[OCR] Request failed', error);
+      return res.status(error.status).json({
+        error: error.message,
+        details: error.details,
+      });
     }
+    console.error('[OCR] Unexpected error', error);
+    return next(error);
+  }
+});
+
+router.post('/api/coffee-photo-analysis', async (req, res, next) => {
+  try {
+    const { imageBase64, languageHints } = req.body || {};
+    console.log('[PhotoAnalysis] request received', {
+      imageBase64Length: imageBase64?.length ?? 0,
+      languageHints,
+    });
+
+    const { rawText, correctedText } = await runOcr({
+      imageBase64,
+      languageHints,
+    });
 
     const openAiApiKey = process.env.OPENAI_API_KEY;
     if (!openAiApiKey) {
-      console.error('[OCR] OpenAI API key missing');
+      console.error('[PhotoAnalysis] OpenAI API key missing');
       return res.status(500).json({ error: 'OpenAI API key is not configured.' });
     }
-
-    const cleanedBase64 = stripDataUrlPrefix(imageBase64);
-    const visionPayload = buildVisionPayload(cleanedBase64, Array.isArray(languageHints) ? languageHints : []);
-
-    console.log('[OCR] sending Google Vision request', {
-      payloadSize: JSON.stringify(visionPayload).length,
-    });
-
-    const visionRequestStart = Date.now();
-    const visionResponse = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${visionApiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(visionPayload),
-      },
-    );
-
-    const visionData = await visionResponse.json();
-    console.log('[OCR] Google Vision response received', {
-      status: visionResponse.status,
-      durationMs: Date.now() - visionRequestStart,
-    });
-
-    if (!visionResponse.ok) {
-      console.error('[OCR] Google Vision request failed', {
-        status: visionResponse.status,
-        details: visionData,
-      });
-      return res.status(502).json({
-        error: 'Google Vision API request failed.',
-        details: visionData,
-      });
-    }
-
-    if (visionData?.responses?.[0]?.error) {
-      console.error('[OCR] Google Vision returned error', visionData.responses[0].error);
-      return res.status(502).json({
-        error: 'Google Vision API returned an error.',
-        details: visionData.responses[0].error,
-      });
-    }
-
-    const rawText = extractVisionText(visionData).trim();
-    if (!rawText) {
-      console.warn('[OCR] No text detected in image');
-      return res.status(422).json({ error: 'No text detected in the image.' });
-    }
-
-    console.log('[OCR] Vision OCR text extracted', {
-      rawTextLength: rawText.length,
-    });
 
     const openAiRequestStart = Date.now();
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -291,17 +493,17 @@ router.post('/api/ocr-correct', async (req, res, next) => {
         Authorization: `Bearer ${openAiApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(buildOpenAiPayload(rawText)),
+      body: JSON.stringify(buildPhotoCoffeeAnalysisPayload(correctedText)),
     });
 
     const openAiData = await openAiResponse.json();
-    console.log('[OCR] OpenAI correction response received', {
+    console.log('[PhotoAnalysis] OpenAI response received', {
       status: openAiResponse.status,
       durationMs: Date.now() - openAiRequestStart,
     });
 
     if (!openAiResponse.ok) {
-      console.error('[OCR] OpenAI request failed', {
+      console.error('[PhotoAnalysis] OpenAI request failed', {
         status: openAiResponse.status,
         details: openAiData,
       });
@@ -311,24 +513,120 @@ router.post('/api/ocr-correct', async (req, res, next) => {
       });
     }
 
-    const correctedText = openAiData?.choices?.[0]?.message?.content?.trim();
-    if (!correctedText) {
-      console.error('[OCR] OpenAI response missing corrected text', {
+    const analysisContent = openAiData?.choices?.[0]?.message?.content?.trim();
+    if (!analysisContent) {
+      console.error('[PhotoAnalysis] OpenAI response missing content', {
         openAiData,
       });
-      return res.status(502).json({ error: 'OpenAI did not return corrected text.' });
+      return res.status(502).json({ error: 'OpenAI did not return photo analysis.' });
     }
 
-    console.log('[OCR] OpenAI corrected text ready', {
-      correctedTextLength: correctedText.length,
-    });
+    let analysis;
+    try {
+      analysis = JSON.parse(analysisContent);
+    } catch (parseError) {
+      console.error('[PhotoAnalysis] Failed to parse response JSON', {
+        analysisContent,
+        parseError,
+      });
+      return res.status(502).json({
+        error: 'Failed to parse photo analysis response.',
+        rawAnalysis: analysisContent,
+      });
+    }
 
     return res.status(200).json({
       rawText,
       correctedText,
+      analysis,
     });
   } catch (error) {
-    console.error('[OCR] Unexpected error', error);
+    if (error.status) {
+      console.error('[PhotoAnalysis] Request failed', error);
+      return res.status(error.status).json({
+        error: error.message,
+        details: error.details,
+      });
+    }
+    console.error('[PhotoAnalysis] Unexpected error', error);
+    return next(error);
+  }
+});
+
+router.post('/api/coffee-photo-recipe', async (req, res, next) => {
+  try {
+    const { analysis, strengthPreference, selectedPreparation } = req.body || {};
+
+    if (!analysis || !strengthPreference || !selectedPreparation) {
+      return res.status(400).json({
+        error: 'analysis, strengthPreference, and selectedPreparation are required.',
+      });
+    }
+
+    const openAiApiKey = process.env.OPENAI_API_KEY;
+    if (!openAiApiKey) {
+      console.error('[PhotoRecipe] OpenAI API key missing');
+      return res.status(500).json({ error: 'OpenAI API key is not configured.' });
+    }
+
+    const openAiRequestStart = Date.now();
+    const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${openAiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(
+        buildPhotoCoffeeRecipePayload(
+          analysis,
+          strengthPreference,
+          selectedPreparation,
+        ),
+      ),
+    });
+
+    const openAiData = await openAiResponse.json();
+    console.log('[PhotoRecipe] OpenAI response received', {
+      status: openAiResponse.status,
+      durationMs: Date.now() - openAiRequestStart,
+    });
+
+    if (!openAiResponse.ok) {
+      console.error('[PhotoRecipe] OpenAI request failed', {
+        status: openAiResponse.status,
+        details: openAiData,
+      });
+      return res.status(502).json({
+        error: 'OpenAI API request failed.',
+        details: openAiData,
+      });
+    }
+
+    const recipeContent = openAiData?.choices?.[0]?.message?.content?.trim();
+    if (!recipeContent) {
+      console.error('[PhotoRecipe] OpenAI response missing content', {
+        openAiData,
+      });
+      return res.status(502).json({ error: 'OpenAI did not return a recipe.' });
+    }
+
+    let recipe;
+    try {
+      recipe = JSON.parse(recipeContent);
+    } catch (parseError) {
+      console.error('[PhotoRecipe] Failed to parse response JSON', {
+        recipeContent,
+        parseError,
+      });
+      return res.status(502).json({
+        error: 'Failed to parse photo recipe response.',
+        rawRecipe: recipeContent,
+      });
+    }
+
+    return res.status(200).json({ recipe });
+  } catch (error) {
+    console.error('[PhotoRecipe] Unexpected error', error);
     return next(error);
   }
 });

@@ -19,6 +19,10 @@ function HomeScreen({ navigation }: Props) {
     navigation.navigate('CoffeeQuestionnaire');
   };
 
+  const handlePhotoRecipePress = () => {
+    navigation.navigate('CoffeePhotoRecipe');
+  };
+
   const handleLogout = async () => {
     try {
       const response = await fetch(`${DEFAULT_API_HOST}/auth/logout`, {
@@ -43,6 +47,9 @@ function HomeScreen({ navigation }: Props) {
         <Text style={styles.title}>BrewMate</Text>
         <Pressable style={styles.button} onPress={handleScanPress}>
           <Text style={styles.buttonText}>Scan Coffee</Text>
+        </Pressable>
+        <Pressable style={styles.buttonSecondary} onPress={handlePhotoRecipePress}>
+          <Text style={styles.buttonText}>Foto recept</Text>
         </Pressable>
         <Pressable style={styles.buttonSecondary} onPress={handleQuestionnairePress}>
           <Text style={styles.buttonText}>Chuťový dotazník</Text>
@@ -86,6 +93,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     minWidth: 200,
     alignItems: 'center',
+    marginBottom: 12,
   },
   buttonText: {
     color: '#ffffff',
