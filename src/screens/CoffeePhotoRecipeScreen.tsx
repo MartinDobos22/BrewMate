@@ -153,6 +153,9 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     setStrengthPreference(null);
 
     try {
+      console.log('[PhotoRecipe] OpenAI photo analysis request via backend', {
+        endpoint: '/api/coffee-photo-analysis',
+      });
       const response = await fetch(`${DEFAULT_API_HOST}/api/coffee-photo-analysis`, {
         method: 'POST',
         headers: {
@@ -207,6 +210,9 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     setIsGenerating(true);
 
     try {
+      console.log('[PhotoRecipe] OpenAI photo recipe request via backend', {
+        endpoint: '/api/coffee-photo-recipe',
+      });
       const response = await fetch(`${DEFAULT_API_HOST}/api/coffee-photo-recipe`, {
         method: 'POST',
         headers: {

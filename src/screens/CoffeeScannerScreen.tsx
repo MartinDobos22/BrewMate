@@ -116,6 +116,9 @@ function CoffeeScannerScreen({ navigation }: Props) {
       languageHintList,
       apiHost: DEFAULT_API_HOST,
     });
+    console.log('[CoffeeScanner] OpenAI OCR correction request via backend', {
+      endpoint: '/api/ocr-correct',
+    });
 
     try {
       const ocrRequestStart = Date.now();
@@ -144,6 +147,9 @@ function CoffeeScannerScreen({ navigation }: Props) {
 
       setSubmitStage('profile');
       const profileRequestStart = Date.now();
+      console.log('[CoffeeScanner] OpenAI coffee profile request via backend', {
+        endpoint: '/api/coffee-profile',
+      });
       const profileResponse = await fetch(`${DEFAULT_API_HOST}/api/coffee-profile`, {
         method: 'POST',
         headers: {
