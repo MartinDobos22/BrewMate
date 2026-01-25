@@ -180,7 +180,10 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
       });
 
       if (!response.ok) {
-        throw new Error(payload?.error || 'Analýza fotky zlyhala.');
+        const message = payload?.error || 'Analýza fotky zlyhala.';
+        console.error('[PhotoRecipe] Analysis failed', { message, payload });
+        setErrorMessage(message);
+        return;
       }
 
       setAnalysis(payload.analysis);
@@ -248,7 +251,13 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
       });
 
       if (!response.ok) {
-        throw new Error(payload?.error || 'Generovanie receptu zlyhalo.');
+        const message = payload?.error || 'Generovanie receptu zlyhalo.';
+        console.error('[PhotoRecipe] Recipe generation failed', {
+          message,
+          payload,
+        });
+        setErrorMessage(message);
+        return;
       }
 
       navigation.navigate('CoffeePhotoRecipeResult', {

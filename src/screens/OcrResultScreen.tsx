@@ -104,7 +104,17 @@ function OcrResultScreen({ route }: Props) {
         });
 
         if (!response.ok) {
-          throw new Error(payload?.error || 'Nepodarilo sa porovnať kávu s dotazníkom.');
+          const message =
+            payload?.error || 'Nepodarilo sa porovnať kávu s dotazníkom.';
+          console.error('[OcrResult] Coffee match request failed', {
+            message,
+            payload,
+          });
+          if (isActive) {
+            setMatchError(message);
+            setMatchState('error');
+          }
+          return;
         }
 
         if (isActive) {

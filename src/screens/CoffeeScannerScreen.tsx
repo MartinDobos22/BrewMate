@@ -153,7 +153,10 @@ function CoffeeScannerScreen({ navigation }: Props) {
       });
 
       if (!response.ok) {
-        throw new Error(payload?.error || 'OCR request failed.');
+        const message = payload?.error || 'OCR request failed.';
+        console.error('[CoffeeScanner] OCR request failed', { message, payload });
+        setErrorMessage(message);
+        return;
       }
 
       setSubmitStage('profile');
@@ -190,7 +193,14 @@ function CoffeeScannerScreen({ navigation }: Props) {
       });
 
       if (!profileResponse.ok) {
-        throw new Error(profilePayload?.error || 'Coffee profile request failed.');
+        const message =
+          profilePayload?.error || 'Coffee profile request failed.';
+        console.error('[CoffeeScanner] Coffee profile request failed', {
+          message,
+          payload: profilePayload,
+        });
+        setErrorMessage(message);
+        return;
       }
 
       setSubmitStage('done');
