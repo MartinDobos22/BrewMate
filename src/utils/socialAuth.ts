@@ -2,7 +2,7 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import appleAuth from '@invertase/react-native-apple-authentication';
 import { GoogleAuthProvider, OAuthProvider, signInWithCredential } from 'firebase/auth';
 
-import { DEFAULT_API_HOST } from './api';
+import { apiFetch, DEFAULT_API_HOST } from './api';
 import Config from 'react-native-config';
 import { getFirebaseAuth } from './firebase';
 
@@ -54,16 +54,23 @@ export const signInWithGoogle = async () => {
   const googleUser = await signInWithCredential(auth, googleCredential);
   const firebaseIdToken = await googleUser.user.getIdToken();
 
-  const response = await fetch(`${DEFAULT_API_HOST}/auth/google`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  const response = await apiFetch(
+    `${DEFAULT_API_HOST}/auth/google`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        idToken: firebaseIdToken,
+      }),
     },
-    credentials: 'include',
-    body: JSON.stringify({
-      idToken: firebaseIdToken,
-    }),
-  });
+    {
+      feature: 'SocialAuth',
+      provider: 'google',
+    },
+  );
 
   const data = await response.json().catch(() => null);
 
@@ -100,17 +107,24 @@ export const signInWithApple = async () => {
   const appleUser = await signInWithCredential(auth, appleCredential);
   const firebaseIdToken = await appleUser.user.getIdToken();
 
-  const response = await fetch(`${DEFAULT_API_HOST}/auth/apple`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  const response = await apiFetch(
+    `${DEFAULT_API_HOST}/auth/apple`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        idToken: firebaseIdToken,
+        nonce,
+      }),
     },
-    credentials: 'include',
-    body: JSON.stringify({
-      idToken: firebaseIdToken,
-      nonce,
-    }),
-  });
+    {
+      feature: 'SocialAuth',
+      provider: 'apple',
+    },
+  );
 
   const data = await response.json().catch(() => null);
 

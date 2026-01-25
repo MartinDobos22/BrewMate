@@ -10,12 +10,48 @@ app.use(express.json({ limit: '20mb' }));
 
 app.use(cors(corsOptions));
 
+const IMAGE_PAYLOAD_KEYS = /image|base64/i;
+const SENSITIVE_KEYS = /password|token|secret/i;
+
+const sanitizePayload = (payload) => {
+  if (Array.isArray(payload)) {
+    return payload.map((item) => sanitizePayload(item));
+  }
+
+  if (payload && typeof payload === 'object') {
+    return Object.entries(payload).reduce((acc, [key, value]) => {
+      if (IMAGE_PAYLOAD_KEYS.test(key) && typeof value === 'string') {
+        acc[key] = {
+          omitted: true,
+          length: value.length,
+        };
+        return acc;
+      }
+      if (SENSITIVE_KEYS.test(key) && typeof value === 'string') {
+        acc[key] = {
+          redacted: true,
+        };
+        return acc;
+      }
+      acc[key] = sanitizePayload(value);
+      return acc;
+    }, {});
+  }
+
+  return payload;
+};
+
 app.use((req, res, next) => {
   const startedAt = Date.now();
   console.log('[Request] started', {
     method: req.method,
     path: req.originalUrl,
     ip: req.ip,
+    contentType: req.headers['content-type'],
+    contentLength: req.headers['content-length'],
+    query: req.query,
+    params: req.params,
+    body: sanitizePayload(req.body),
   });
 
   res.on('finish', () => {

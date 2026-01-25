@@ -10,8 +10,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { DEFAULT_API_HOST } from '../utils/api';
 import { ensureQuestionnaireProfile } from '../utils/tasteVector';
+import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 
 const QUESTIONNAIRE = [
   {
@@ -107,19 +107,26 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
       console.log('[CoffeeQuestionnaire] OpenAI questionnaire request via backend', {
         endpoint: '/api/coffee-questionnaire',
       });
-      const response = await fetch(`${DEFAULT_API_HOST}/api/coffee-questionnaire`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await apiFetch(
+        `${DEFAULT_API_HOST}/api/coffee-questionnaire`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            answers: QUESTIONNAIRE.map((question) => ({
+              id: question.id,
+              question: question.title,
+              answer: answers[question.id],
+            })),
+          }),
         },
-        body: JSON.stringify({
-          answers: QUESTIONNAIRE.map((question) => ({
-            id: question.id,
-            question: question.title,
-            answer: answers[question.id],
-          })),
-        }),
-      });
+        {
+          feature: 'CoffeeQuestionnaire',
+          action: 'submit',
+        },
+      );
 
       const payload = await response.json();
       console.log('[CoffeeQuestionnaire] OpenAI questionnaire response content', {

@@ -9,7 +9,7 @@ import {
   launchImageLibrary,
 } from 'react-native-image-picker';
 import { RootStackParamList } from '../navigation/types';
-import { DEFAULT_API_HOST } from '../utils/api';
+import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeePhotoRecipe'>;
 
@@ -156,16 +156,23 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
       console.log('[PhotoRecipe] OpenAI photo analysis request via backend', {
         endpoint: '/api/coffee-photo-analysis',
       });
-      const response = await fetch(`${DEFAULT_API_HOST}/api/coffee-photo-analysis`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await apiFetch(
+        `${DEFAULT_API_HOST}/api/coffee-photo-analysis`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            imageBase64: imageBase64.trim(),
+            languageHints: ['sk', 'en'],
+          }),
         },
-        body: JSON.stringify({
-          imageBase64: imageBase64.trim(),
-          languageHints: ['sk', 'en'],
-        }),
-      });
+        {
+          feature: 'PhotoRecipe',
+          action: 'analyze',
+        },
+      );
 
       const payload = await response.json();
       console.log('[PhotoRecipe] OpenAI photo analysis response content', {
@@ -216,17 +223,24 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
       console.log('[PhotoRecipe] OpenAI photo recipe request via backend', {
         endpoint: '/api/coffee-photo-recipe',
       });
-      const response = await fetch(`${DEFAULT_API_HOST}/api/coffee-photo-recipe`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await apiFetch(
+        `${DEFAULT_API_HOST}/api/coffee-photo-recipe`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            analysis,
+            selectedPreparation,
+            strengthPreference,
+          }),
         },
-        body: JSON.stringify({
-          analysis,
-          selectedPreparation,
-          strengthPreference,
-        }),
-      });
+        {
+          feature: 'PhotoRecipe',
+          action: 'generate',
+        },
+      );
 
       const payload = await response.json();
       console.log('[PhotoRecipe] OpenAI photo recipe response content', {

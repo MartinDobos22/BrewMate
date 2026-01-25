@@ -13,7 +13,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AuthStackParamList } from '../navigation/types';
-import { DEFAULT_API_HOST } from '../utils/api';
+import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -69,17 +69,24 @@ function RegisterScreen({ navigation }: Props) {
     setErrorMessage('');
 
     try {
-      const response = await fetch(`${DEFAULT_API_HOST}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await apiFetch(
+        `${DEFAULT_API_HOST}/auth/register`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            email: email.trim(),
+            password,
+          }),
         },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: email.trim(),
-          password,
-        }),
-      });
+        {
+          feature: 'Auth',
+          action: 'register',
+        },
+      );
 
       if (!response.ok) {
         const message = await getBackendErrorMessage(response);
