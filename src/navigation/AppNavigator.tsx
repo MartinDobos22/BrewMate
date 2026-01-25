@@ -3,6 +3,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import HomeScreen from '../screens/HomeScreen';
 import CoffeeScannerScreen from '../screens/CoffeeScannerScreen';
+import CoffeePhotoRecipeScreen from '../screens/CoffeePhotoRecipeScreen';
+import CoffeePhotoRecipeResultScreen from '../screens/CoffeePhotoRecipeResultScreen';
 import OcrResultScreen from '../screens/OcrResultScreen';
 import CoffeeQuestionnaireScreen from '../screens/CoffeeQuestionnaireScreen';
 import CoffeeQuestionnaireResultScreen from '../screens/CoffeeQuestionnaireResultScreen';
@@ -48,6 +50,20 @@ function MainNavigator() {
         component={CoffeeScannerScreen}
         options={{
           title: 'Coffee Scanner',
+        }}
+      />
+      <AppStack.Screen
+        name="CoffeePhotoRecipe"
+        component={CoffeePhotoRecipeScreen}
+        options={{
+          title: 'Foto recept',
+        }}
+      />
+      <AppStack.Screen
+        name="CoffeePhotoRecipeResult"
+        component={CoffeePhotoRecipeResultScreen}
+        options={{
+          title: 'Barista recept',
         }}
       />
       <AppStack.Screen
