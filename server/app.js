@@ -3,6 +3,7 @@ import cors from 'cors';
 
 import { corsOptions } from './config.js';
 import authRouter from './auth.js';
+import inventoryRouter from './inventory.js';
 import ocrRouter from './ocr.js';
 
 const app = express();
@@ -76,6 +77,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use(authRouter);
+app.use(inventoryRouter);
 app.use(ocrRouter);
 
 // Central error handler to surface issues in logs and return coherent JSON.

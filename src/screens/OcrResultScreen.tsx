@@ -11,6 +11,7 @@ import {
   saveCoffeeProfile,
 } from '../utils/localSave';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OcrResult'>;
 
@@ -35,6 +36,11 @@ function OcrResultScreen({ route }: Props) {
   const [questionnaireSnapshot, setQuestionnaireSnapshot] = useState<
     SaveEntry<QuestionnaireResultPayload> | null
   >(null);
+  const [inventoryState, setInventoryState] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >('idle');
+  const [inventoryError, setInventoryError] = useState('');
+  const { user } = useAuth();
 
   const handleSave = useCallback(async () => {
     try {
@@ -48,6 +54,56 @@ function OcrResultScreen({ route }: Props) {
       setSaveState('error');
     }
   }, [coffeeProfile, correctedText, rawText]);
+
+  const handleInventorySave = useCallback(async () => {
+    if (!user) {
+      setInventoryState('error');
+      setInventoryError('Najprv sa prihlás.');
+      return;
+    }
+
+    try {
+      setInventoryState('saving');
+      setInventoryError('');
+      const response = await apiFetch(
+        `${DEFAULT_API_HOST}/api/user-coffee`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            rawText,
+            correctedText,
+            coffeeProfile,
+          }),
+        },
+        {
+          feature: 'OcrResult',
+          action: 'save-user-coffee',
+        },
+      );
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message =
+          payload?.error || 'Nepodarilo sa uložiť kávu do inventára.';
+        setInventoryError(message);
+        setInventoryState('error');
+        return;
+      }
+
+      setInventoryState('saved');
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Nepodarilo sa uložiť kávu do inventára.';
+      setInventoryError(message);
+      setInventoryState('error');
+    }
+  }, [coffeeProfile, correctedText, rawText, user]);
 
   useEffect(() => {
     let isActive = true;
@@ -177,6 +233,37 @@ function OcrResultScreen({ route }: Props) {
           ) : null}
           {saveState === 'error' ? (
             <Text style={styles.saveError}>Uloženie zlyhalo.</Text>
+          ) : null}
+        </View>
+
+        <View style={styles.inventoryBlock}>
+          <Text style={styles.label}>Inventár</Text>
+          <Text style={styles.text}>
+            Kúpil si túto kávu? Ak áno, uložím ju do tvojho inventára.
+          </Text>
+          <Pressable
+            style={({ pressed }) => [
+              styles.inventoryButton,
+              pressed && styles.saveButtonPressed,
+              (inventoryState === 'saving' || !user) && styles.saveButtonDisabled,
+            ]}
+            onPress={handleInventorySave}
+            disabled={inventoryState === 'saving' || !user}
+          >
+            <Text style={styles.saveButtonText}>
+              {inventoryState === 'saving' ? 'Ukladám...' : 'Áno, kúpil som'}
+            </Text>
+          </Pressable>
+          {!user ? (
+            <Text style={styles.helperNote}>
+              Pre uloženie do inventára sa musíš prihlásiť.
+            </Text>
+          ) : null}
+          {inventoryState === 'saved' ? (
+            <Text style={styles.saveHint}>Káva uložená v inventári.</Text>
+          ) : null}
+          {inventoryState === 'error' ? (
+            <Text style={styles.saveError}>{inventoryError}</Text>
           ) : null}
         </View>
 
@@ -328,6 +415,17 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: '#b91c1c',
     fontWeight: '600',
+  },
+  inventoryBlock: {
+    marginBottom: 20,
+  },
+  inventoryButton: {
+    marginTop: 12,
+    backgroundColor: '#2563eb',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: 'center',
   },
   block: {
     marginBottom: 20,

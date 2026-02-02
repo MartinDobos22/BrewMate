@@ -1,12 +1,13 @@
 import express from 'express';
 
 import { admin } from './firebase.js';
+import { ensureAppUserExists } from './db.js';
+import { SESSION_COOKIE_NAME, getCookieValue } from './session.js';
 
 const router = express.Router();
 
 const PASSWORD_MIN_LENGTH = 6;
 const SESSION_COOKIE_EXPIRES_IN = 1000 * 60 * 60 * 24 * 5;
-const SESSION_COOKIE_NAME = 'brewmate_session';
 
 const getFirebaseErrorMessage = (error) => {
   switch (error?.code) {
@@ -84,23 +85,6 @@ const createSessionForIdToken = async (idToken) => {
   };
 };
 
-const getCookieValue = (cookieHeader, name) => {
-  if (!cookieHeader) {
-    return null;
-  }
-
-  const cookie = cookieHeader
-    .split(';')
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${name}=`));
-
-  if (!cookie) {
-    return null;
-  }
-
-  return decodeURIComponent(cookie.slice(name.length + 1));
-};
-
 const getSessionCookieOptions = () => ({
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
@@ -143,6 +127,16 @@ router.post('/auth/register', async (req, res) => {
       email,
       password,
     });
+    try {
+      await ensureAppUserExists(userRecord.uid, userRecord.email, {
+        name: userRecord.displayName,
+      });
+    } catch (dbError) {
+      console.error('[Auth] Failed to persist new user in DB', dbError);
+      return res.status(500).json({
+        error: 'Nepodarilo sa uložiť používateľa do databázy.',
+      });
+    }
 
     let sessionCreated = false;
 
@@ -181,6 +175,16 @@ router.post('/auth/login', async (req, res) => {
     const authData = await verifyPassword(email, password);
 
     const userRecord = await admin.auth().getUserByEmail(email);
+    try {
+      await ensureAppUserExists(userRecord.uid, userRecord.email, {
+        name: userRecord.displayName,
+      });
+    } catch (dbError) {
+      console.error('[Auth] Failed to sync user on login', dbError);
+      return res.status(500).json({
+        error: 'Nepodarilo sa uložiť používateľa do databázy.',
+      });
+    }
     const session = await createSessionForIdToken(authData.idToken);
     setSessionCookie(res, session.sessionCookie);
 
@@ -207,6 +211,16 @@ router.post('/auth/google', async (req, res) => {
 
     const session = await createSessionForIdToken(idToken);
     const userRecord = await admin.auth().getUser(session.uid);
+    try {
+      await ensureAppUserExists(userRecord.uid, userRecord.email, {
+        name: userRecord.displayName,
+      });
+    } catch (dbError) {
+      console.error('[Auth] Failed to sync Google user', dbError);
+      return res.status(500).json({
+        error: 'Nepodarilo sa uložiť používateľa do databázy.',
+      });
+    }
     setSessionCookie(res, session.sessionCookie);
     return res.status(200).json({ user: mapUserRecord(userRecord) });
   } catch (error) {
@@ -225,6 +239,16 @@ router.post('/auth/apple', async (req, res) => {
 
     const session = await createSessionForIdToken(idToken);
     const userRecord = await admin.auth().getUser(session.uid);
+    try {
+      await ensureAppUserExists(userRecord.uid, userRecord.email, {
+        name: userRecord.displayName,
+      });
+    } catch (dbError) {
+      console.error('[Auth] Failed to sync Apple user', dbError);
+      return res.status(500).json({
+        error: 'Nepodarilo sa uložiť používateľa do databázy.',
+      });
+    }
     setSessionCookie(res, session.sessionCookie);
     return res.status(200).json({ user: mapUserRecord(userRecord) });
   } catch (error) {
