@@ -11,11 +11,13 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 import { AuthStackParamList } from '../navigation/types';
-import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import { signInWithApple, signInWithGoogle } from '../utils/socialAuth';
 import { useAuth } from '../context/AuthContext';
+import { getFirebaseAuth } from '../utils/firebase';
+import { syncUser } from '../utils/apiClient';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
@@ -48,52 +50,15 @@ function LoginScreen({ navigation, route }: Props) {
     }
   }, [didPrefill, route.params?.prefillEmail, route.params?.prefillPassword]);
 
-  const getBackendErrorMessage = async (response: Response) => {
-    try {
-      const data = await response.json();
-      if (data?.error) {
-        return data.error as string;
-      }
-      if (data?.message) {
-        return data.message as string;
-      }
-    } catch (parseError) {
-      console.warn('Failed to parse error response.', parseError);
-    }
-
-    return 'Login failed.';
-  };
-
   const handleLogin = async () => {
     setLoading(true);
     setErrorMessage('');
 
     try {
-      const response = await apiFetch(
-        `${DEFAULT_API_HOST}/auth/login`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            email: email.trim(),
-            password,
-          }),
-        },
-        {
-          feature: 'Auth',
-          action: 'login',
-        },
-      );
-
-      if (!response.ok) {
-        const message = await getBackendErrorMessage(response);
-        setErrorMessage(message);
-      } else {
-        await refreshSession();
-      }
+      const auth = getFirebaseAuth();
+      await signInWithEmailAndPassword(auth, email.trim(), password);
+      await syncUser();
+      await refreshSession();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Login failed.';
       setErrorMessage(message);
@@ -108,6 +73,7 @@ function LoginScreen({ navigation, route }: Props) {
 
     try {
       await signInWithGoogle();
+      await syncUser();
       await refreshSession();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Google sign-in failed.';
@@ -123,6 +89,7 @@ function LoginScreen({ navigation, route }: Props) {
 
     try {
       await signInWithApple();
+      await syncUser();
       await refreshSession();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Apple sign-in failed.';
