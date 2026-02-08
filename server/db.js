@@ -27,30 +27,22 @@ const ensureAppUserExists = async (userId, email, options = {}) => {
   const client = options.client || db;
   const name = options.name || (email ? email.split('@')[0] : null);
 
-  const existingUser = await client.query(
-    `SELECT 1 FROM app_users WHERE id = $1 LIMIT 1`,
-    [userId]
+  await client.query(
+    `INSERT INTO app_users (id, email, name)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (id)
+     DO UPDATE SET email = EXCLUDED.email,
+                   name = EXCLUDED.name,
+                   updated_at = NOW()`,
+    [userId, email || null, name]
   );
 
-  if (existingUser.rowCount === 0) {
-    await client.query(
-      `INSERT INTO app_users (id, email, name)
-       VALUES ($1, $2, $3)`,
-      [userId, email || null, name]
-    );
-  }
-
-  const existingStats = await client.query(
-    `SELECT 1 FROM user_statistics WHERE user_id = $1 LIMIT 1`,
+  await client.query(
+    `INSERT INTO user_statistics (user_id)
+     VALUES ($1)
+     ON CONFLICT (user_id) DO NOTHING`,
     [userId]
   );
-
-  if (existingStats.rowCount === 0) {
-    await client.query(
-      `INSERT INTO user_statistics (user_id) VALUES ($1)`,
-      [userId]
-    );
-  }
 };
 
 // Wrap default query method to log all interactions with Supabase

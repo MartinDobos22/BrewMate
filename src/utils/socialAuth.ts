@@ -82,6 +82,8 @@ export const signInWithGoogle = async () => {
     throw new Error('Google sign-in failed: missing user data.');
   }
 
+  await googleUser.user.getIdToken(true);
+
   return data.user;
 };
 
@@ -135,6 +137,8 @@ export const signInWithApple = async () => {
   if (!data?.user) {
     throw new Error('Apple sign-in failed: missing user data.');
   }
+
+  await appleUser.user.getIdToken(true);
 
   return data.user;
 };

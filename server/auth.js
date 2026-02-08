@@ -110,6 +110,31 @@ const mapUserRecord = (userRecord) => ({
   name: userRecord.displayName || null,
 });
 
+const ensureSupabaseClaims = async (userRecord) => {
+  if (!userRecord?.uid) {
+    return;
+  }
+
+  const existingClaims = userRecord.customClaims || {};
+
+  if (existingClaims.role === 'authenticated') {
+    return;
+  }
+
+  await admin.auth().setCustomUserClaims(userRecord.uid, {
+    ...existingClaims,
+    role: 'authenticated',
+    firebase_uid: userRecord.uid,
+  });
+};
+
+const syncSupabaseUser = async (userRecord) => {
+  await ensureSupabaseClaims(userRecord);
+  await ensureAppUserExists(userRecord.uid, userRecord.email, {
+    name: userRecord.displayName,
+  });
+};
+
 router.post('/auth/register', async (req, res) => {
   try {
     const email = String(req.body?.email ?? '').trim();
@@ -128,13 +153,11 @@ router.post('/auth/register', async (req, res) => {
       password,
     });
     try {
-      await ensureAppUserExists(userRecord.uid, userRecord.email, {
-        name: userRecord.displayName,
-      });
-    } catch (dbError) {
-      console.error('[Auth] Failed to persist new user in DB', dbError);
+      await syncSupabaseUser(userRecord);
+    } catch (syncError) {
+      console.error('[Auth] Failed to sync new user', syncError);
       return res.status(500).json({
-        error: 'Nepodarilo sa uložiť používateľa do databázy.',
+        error: 'Nepodarilo sa synchronizovať používateľa do databázy.',
       });
     }
 
@@ -176,13 +199,11 @@ router.post('/auth/login', async (req, res) => {
 
     const userRecord = await admin.auth().getUserByEmail(email);
     try {
-      await ensureAppUserExists(userRecord.uid, userRecord.email, {
-        name: userRecord.displayName,
-      });
-    } catch (dbError) {
-      console.error('[Auth] Failed to sync user on login', dbError);
+      await syncSupabaseUser(userRecord);
+    } catch (syncError) {
+      console.error('[Auth] Failed to sync user on login', syncError);
       return res.status(500).json({
-        error: 'Nepodarilo sa uložiť používateľa do databázy.',
+        error: 'Nepodarilo sa synchronizovať používateľa do databázy.',
       });
     }
     const session = await createSessionForIdToken(authData.idToken);
@@ -212,13 +233,11 @@ router.post('/auth/google', async (req, res) => {
     const session = await createSessionForIdToken(idToken);
     const userRecord = await admin.auth().getUser(session.uid);
     try {
-      await ensureAppUserExists(userRecord.uid, userRecord.email, {
-        name: userRecord.displayName,
-      });
-    } catch (dbError) {
-      console.error('[Auth] Failed to sync Google user', dbError);
+      await syncSupabaseUser(userRecord);
+    } catch (syncError) {
+      console.error('[Auth] Failed to sync Google user', syncError);
       return res.status(500).json({
-        error: 'Nepodarilo sa uložiť používateľa do databázy.',
+        error: 'Nepodarilo sa synchronizovať používateľa do databázy.',
       });
     }
     setSessionCookie(res, session.sessionCookie);
@@ -240,13 +259,11 @@ router.post('/auth/apple', async (req, res) => {
     const session = await createSessionForIdToken(idToken);
     const userRecord = await admin.auth().getUser(session.uid);
     try {
-      await ensureAppUserExists(userRecord.uid, userRecord.email, {
-        name: userRecord.displayName,
-      });
-    } catch (dbError) {
-      console.error('[Auth] Failed to sync Apple user', dbError);
+      await syncSupabaseUser(userRecord);
+    } catch (syncError) {
+      console.error('[Auth] Failed to sync Apple user', syncError);
       return res.status(500).json({
-        error: 'Nepodarilo sa uložiť používateľa do databázy.',
+        error: 'Nepodarilo sa synchronizovať používateľa do databázy.',
       });
     }
     setSessionCookie(res, session.sessionCookie);
