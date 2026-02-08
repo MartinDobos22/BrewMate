@@ -1,12 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { fetchMe } from '../utils/apiClient';
+import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 
 type AuthUser = {
-  firebase_uid: string;
-  email: string | null;
-  display_name: string | null;
-  photo_url: string | null;
+  id: string;
+  email: string;
+  name: string | null;
 };
 
 type AuthContextValue = {
@@ -37,15 +36,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const data = await fetchMe();
-      const payload = data?.profile ?? data;
+      const response = await apiFetch(
+        `${DEFAULT_API_HOST}/auth/me`,
+        {
+          credentials: 'include',
+        },
+        {
+          feature: 'Auth',
+          action: 'me',
+        },
+      );
 
-      if (payload?.firebase_uid) {
+      if (!response.ok || response.status === 204) {
+        setUser(null);
+        return;
+      }
+
+      const data = await response.json();
+      const payload = data?.user ?? data;
+
+      if (payload?.id && payload?.email) {
         setUser({
-          firebase_uid: String(payload.firebase_uid),
-          email: payload.email ?? null,
-          display_name: payload.display_name ?? null,
-          photo_url: payload.photo_url ?? null,
+          id: String(payload.id),
+          email: String(payload.email),
+          name: payload.name ?? null,
         });
       } else {
         setUser(null);
