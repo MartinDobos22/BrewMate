@@ -27,6 +27,12 @@ const ensureAppUserExists = async (userId, email, options = {}) => {
   const client = options.client || db;
   const name = options.name || (email ? email.split('@')[0] : null);
 
+  console.info('[DB] Upserting app user records', {
+    userId,
+    email: email || null,
+    name,
+  });
+
   await client.query(
     `INSERT INTO app_users (id, email, name)
      VALUES ($1, $2, $3)
@@ -43,6 +49,8 @@ const ensureAppUserExists = async (userId, email, options = {}) => {
      ON CONFLICT (user_id) DO NOTHING`,
     [userId]
   );
+
+  console.info('[DB] App user records ensured', { userId });
 };
 
 // Wrap default query method to log all interactions with Supabase
