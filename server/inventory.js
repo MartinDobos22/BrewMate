@@ -47,4 +47,57 @@ router.post('/api/user-coffee', async (req, res, next) => {
   }
 });
 
+router.post('/api/user-questionnaire', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+    const { answers, profile, tasteProfile } = req.body || {};
+
+    if (!Array.isArray(answers) || answers.length === 0) {
+      return res.status(400).json({ error: 'answers are required.' });
+    }
+
+    if (!profile || typeof profile !== 'object') {
+      return res.status(400).json({ error: 'profile is required.' });
+    }
+
+    const resolvedTasteProfile =
+      tasteProfile && typeof tasteProfile === 'object' ? tasteProfile : profile.tasteVector;
+
+    if (!resolvedTasteProfile || typeof resolvedTasteProfile !== 'object') {
+      return res.status(400).json({ error: 'tasteProfile is required.' });
+    }
+
+    try {
+      await ensureAppUserExists(session.uid, session.email ?? null);
+    } catch (dbError) {
+      console.error('[UserQuestionnaire] Failed to ensure user in DB', dbError);
+      return res.status(500).json({
+        error: 'Nepodarilo sa uložiť používateľa do databázy.',
+      });
+    }
+
+    const insertResult = await db.query(
+      `INSERT INTO user_questionnaires (user_id, answers, questionnaire_profile, taste_profile)
+       VALUES ($1, $2::jsonb, $3::jsonb, $4::jsonb)
+       RETURNING id`,
+      [
+        session.uid,
+        JSON.stringify(answers),
+        JSON.stringify(profile),
+        JSON.stringify(resolvedTasteProfile),
+      ],
+    );
+
+    return res.status(201).json({
+      id: insertResult.rows?.[0]?.id ?? null,
+    });
+  } catch (error) {
+    if (error?.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('[UserQuestionnaire] Unexpected error', error);
+    return next(error);
+  }
+});
+
 export default router;
