@@ -28,6 +28,7 @@ create table if not exists public.user_coffee (
 
 create index if not exists user_coffee_user_id_idx on public.user_coffee (user_id);
 
+
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql

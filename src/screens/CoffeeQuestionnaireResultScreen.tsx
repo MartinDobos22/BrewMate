@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import { saveQuestionnaireResult } from '../utils/localSave';
 
 const SECTION_LABELS = {
@@ -22,9 +23,33 @@ function CoffeeQuestionnaireResultScreen({ route }: Props) {
     try {
       setSaveState('saving');
       await saveQuestionnaireResult({ answers, profile });
+      const response = await apiFetch(
+        `${DEFAULT_API_HOST}/api/user-questionnaire`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            answers,
+            profile,
+            tasteProfile: profile.tasteVector,
+          }),
+        },
+        {
+          feature: 'Questionnaire',
+          action: 'save-user-profile',
+        },
+      );
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || 'Nepodarilo sa uložiť výsledok dotazníka.');
+      }
       setSaveState('saved');
     } catch (error) {
-      console.error('[QuestionnaireResult] Failed to save locally', error);
+      console.error('[QuestionnaireResult] Failed to save questionnaire', error);
       setSaveState('error');
     }
   }, [answers, profile]);
@@ -45,11 +70,11 @@ function CoffeeQuestionnaireResultScreen({ route }: Props) {
             disabled={saveState === 'saving'}
           >
             <Text style={styles.saveButtonText}>
-              {saveState === 'saving' ? 'Ukladám...' : 'Uložiť lokálne'}
+              {saveState === 'saving' ? 'Ukladám...' : 'Uložiť do profilu'}
             </Text>
           </Pressable>
           {saveState === 'saved' ? (
-            <Text style={styles.saveHint}>Uložené do zariadenia.</Text>
+            <Text style={styles.saveHint}>Uložené lokálne aj do profilu.</Text>
           ) : null}
           {saveState === 'error' ? (
             <Text style={styles.saveError}>Uloženie zlyhalo.</Text>
