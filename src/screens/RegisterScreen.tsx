@@ -11,12 +11,9 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 import { AuthStackParamList } from '../navigation/types';
-import { getFirebaseAuth } from '../utils/firebase';
-import { syncUser } from '../utils/apiClient';
-import { useAuth } from '../context/AuthContext';
+import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -28,7 +25,21 @@ function RegisterScreen({ navigation }: Props) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const { refreshSession } = useAuth();
+  const getBackendErrorMessage = async (response: Response) => {
+    try {
+      const data = await response.json();
+      if (data?.error) {
+        return data.error as string;
+      }
+      if (data?.message) {
+        return data.message as string;
+      }
+    } catch (parseError) {
+      console.warn('Failed to parse error response.', parseError);
+    }
+
+    return 'Registrácia zlyhala.';
+  };
 
   const validate = () => {
     if (!email.trim()) {
@@ -58,11 +69,35 @@ function RegisterScreen({ navigation }: Props) {
     setErrorMessage('');
 
     try {
-      const auth = getFirebaseAuth();
-      await createUserWithEmailAndPassword(auth, email.trim(), password);
-      await syncUser();
-      await refreshSession();
-      navigation.navigate('Login');
+      const response = await apiFetch(
+        `${DEFAULT_API_HOST}/auth/register`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            email: email.trim(),
+            password,
+          }),
+        },
+        {
+          feature: 'Auth',
+          action: 'register',
+        },
+      );
+
+      if (!response.ok) {
+        const message = await getBackendErrorMessage(response);
+        setErrorMessage(message);
+        return;
+      }
+
+      navigation.navigate('Login', {
+        prefillEmail: email.trim(),
+        prefillPassword: password,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Registrácia zlyhala.';
       setErrorMessage(message);
