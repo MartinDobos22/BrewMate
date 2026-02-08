@@ -129,10 +129,15 @@ const ensureSupabaseClaims = async (userRecord) => {
 };
 
 const syncSupabaseUser = async (userRecord) => {
-  await ensureSupabaseClaims(userRecord);
   await ensureAppUserExists(userRecord.uid, userRecord.email, {
     name: userRecord.displayName,
   });
+
+  try {
+    await ensureSupabaseClaims(userRecord);
+  } catch (error) {
+    console.warn('[Auth] Failed to set Supabase claims', error);
+  }
 };
 
 router.post('/auth/register', async (req, res) => {
@@ -156,6 +161,11 @@ router.post('/auth/register', async (req, res) => {
       await syncSupabaseUser(userRecord);
     } catch (syncError) {
       console.error('[Auth] Failed to sync new user', syncError);
+      try {
+        await admin.auth().deleteUser(userRecord.uid);
+      } catch (cleanupError) {
+        console.error('[Auth] Failed to rollback Firebase user', cleanupError);
+      }
       return res.status(500).json({
         error: 'Nepodarilo sa synchronizovať používateľa do databázy.',
       });
