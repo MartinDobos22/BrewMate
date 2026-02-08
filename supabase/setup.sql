@@ -78,41 +78,41 @@ alter table public.user_coffee enable row level security;
 create policy "Users can insert their own profile"
   on public.app_users
   for insert
-  with check (auth.uid() = id and public.is_valid_firebase_jwt());
+  with check (auth.uid()::text = id and public.is_valid_firebase_jwt());
 
 create policy "Users can read their own profile"
   on public.app_users
   for select
-  using (auth.uid() = id and public.is_valid_firebase_jwt());
+  using (auth.uid()::text = id and public.is_valid_firebase_jwt());
 
 create policy "Users can update their own profile"
   on public.app_users
   for update
-  using (auth.uid() = id and public.is_valid_firebase_jwt())
-  with check (auth.uid() = id and public.is_valid_firebase_jwt());
+  using (auth.uid()::text = id and public.is_valid_firebase_jwt())
+  with check (auth.uid()::text = id and public.is_valid_firebase_jwt());
 
 create policy "Users can read their statistics"
   on public.user_statistics
   for select
-  using (auth.uid() = user_id and public.is_valid_firebase_jwt());
+  using (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
 
 create policy "Users can insert their statistics"
   on public.user_statistics
   for insert
-  with check (auth.uid() = user_id and public.is_valid_firebase_jwt());
+  with check (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
 
 create policy "Users can read their coffee entries"
   on public.user_coffee
   for select
-  using (auth.uid() = user_id and public.is_valid_firebase_jwt());
+  using (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
 
 create policy "Users can insert their coffee entries"
   on public.user_coffee
   for insert
-  with check (auth.uid() = user_id and public.is_valid_firebase_jwt());
+  with check (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
 
 create policy "Users can update their coffee entries"
   on public.user_coffee
   for update
-  using (auth.uid() = user_id and public.is_valid_firebase_jwt())
-  with check (auth.uid() = user_id and public.is_valid_firebase_jwt());
+  using (auth.uid()::text = user_id and public.is_valid_firebase_jwt())
+  with check (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
