@@ -8,6 +8,15 @@ const router = express.Router();
 const COFFEE_STATUSES = new Set(['active', 'empty', 'archived']);
 const TRACKING_MODES = new Set(['manual', 'estimated']);
 const BREW_METHODS = new Set(['espresso', 'filter', 'other']);
+const JOURNAL_BREW_METHODS = new Set([
+  'espresso',
+  'v60',
+  'aeropress',
+  'french_press',
+  'moka',
+  'cold_brew',
+  'other',
+]);
 const CONSUMPTION_SOURCES = new Set([
   'quick_action',
   'custom',
@@ -40,6 +49,56 @@ const toNonNegativeInteger = (value) => {
     }
   }
   return null;
+};
+
+const toRatingInteger = (value) => {
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 5) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 5) {
+      return parsed;
+    }
+  }
+  return null;
+};
+
+const mapJournalRow = (row) => ({
+  id: row.id,
+  userCoffeeId: row.user_coffee_id,
+  method: row.brew_method,
+  doseG: row.dose_g,
+  brewTimeSeconds: row.brew_time_seconds,
+  tasteRating: row.taste_rating,
+  notes: row.notes,
+  createdAt: row.created_at,
+  coffeeName: row.coffee_name,
+  origin: row.origin,
+  roastLevel: row.roast_level,
+});
+
+const buildLocalSummary = ({ days, totals }) => {
+  if (!totals.logsCount) {
+    return `Za posledných ${days} dní zatiaľ nemáš žiadny záznam prípravy.`;
+  }
+
+  const topMethod = totals.methods[0];
+  const topOrigin = totals.origins[0];
+  const topRoast = totals.roasts[0];
+  const bestRatedMethod = totals.bestRatedMethods[0];
+
+  const parts = [
+    `Za posledných ${days} dní si zalogoval(a) ${totals.logsCount} príprav.`,
+    topMethod ? `Najčastejšie pripravuješ metódou ${topMethod.label} (${topMethod.count}x).` : null,
+    bestRatedMethod
+      ? `Najlepší priemer hodnotenia má ${bestRatedMethod.label} (${bestRatedMethod.avgRating.toFixed(1)}/5).`
+      : null,
+    topOrigin ? `Najviac ti chutia kávy z pôvodu ${topOrigin.label}.` : null,
+    topRoast ? `Preferované praženie: ${topRoast.label}.` : null,
+  ].filter(Boolean);
+
+  return parts.join(' ');
 };
 
 const mapCoffeeRow = (row) => ({
@@ -604,6 +663,241 @@ router.post('/api/user-questionnaire', async (req, res, next) => {
       return res.status(error.status).json({ error: error.message });
     }
     console.error('[UserQuestionnaire] Unexpected error', error);
+    return next(error);
+  }
+});
+
+router.get('/api/coffee-journal', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+    const days = Math.min(toPositiveInteger(req.query.days) ?? 30, 90);
+
+    const result = await db.query(
+      `SELECT logs.id,
+              logs.user_coffee_id,
+              logs.brew_method,
+              logs.dose_g,
+              logs.brew_time_seconds,
+              logs.taste_rating,
+              logs.notes,
+              logs.created_at,
+              coalesce(coffee.corrected_text, coffee.raw_text, 'Neznáma káva') as coffee_name,
+              coalesce(coffee.coffee_profile->>'origin', 'Neznámy pôvod') as origin,
+              coalesce(coffee.coffee_profile->>'roastLevel', 'Neznáme praženie') as roast_level
+       FROM user_coffee_brew_logs logs
+       LEFT JOIN user_coffee coffee ON coffee.id = logs.user_coffee_id
+       WHERE logs.user_id = $1
+         AND logs.created_at >= now() - ($2::int || ' days')::interval
+       ORDER BY logs.created_at DESC`,
+      [session.uid, days],
+    );
+
+    return res.status(200).json({
+      items: result.rows.map(mapJournalRow),
+    });
+  } catch (error) {
+    if (error?.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('[CoffeeJournal] Failed to load brew logs', error);
+    return next(error);
+  }
+});
+
+router.post('/api/coffee-journal', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+    const {
+      userCoffeeId,
+      method,
+      doseG,
+      brewTimeSeconds,
+      tasteRating,
+      notes,
+    } = req.body || {};
+
+    if (typeof method !== 'string' || !JOURNAL_BREW_METHODS.has(method)) {
+      return res.status(400).json({ error: 'method has unsupported value.' });
+    }
+
+    const normalizedDose = toPositiveInteger(doseG);
+    if (!normalizedDose) {
+      return res.status(400).json({ error: 'doseG must be positive integer.' });
+    }
+
+    const normalizedBrewTime = toPositiveInteger(brewTimeSeconds);
+    if (!normalizedBrewTime) {
+      return res.status(400).json({ error: 'brewTimeSeconds must be positive integer.' });
+    }
+
+    const normalizedRating = toRatingInteger(tasteRating);
+    if (!normalizedRating) {
+      return res.status(400).json({ error: 'tasteRating must be integer between 1 and 5.' });
+    }
+
+    try {
+      await ensureAppUserExists(session.uid, session.email ?? null);
+    } catch (dbError) {
+      console.error('[CoffeeJournal] Failed to ensure user in DB', dbError);
+      return res.status(500).json({
+        error: 'Nepodarilo sa uložiť používateľa do databázy.',
+      });
+    }
+
+    const insertResult = await db.query(
+      `INSERT INTO user_coffee_brew_logs (
+         user_id,
+         user_coffee_id,
+         brew_method,
+         dose_g,
+         brew_time_seconds,
+         taste_rating,
+         notes
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id,
+                 user_coffee_id,
+                 brew_method,
+                 dose_g,
+                 brew_time_seconds,
+                 taste_rating,
+                 notes,
+                 created_at,
+                 'Neznáma káva' as coffee_name,
+                 'Neznámy pôvod' as origin,
+                 'Neznáme praženie' as roast_level`,
+      [
+        session.uid,
+        typeof userCoffeeId === 'string' && userCoffeeId.trim().length > 0 ? userCoffeeId : null,
+        method,
+        normalizedDose,
+        normalizedBrewTime,
+        normalizedRating,
+        typeof notes === 'string' && notes.trim().length > 0 ? notes.trim() : null,
+      ],
+    );
+
+    return res.status(201).json({
+      item: mapJournalRow(insertResult.rows[0]),
+    });
+  } catch (error) {
+    if (error?.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('[CoffeeJournal] Failed to create brew log', error);
+    return next(error);
+  }
+});
+
+router.get('/api/coffee-journal/insights', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+    const days = Math.min(toPositiveInteger(req.query.days) ?? 30, 90);
+
+    const logsResult = await db.query(
+      `SELECT logs.brew_method,
+              logs.taste_rating,
+              coalesce(coffee.coffee_profile->>'origin', 'Neznámy pôvod') as origin,
+              coalesce(coffee.coffee_profile->>'roastLevel', 'Neznáme praženie') as roast_level
+       FROM user_coffee_brew_logs logs
+       LEFT JOIN user_coffee coffee ON coffee.id = logs.user_coffee_id
+       WHERE logs.user_id = $1
+         AND logs.created_at >= now() - ($2::int || ' days')::interval`,
+      [session.uid, days],
+    );
+
+    const aggregate = (rows, key) => Object.entries(
+      rows.reduce((acc, row) => {
+        const label = row[key] || 'Neznáme';
+        const item = acc[label] || { label, count: 0, ratingSum: 0 };
+        item.count += 1;
+        item.ratingSum += Number(row.taste_rating) || 0;
+        acc[label] = item;
+        return acc;
+      }, {}),
+    )
+      .map(([, value]) => ({
+        label: value.label,
+        count: value.count,
+        avgRating: value.count ? value.ratingSum / value.count : 0,
+      }))
+      .sort((a, b) => b.count - a.count || b.avgRating - a.avgRating)
+      .slice(0, 5);
+
+    const methods = aggregate(logsResult.rows, 'brew_method');
+    const origins = aggregate(logsResult.rows, 'origin');
+    const roasts = aggregate(logsResult.rows, 'roast_level');
+    const bestRatedMethods = [...methods]
+      .sort((a, b) => b.avgRating - a.avgRating || b.count - a.count)
+      .slice(0, 3);
+
+    const totals = {
+      logsCount: logsResult.rows.length,
+      methods,
+      origins,
+      roasts,
+      bestRatedMethods,
+    };
+
+    let aiSummary = buildLocalSummary({ days, totals });
+    const openAiApiKey = process.env.OPENAI_API_KEY?.trim();
+
+    if (openAiApiKey && totals.logsCount > 0) {
+      try {
+        const prompt = {
+          days,
+          logsCount: totals.logsCount,
+          methods,
+          origins,
+          roasts,
+          bestRatedMethods,
+        };
+
+        const completion = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${openAiApiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            temperature: 0.4,
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'Si coffee coach. Napis stručné 2 vety po slovensky o tom, čo používateľ obľubuje podľa dát. Nepoužívaj markdown.',
+              },
+              {
+                role: 'user',
+                content: `Vygeneruj sumár z dát: ${JSON.stringify(prompt)}`,
+              },
+            ],
+          }),
+        });
+
+        if (completion.ok) {
+          const payload = await completion.json();
+          const summary = payload?.choices?.[0]?.message?.content;
+          if (typeof summary === 'string' && summary.trim().length > 0) {
+            aiSummary = summary.trim();
+          }
+        }
+      } catch (aiError) {
+        console.warn('[CoffeeJournal] Falling back to local summary', aiError);
+      }
+    }
+
+    return res.status(200).json({
+      days,
+      totals,
+      aiSummary,
+    });
+  } catch (error) {
+    if (error?.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('[CoffeeJournal] Failed to load insights', error);
     return next(error);
   }
 });

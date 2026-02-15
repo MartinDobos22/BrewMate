@@ -45,6 +45,7 @@ export type RootStackParamList = {
     labelImageBase64: string;
   };
   CoffeeInventory: undefined;
+  CoffeeJournal: undefined;
 };
 
 export type AuthStackParamList = {
