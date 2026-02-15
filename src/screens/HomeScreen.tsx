@@ -41,8 +41,8 @@ function HomeScreen({ navigation }: Props) {
     navigation.navigate('CoffeeInventory');
   };
 
-  const handleJournalPress = () => {
-    navigation.navigate('CoffeeJournal');
+  const handleSavedRecipesPress = () => {
+    navigation.navigate('CoffeeRecipesSaved');
   };
 
   const handleLogout = async () => {
@@ -141,8 +141,8 @@ function HomeScreen({ navigation }: Props) {
         <Pressable style={styles.buttonSecondary} onPress={handleInventoryPress}>
           <Text style={styles.buttonText}>Coffee inventár</Text>
         </Pressable>
-        <Pressable style={styles.buttonSecondary} onPress={handleJournalPress}>
-          <Text style={styles.buttonText}>Coffee journal</Text>
+        <Pressable style={styles.buttonSecondary} onPress={handleSavedRecipesPress}>
+          <Text style={styles.buttonText}>Saved coffee recipes</Text>
         </Pressable>
         <Pressable style={styles.buttonOutline} onPress={handleLogout}>
           <Text style={styles.buttonOutlineText}>Odhlásiť sa</Text>

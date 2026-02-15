@@ -9,7 +9,7 @@ import OcrResultScreen from '../screens/OcrResultScreen';
 import CoffeeQuestionnaireScreen from '../screens/CoffeeQuestionnaireScreen';
 import CoffeeQuestionnaireResultScreen from '../screens/CoffeeQuestionnaireResultScreen';
 import CoffeeInventoryScreen from '../screens/CoffeeInventoryScreen';
-import CoffeeJournalScreen from '../screens/CoffeeJournalScreen';
+import CoffeeRecipesSavedScreen from '../screens/CoffeeRecipesSavedScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import AuthLoadingScreen from '../screens/AuthLoadingScreen';
@@ -58,7 +58,7 @@ function MainNavigator() {
         name="CoffeePhotoRecipe"
         component={CoffeePhotoRecipeScreen}
         options={{
-          title: 'Foto recept',
+          title: 'Coffee Recipe Generator',
         }}
       />
       <AppStack.Screen
@@ -97,10 +97,10 @@ function MainNavigator() {
         }}
       />
       <AppStack.Screen
-        name="CoffeeJournal"
-        component={CoffeeJournalScreen}
+        name="CoffeeRecipesSaved"
+        component={CoffeeRecipesSavedScreen}
         options={{
-          title: 'Coffee Journal',
+          title: 'Coffee Recipes Saved',
         }}
       />
     </AppStack.Navigator>
