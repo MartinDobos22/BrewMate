@@ -26,10 +26,12 @@ create table if not exists public.user_coffee (
   ai_match_result jsonb,
   label_image_base64 text,
   loved boolean not null default false,
+  status text not null default 'active' check (status in ('active', 'empty', 'archived')),
   created_at timestamptz not null default now()
 );
 
 create index if not exists user_coffee_user_id_idx on public.user_coffee (user_id);
+create index if not exists user_coffee_user_id_status_idx on public.user_coffee (user_id, status);
 
 create table if not exists public.user_questionnaires (
   id uuid primary key default gen_random_uuid(),
