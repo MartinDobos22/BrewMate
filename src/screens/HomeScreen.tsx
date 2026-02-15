@@ -241,7 +241,7 @@ function HomeScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.container}>
         <Text style={styles.title}>BrewMate</Text>
 
         <View style={styles.section}>
@@ -385,8 +385,11 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  container: {
+  scrollView: {
     flex: 1,
+  },
+  container: {
+    flexGrow: 1,
     padding: 24,
     paddingBottom: 48,
     backgroundColor: '#f8fafc',
