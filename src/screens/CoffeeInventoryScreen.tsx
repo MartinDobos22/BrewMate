@@ -49,7 +49,7 @@ function CoffeeInventoryScreen() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
-  const [includeInactive, setIncludeInactive] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<InventoryStatus>('active');
   const [customDoseById, setCustomDoseById] = useState<Record<string, string>>({});
   const [customRemainingById, setCustomRemainingById] = useState<Record<string, string>>({});
 
@@ -59,7 +59,7 @@ function CoffeeInventoryScreen() {
 
     try {
       const response = await apiFetch(
-        `${DEFAULT_API_HOST}/api/user-coffee?includeInactive=${includeInactive}`,
+        `${DEFAULT_API_HOST}/api/user-coffee?includeInactive=true`,
         {
           method: 'GET',
           credentials: 'include',
@@ -81,7 +81,7 @@ function CoffeeInventoryScreen() {
       setState('error');
       setErrorMessage(error instanceof Error ? error.message : 'Nepodarilo sa načítať inventár.');
     }
-  }, [includeInactive]);
+  }, []);
 
   useEffect(() => {
     loadInventory();
@@ -302,27 +302,84 @@ function CoffeeInventoryScreen() {
     [replaceItem],
   );
 
-  const renderedItems = useMemo(() => items, [items]);
+  const totalsByStatus = useMemo(
+    () => ({
+      active: items.filter((item) => item.status === 'active').length,
+      empty: items.filter((item) => item.status === 'empty').length,
+      archived: items.filter((item) => item.status === 'archived').length,
+    }),
+    [items],
+  );
+
+  const renderedItems = useMemo(
+    () => items.filter((item) => item.status === activeFilter),
+    [activeFilter, items],
+  );
+
+  const filterLabel = useMemo(() => {
+    if (activeFilter === 'active') {
+      return 'Aktívne';
+    }
+    if (activeFilter === 'empty') {
+      return 'Dopité';
+    }
+    return 'Archivované';
+  }, [activeFilter]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Coffee inventár</Text>
 
-        <Pressable
-          style={styles.filterButton}
-          onPress={() => setIncludeInactive((current) => !current)}
-        >
-          <Text style={styles.filterButtonText}>
-            {includeInactive ? 'Skryť empty/archived' : 'Zobraziť empty/archived'}
-          </Text>
-        </Pressable>
+        <View style={styles.filterTabs}>
+          <Pressable
+            style={[styles.filterButton, activeFilter === 'active' ? styles.filterButtonActive : null]}
+            onPress={() => setActiveFilter('active')}
+          >
+            <Text
+              style={[
+                styles.filterButtonText,
+                activeFilter === 'active' ? styles.filterButtonTextActive : null,
+              ]}
+            >
+              Aktívne ({totalsByStatus.active})
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.filterButton, activeFilter === 'empty' ? styles.filterButtonActive : null]}
+            onPress={() => setActiveFilter('empty')}
+          >
+            <Text
+              style={[
+                styles.filterButtonText,
+                activeFilter === 'empty' ? styles.filterButtonTextActive : null,
+              ]}
+            >
+              Dopité ({totalsByStatus.empty})
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.filterButton, activeFilter === 'archived' ? styles.filterButtonActive : null]}
+            onPress={() => setActiveFilter('archived')}
+          >
+            <Text
+              style={[
+                styles.filterButtonText,
+                activeFilter === 'archived' ? styles.filterButtonTextActive : null,
+              ]}
+            >
+              Archivované ({totalsByStatus.archived})
+            </Text>
+          </Pressable>
+        </View>
 
         {state === 'loading' ? <ActivityIndicator color="#1f6f5b" /> : null}
         {state === 'error' ? <Text style={styles.error}>{errorMessage}</Text> : null}
 
+        <Text style={styles.caption}>Zobrazená kategória: {filterLabel}</Text>
+
         {state === 'ready' && renderedItems.length === 0 ? (
-          <Text style={styles.empty}>Zatiaľ nemáš uložené žiadne kávy.</Text>
+          <Text style={styles.empty}>V kategórii {filterLabel.toLowerCase()} zatiaľ nemáš žiadne kávy.</Text>
         ) : null}
 
         {renderedItems.map((item) => {
@@ -458,15 +515,26 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#ffffff' },
   container: { padding: 20, paddingBottom: 40 },
   title: { fontSize: 24, fontWeight: '700', marginBottom: 12 },
+  filterTabs: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
   filterButton: {
     borderWidth: 1,
     borderColor: '#1f6f5b',
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    marginBottom: 14,
+    backgroundColor: '#ffffff',
+  },
+  filterButtonActive: {
+    backgroundColor: '#1f6f5b',
   },
   filterButtonText: { color: '#1f6f5b', fontWeight: '700' },
+  filterButtonTextActive: { color: '#ffffff' },
+  caption: { color: '#475569', marginBottom: 12 },
   error: { color: '#b91c1c', marginBottom: 12 },
   empty: { color: '#475569', fontSize: 14 },
   card: {
