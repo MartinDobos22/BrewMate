@@ -26,7 +26,7 @@ type MatchResult = {
 };
 
 function OcrResultScreen({ route }: Props) {
-  const { rawText, correctedText, coffeeProfile } = route.params;
+  const { rawText, correctedText, coffeeProfile, labelImageBase64 } = route.params;
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [matchState, setMatchState] = useState<
     'idle' | 'loading' | 'ready' | 'missing' | 'error'
@@ -76,7 +76,9 @@ function OcrResultScreen({ route }: Props) {
           body: JSON.stringify({
             rawText,
             correctedText,
+            labelImageBase64,
             coffeeProfile,
+            aiMatchResult: matchResult,
           }),
         },
         {
@@ -103,7 +105,7 @@ function OcrResultScreen({ route }: Props) {
       setInventoryError(message);
       setInventoryState('error');
     }
-  }, [coffeeProfile, correctedText, rawText, user]);
+  }, [coffeeProfile, correctedText, labelImageBase64, matchResult, rawText, user]);
 
   useEffect(() => {
     let isActive = true;

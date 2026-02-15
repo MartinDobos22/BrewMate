@@ -23,6 +23,9 @@ create table if not exists public.user_coffee (
   raw_text text,
   corrected_text text,
   coffee_profile jsonb not null,
+  ai_match_result jsonb,
+  label_image_base64 text,
+  loved boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -129,6 +132,11 @@ create policy "Users can update their coffee entries"
   for update
   using (auth.uid()::text = user_id and public.is_valid_firebase_jwt())
   with check (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
+
+create policy "Users can delete their coffee entries"
+  on public.user_coffee
+  for delete
+  using (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
 
 create policy "Users can read their questionnaires"
   on public.user_questionnaires

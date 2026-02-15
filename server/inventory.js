@@ -5,10 +5,50 @@ import { requireSession } from './session.js';
 
 const router = express.Router();
 
+router.get('/api/user-coffee', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+
+    const result = await db.query(
+      `SELECT id,
+              raw_text,
+              corrected_text,
+              coffee_profile,
+              ai_match_result,
+              label_image_base64,
+              loved,
+              created_at
+       FROM user_coffee
+       WHERE user_id = $1
+       ORDER BY created_at DESC`,
+      [session.uid],
+    );
+
+    return res.status(200).json({
+      items: result.rows.map((row) => ({
+        id: row.id,
+        rawText: row.raw_text,
+        correctedText: row.corrected_text,
+        coffeeProfile: row.coffee_profile,
+        aiMatchResult: row.ai_match_result,
+        labelImageBase64: row.label_image_base64,
+        loved: Boolean(row.loved),
+        createdAt: row.created_at,
+      })),
+    });
+  } catch (error) {
+    if (error?.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('[UserCoffee] Failed to load user inventory', error);
+    return next(error);
+  }
+});
+
 router.post('/api/user-coffee', async (req, res, next) => {
   try {
     const session = await requireSession(req);
-    const { rawText, correctedText, coffeeProfile } = req.body || {};
+    const { rawText, correctedText, coffeeProfile, aiMatchResult, labelImageBase64 } = req.body || {};
 
     if (!coffeeProfile || typeof coffeeProfile !== 'object') {
       return res.status(400).json({ error: 'coffeeProfile is required.' });
@@ -24,14 +64,24 @@ router.post('/api/user-coffee', async (req, res, next) => {
     }
 
     const insertResult = await db.query(
-      `INSERT INTO user_coffee (user_id, raw_text, corrected_text, coffee_profile)
-       VALUES ($1, $2, $3, $4::jsonb)
+      `INSERT INTO user_coffee (
+          user_id,
+          raw_text,
+          corrected_text,
+          coffee_profile,
+          ai_match_result,
+          label_image_base64,
+          loved
+        )
+       VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, false)
        RETURNING id`,
       [
         session.uid,
         typeof rawText === 'string' ? rawText : null,
         typeof correctedText === 'string' ? correctedText : null,
         JSON.stringify(coffeeProfile),
+        aiMatchResult && typeof aiMatchResult === 'object' ? JSON.stringify(aiMatchResult) : null,
+        typeof labelImageBase64 === 'string' ? labelImageBase64 : null,
       ],
     );
 
@@ -43,6 +93,64 @@ router.post('/api/user-coffee', async (req, res, next) => {
       return res.status(error.status).json({ error: error.message });
     }
     console.error('[UserCoffee] Unexpected error', error);
+    return next(error);
+  }
+});
+
+router.patch('/api/user-coffee/:id', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+    const { id } = req.params;
+    const { loved } = req.body || {};
+
+    if (typeof loved !== 'boolean') {
+      return res.status(400).json({ error: 'loved must be boolean.' });
+    }
+
+    const result = await db.query(
+      `UPDATE user_coffee
+       SET loved = $3
+       WHERE id = $1 AND user_id = $2
+       RETURNING id`,
+      [id, session.uid, loved],
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).json({ error: 'Káva nebola nájdená.' });
+    }
+
+    return res.status(200).json({ id, loved });
+  } catch (error) {
+    if (error?.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('[UserCoffee] Failed to update coffee', error);
+    return next(error);
+  }
+});
+
+router.delete('/api/user-coffee/:id', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+    const { id } = req.params;
+
+    const result = await db.query(
+      `DELETE FROM user_coffee
+       WHERE id = $1 AND user_id = $2
+       RETURNING id`,
+      [id, session.uid],
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).json({ error: 'Káva nebola nájdená.' });
+    }
+
+    return res.status(204).send();
+  } catch (error) {
+    if (error?.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('[UserCoffee] Failed to delete coffee', error);
     return next(error);
   }
 });

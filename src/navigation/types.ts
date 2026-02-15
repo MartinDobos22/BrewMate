@@ -42,7 +42,9 @@ export type RootStackParamList = {
     rawText: string;
     correctedText: string;
     coffeeProfile: CoffeeProfile;
+    labelImageBase64: string;
   };
+  CoffeeInventory: undefined;
 };
 
 export type AuthStackParamList = {

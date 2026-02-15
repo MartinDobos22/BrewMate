@@ -215,6 +215,7 @@ function CoffeeScannerScreen({ navigation }: Props) {
         rawText: payload.rawText,
         correctedText: payload.correctedText,
         coffeeProfile,
+        labelImageBase64: imageBase64.trim(),
       });
     } catch (error) {
       const message =

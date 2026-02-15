@@ -37,6 +37,10 @@ function HomeScreen({ navigation }: Props) {
     navigation.navigate('CoffeePhotoRecipe');
   };
 
+  const handleInventoryPress = () => {
+    navigation.navigate('CoffeeInventory');
+  };
+
   const handleLogout = async () => {
     try {
       const response = await apiFetch(
@@ -129,6 +133,9 @@ function HomeScreen({ navigation }: Props) {
         </Pressable>
         <Pressable style={styles.buttonSecondary} onPress={handleQuestionnairePress}>
           <Text style={styles.buttonText}>Chuťový dotazník</Text>
+        </Pressable>
+        <Pressable style={styles.buttonSecondary} onPress={handleInventoryPress}>
+          <Text style={styles.buttonText}>Coffee inventár</Text>
         </Pressable>
         <Pressable style={styles.buttonOutline} onPress={handleLogout}>
           <Text style={styles.buttonOutlineText}>Odhlásiť sa</Text>
