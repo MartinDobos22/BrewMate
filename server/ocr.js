@@ -363,6 +363,29 @@ const buildPhotoCoffeeRecipePayload = (analysis, strengthPreference, selectedPre
   ],
 });
 
+
+const buildLikePrediction = ({ analysis, selectedPreparation, strengthPreference }) => {
+  const baseFromAnalysis = Math.round(Math.min(1, Math.max(0, Number(analysis?.confidence) || 0.5)) * 100);
+  const preferredMethods = Array.isArray(analysis?.recommendedPreparations)
+    ? analysis.recommendedPreparations.map((item) => String(item?.method || '').toLowerCase())
+    : [];
+  const selected = String(selectedPreparation || '').toLowerCase();
+  const inTopRecommendations = preferredMethods.slice(0, 2).includes(selected);
+  const strengthBonus = ['jemné chute', 'slabšie', 'výraznejšie'].includes(String(strengthPreference)) ? 4 : 0;
+  const methodBonus = inTopRecommendations ? 8 : 0;
+  const score = Math.max(0, Math.min(99, baseFromAnalysis + methodBonus + strengthBonus));
+
+  return {
+    score,
+    verdict: score >= 70
+      ? 'Tento recept má vysokú šancu, že ti bude chutiť.'
+      : 'Tento recept ešte nemusí sadnúť tvojmu profilu.',
+    reason: inTopRecommendations
+      ? 'Vybraná metóda patrí medzi najlepšie odporúčania pre túto kávu.'
+      : 'Vybraná metóda nie je medzi top odporúčaniami, skús prvé návrhy od AI.',
+  };
+};
+
 const runOcr = async ({ imageBase64, languageHints }) => {
   if (!imageBase64) {
     const error = new Error('imageBase64 is required.');
@@ -678,7 +701,13 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
       });
     }
 
-    return res.status(200).json({ recipe });
+    const likePrediction = buildLikePrediction({
+      analysis,
+      selectedPreparation,
+      strengthPreference,
+    });
+
+    return res.status(200).json({ recipe, likePrediction });
   } catch (error) {
     console.error('[PhotoRecipe] Unexpected error', error);
     return next(error);

@@ -101,6 +101,42 @@ const buildLocalSummary = ({ days, totals }) => {
   return parts.join(' ');
 };
 
+const RECIPE_APPROVAL_THRESHOLD = 70;
+
+const mapSavedRecipeRow = (row) => ({
+  id: row.id,
+  title: row.title,
+  method: row.method,
+  strengthPreference: row.strength_preference,
+  dose: row.dose,
+  water: row.water,
+  totalTime: row.total_time,
+  tasteProfile: row.taste_profile,
+  flavorNotes: Array.isArray(row.flavor_notes) ? row.flavor_notes : [],
+  likeScore: row.like_score,
+  approved: Boolean(row.approved),
+  createdAt: row.created_at,
+});
+
+const buildRecipeInsightsSummary = ({ days, totals }) => {
+  if (!totals.recipesCount) {
+    return `Za posledných ${days} dní zatiaľ nemáš uložený žiadny schválený recept.`;
+  }
+
+  const topMethod = totals.methods[0];
+  const topStrength = totals.strengths[0];
+  const topTaste = totals.tasteProfiles[0];
+
+  const parts = [
+    `Za posledných ${days} dní máš uložených ${totals.recipesCount} receptov, ktoré majú chutiť.`,
+    topMethod ? `Najčastejšie volíš metódu ${topMethod.label} (${topMethod.count}x).` : null,
+    topStrength ? `Najviac ti sedí sila ${topStrength.label}.` : null,
+    topTaste ? `Preferovaný chuťový profil: ${topTaste.label}.` : null,
+  ].filter(Boolean);
+
+  return parts.join(' ');
+};
+
 const mapCoffeeRow = (row) => ({
   id: row.id,
   rawText: row.raw_text,
@@ -901,5 +937,165 @@ router.get('/api/coffee-journal/insights', async (req, res, next) => {
     return next(error);
   }
 });
+
+
+router.get('/api/coffee-recipes', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+    const days = Math.min(toPositiveInteger(req.query.days) ?? 30, 90);
+
+    const result = await db.query(
+      `SELECT id,
+              coalesce(recipe->>'title', 'Recipe') as title,
+              coalesce(recipe->>'method', selected_preparation, 'unknown') as method,
+              coalesce(strength_preference, recipe->>'strengthPreference', 'neuvedené') as strength_preference,
+              coalesce(recipe->>'dose', '-') as dose,
+              coalesce(recipe->>'water', '-') as water,
+              coalesce(recipe->>'totalTime', '-') as total_time,
+              coalesce(analysis->>'tasteProfile', 'Neznámy profil') as taste_profile,
+              coalesce((analysis->'flavorNotes')::jsonb, '[]'::jsonb) as flavor_notes,
+              like_score,
+              approved,
+              created_at
+       FROM user_saved_coffee_recipes
+       WHERE user_id = $1
+         AND approved = true
+         AND created_at >= now() - ($2::int || ' days')::interval
+       ORDER BY created_at DESC`,
+      [session.uid, days],
+    );
+
+    return res.status(200).json({ items: result.rows.map(mapSavedRecipeRow) });
+  } catch (error) {
+    if (error?.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('[CoffeeRecipes] Failed to load recipes', error);
+    return next(error);
+  }
+});
+
+router.post('/api/coffee-recipes', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+    const { analysis, recipe, selectedPreparation, strengthPreference, likeScore, approved } = req.body || {};
+
+    if (!analysis || typeof analysis !== 'object') {
+      return res.status(400).json({ error: 'analysis is required.' });
+    }
+    if (!recipe || typeof recipe !== 'object') {
+      return res.status(400).json({ error: 'recipe is required.' });
+    }
+
+    const normalizedLikeScore = toNonNegativeInteger(likeScore);
+    if (normalizedLikeScore === null || normalizedLikeScore > 100) {
+      return res.status(400).json({ error: 'likeScore must be integer between 0 and 100.' });
+    }
+
+    if (normalizedLikeScore < RECIPE_APPROVAL_THRESHOLD) {
+      return res.status(400).json({ error: `Recipe can be saved only if likeScore is at least ${RECIPE_APPROVAL_THRESHOLD}.` });
+    }
+
+    try {
+      await ensureAppUserExists(session.uid, session.email ?? null);
+    } catch (dbError) {
+      console.error('[CoffeeRecipes] Failed to ensure user in DB', dbError);
+      return res.status(500).json({ error: 'Nepodarilo sa uložiť používateľa do databázy.' });
+    }
+
+    const insertResult = await db.query(
+      `INSERT INTO user_saved_coffee_recipes (
+         user_id, analysis, recipe, selected_preparation, strength_preference, like_score, approved
+       )
+       VALUES ($1, $2::jsonb, $3::jsonb, $4, $5, $6, $7)
+       RETURNING id,
+                 coalesce(recipe->>'title', 'Recipe') as title,
+                 coalesce(recipe->>'method', selected_preparation, 'unknown') as method,
+                 coalesce(strength_preference, recipe->>'strengthPreference', 'neuvedené') as strength_preference,
+                 coalesce(recipe->>'dose', '-') as dose,
+                 coalesce(recipe->>'water', '-') as water,
+                 coalesce(recipe->>'totalTime', '-') as total_time,
+                 coalesce(analysis->>'tasteProfile', 'Neznámy profil') as taste_profile,
+                 coalesce((analysis->'flavorNotes')::jsonb, '[]'::jsonb) as flavor_notes,
+                 like_score,
+                 approved,
+                 created_at`,
+      [
+        session.uid,
+        JSON.stringify(analysis),
+        JSON.stringify(recipe),
+        typeof selectedPreparation === 'string' ? selectedPreparation : null,
+        typeof strengthPreference === 'string' ? strengthPreference : null,
+        normalizedLikeScore,
+        approved !== false,
+      ],
+    );
+
+    return res.status(201).json({ item: mapSavedRecipeRow(insertResult.rows[0]) });
+  } catch (error) {
+    if (error?.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('[CoffeeRecipes] Failed to save recipe', error);
+    return next(error);
+  }
+});
+
+router.get('/api/coffee-recipes/insights', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+    const days = Math.min(toPositiveInteger(req.query.days) ?? 30, 90);
+
+    const rowsResult = await db.query(
+      `SELECT coalesce(recipe->>'method', selected_preparation, 'unknown') as method,
+              coalesce(strength_preference, recipe->>'strengthPreference', 'neuvedené') as strength_preference,
+              coalesce(analysis->>'tasteProfile', 'Neznámy profil') as taste_profile,
+              like_score
+       FROM user_saved_coffee_recipes
+       WHERE user_id = $1
+         AND approved = true
+         AND created_at >= now() - ($2::int || ' days')::interval`,
+      [session.uid, days],
+    );
+
+    const aggregate = (rows, key) => Object.entries(
+      rows.reduce((acc, row) => {
+        const label = row[key] || 'Neznáme';
+        const item = acc[label] || { label, count: 0, likeSum: 0 };
+        item.count += 1;
+        item.likeSum += Number(row.like_score) || 0;
+        acc[label] = item;
+        return acc;
+      }, {}),
+    )
+      .map(([, value]) => ({
+        label: value.label,
+        count: value.count,
+        avgLikeScore: value.count ? value.likeSum / value.count : 0,
+      }))
+      .sort((a, b) => b.count - a.count || b.avgLikeScore - a.avgLikeScore)
+      .slice(0, 5);
+
+    const totals = {
+      recipesCount: rowsResult.rows.length,
+      methods: aggregate(rowsResult.rows, 'method'),
+      strengths: aggregate(rowsResult.rows, 'strength_preference'),
+      tasteProfiles: aggregate(rowsResult.rows, 'taste_profile'),
+    };
+
+    return res.status(200).json({
+      days,
+      totals,
+      aiSummary: buildRecipeInsightsSummary({ days, totals }),
+    });
+  } catch (error) {
+    if (error?.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('[CoffeeRecipes] Failed to load insights', error);
+    return next(error);
+  }
+});
+
 
 export default router;

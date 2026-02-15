@@ -265,6 +265,11 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
         selectedPreparation,
         strengthPreference,
         recipe: payload.recipe,
+        likePrediction: payload.likePrediction || {
+          score: 50,
+          verdict: 'Predikcia zatiaľ nie je dostupná.',
+          reason: 'Skús recept upraviť podľa vlastnej chuti.',
+        },
       });
     } catch (error) {
       const message =

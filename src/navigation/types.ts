@@ -29,6 +29,11 @@ export type RootStackParamList = {
       steps: string[];
       baristaTips: string[];
     };
+    likePrediction: {
+      score: number;
+      verdict: string;
+      reason: string;
+    };
   };
   CoffeeQuestionnaire: undefined;
   CoffeeQuestionnaireResult: {
@@ -45,7 +50,7 @@ export type RootStackParamList = {
     labelImageBase64: string;
   };
   CoffeeInventory: undefined;
-  CoffeeJournal: undefined;
+  CoffeeRecipesSaved: undefined;
 };
 
 export type AuthStackParamList = {
