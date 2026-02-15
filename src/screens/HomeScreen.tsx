@@ -49,6 +49,14 @@ function HomeScreen({ navigation }: Props) {
   const [coffeeProfile, setCoffeeProfile] = useState<CoffeeProfilePayload['coffeeProfile'] | null>(
     null,
   );
+  const loadSavedProfiles = useCallback(async () => {
+    const [latestQuestionnaire, latestCoffee] = await Promise.all([
+      loadLatestQuestionnaireResult(),
+      loadLatestCoffeeProfile(),
+    ]);
+    setUserProfile(latestQuestionnaire?.payload?.profile ?? null);
+    setCoffeeProfile(latestCoffee?.payload?.coffeeProfile ?? null);
+  }, []);
   const [inventoryItems, setInventoryItems] = useState<HomeInventoryItem[]>([]);
   const [recipes, setRecipes] = useState<RecipeItem[]>([]);
   const [dashboardState, setDashboardState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -98,15 +106,6 @@ function HomeScreen({ navigation }: Props) {
       console.warn('[Auth] Logout failed.', error);
     }
   };
-
-  const loadSavedProfiles = useCallback(async () => {
-    const [latestQuestionnaire, latestCoffee] = await Promise.all([
-      loadLatestQuestionnaireResult(),
-      loadLatestCoffeeProfile(),
-    ]);
-    setUserProfile(latestQuestionnaire?.payload?.profile ?? null);
-    setCoffeeProfile(latestCoffee?.payload?.coffeeProfile ?? null);
-  }, []);
 
   useEffect(() => {
     loadSavedProfiles();
