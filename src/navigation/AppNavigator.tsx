@@ -8,6 +8,7 @@ import CoffeePhotoRecipeResultScreen from '../screens/CoffeePhotoRecipeResultScr
 import OcrResultScreen from '../screens/OcrResultScreen';
 import CoffeeQuestionnaireScreen from '../screens/CoffeeQuestionnaireScreen';
 import CoffeeQuestionnaireResultScreen from '../screens/CoffeeQuestionnaireResultScreen';
+import CoffeeInventoryScreen from '../screens/CoffeeInventoryScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import AuthLoadingScreen from '../screens/AuthLoadingScreen';
@@ -85,6 +86,13 @@ function MainNavigator() {
         component={OcrResultScreen}
         options={{
           title: 'OCR Result',
+        }}
+      />
+      <AppStack.Screen
+        name="CoffeeInventory"
+        component={CoffeeInventoryScreen}
+        options={{
+          title: 'Coffee inventár',
         }}
       />
     </AppStack.Navigator>
