@@ -40,6 +40,8 @@ function OcrResultScreen({ route }: Props) {
     'idle' | 'saving' | 'saved' | 'error'
   >('idle');
   const [inventoryError, setInventoryError] = useState('');
+  const [packageSizeG, setPackageSizeG] = useState('250');
+  const [remainingG, setRemainingG] = useState('');
   const { user } = useAuth();
 
   const handleSave = useCallback(async () => {
@@ -79,6 +81,11 @@ function OcrResultScreen({ route }: Props) {
             labelImageBase64,
             coffeeProfile,
             aiMatchResult: matchResult,
+            packageSizeG: Number.parseInt(packageSizeG, 10),
+            remainingG: remainingG.trim().length > 0 ? Number.parseInt(remainingG, 10) : null,
+            trackingMode: remainingG.trim().length > 0 || packageSizeG.trim().length > 0
+              ? 'manual'
+              : 'estimated',
           }),
         },
         {
@@ -243,6 +250,58 @@ function OcrResultScreen({ route }: Props) {
           <Text style={styles.text}>
             Kúpil si túto kávu? Ak áno, uložím ju do tvojho inventára.
           </Text>
+          <Text style={styles.profileTitle}>Veľkosť balíka (g)</Text>
+          <View style={styles.packageOptionsRow}>
+            {['250', '500', '1000'].map((value) => {
+              const isActive = packageSizeG === value;
+              return (
+                <Pressable
+                  key={value}
+                  style={[styles.packageOption, isActive && styles.packageOptionActive]}
+                  onPress={() => setPackageSizeG(value)}
+                >
+                  <Text
+                    style={[
+                      styles.packageOptionText,
+                      isActive && styles.packageOptionTextActive,
+                    ]}
+                  >
+                    {value} g
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={styles.profileTitle}>Zostáva teraz (voliteľné)</Text>
+          <View style={styles.remainingInputWrap}>
+            <Text style={styles.remainingPrefix}>g</Text>
+            <Text
+              style={styles.remainingValue}
+            >
+              {remainingG.trim().length > 0 ? remainingG : 'nevyplnené'}
+            </Text>
+          </View>
+          <View style={styles.packageOptionsRow}>
+            {['', '50', '100', '150', '200'].map((value) => {
+              const isActive = remainingG === value;
+              return (
+                <Pressable
+                  key={value || 'none'}
+                  style={[styles.packageOption, isActive && styles.packageOptionActive]}
+                  onPress={() => setRemainingG(value)}
+                >
+                  <Text
+                    style={[
+                      styles.packageOptionText,
+                      isActive && styles.packageOptionTextActive,
+                    ]}
+                  >
+                    {value ? `${value} g` : 'nechať prázdne'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
           <Pressable
             style={({ pressed }) => [
               styles.inventoryButton,
@@ -428,6 +487,47 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 10,
     alignItems: 'center',
+  },
+  packageOptionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  packageOption: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
+  },
+  packageOptionActive: {
+    borderColor: '#2563eb',
+    backgroundColor: '#dbeafe',
+  },
+  packageOptionText: {
+    fontSize: 12,
+    color: '#334155',
+    fontWeight: '600',
+  },
+  packageOptionTextActive: {
+    color: '#1d4ed8',
+  },
+  remainingInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  remainingPrefix: {
+    color: '#64748b',
+    fontSize: 12,
+  },
+  remainingValue: {
+    color: '#0f172a',
+    fontSize: 13,
+    fontWeight: '600',
   },
   block: {
     marginBottom: 20,
