@@ -8,6 +8,7 @@ const router = express.Router();
 router.get('/api/user-coffee', async (req, res, next) => {
   try {
     const session = await requireSession(req);
+    const statusFilter = req.query.status === 'all' ? 'all' : 'active';
 
     const result = await db.query(
       `SELECT id,
@@ -17,11 +18,13 @@ router.get('/api/user-coffee', async (req, res, next) => {
               ai_match_result,
               label_image_base64,
               loved,
+              coalesce(status, 'active') as status,
               created_at
        FROM user_coffee
        WHERE user_id = $1
+         AND ($2 = 'all' OR coalesce(status, 'active') = 'active')
        ORDER BY created_at DESC`,
-      [session.uid],
+      [session.uid, statusFilter],
     );
 
     return res.status(200).json({
@@ -33,6 +36,7 @@ router.get('/api/user-coffee', async (req, res, next) => {
         aiMatchResult: row.ai_match_result,
         labelImageBase64: row.label_image_base64,
         loved: Boolean(row.loved),
+        status: row.status,
         createdAt: row.created_at,
       })),
     });
@@ -129,7 +133,67 @@ router.patch('/api/user-coffee/:id', async (req, res, next) => {
   }
 });
 
-router.delete('/api/user-coffee/:id', async (req, res, next) => {
+router.post('/api/user-coffee/:id/mark-empty', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+    const { id } = req.params;
+
+    const result = await db.query(
+      `UPDATE user_coffee
+       SET status = 'empty'
+       WHERE id = $1 AND user_id = $2
+       RETURNING id, status`,
+      [id, session.uid],
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).json({ error: 'Káva nebola nájdená.' });
+    }
+
+    return res.status(200).json({
+      id: result.rows[0].id,
+      status: result.rows[0].status,
+    });
+  } catch (error) {
+    if (error?.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('[UserCoffee] Failed to mark coffee as empty', error);
+    return next(error);
+  }
+});
+
+router.post('/api/user-coffee/:id/archive', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+    const { id } = req.params;
+
+    const result = await db.query(
+      `UPDATE user_coffee
+       SET status = 'archived'
+       WHERE id = $1 AND user_id = $2
+       RETURNING id, status`,
+      [id, session.uid],
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).json({ error: 'Káva nebola nájdená.' });
+    }
+
+    return res.status(200).json({
+      id: result.rows[0].id,
+      status: result.rows[0].status,
+    });
+  } catch (error) {
+    if (error?.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('[UserCoffee] Failed to archive coffee', error);
+    return next(error);
+  }
+});
+
+router.delete('/api/user-coffee/:id/delete-permanently', async (req, res, next) => {
   try {
     const session = await requireSession(req);
     const { id } = req.params;
@@ -150,7 +214,7 @@ router.delete('/api/user-coffee/:id', async (req, res, next) => {
     if (error?.status) {
       return res.status(error.status).json({ error: error.message });
     }
-    console.error('[UserCoffee] Failed to delete coffee', error);
+    console.error('[UserCoffee] Failed to permanently delete coffee', error);
     return next(error);
   }
 });
