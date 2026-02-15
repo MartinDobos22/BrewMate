@@ -40,7 +40,8 @@ function OcrResultScreen({ route }: Props) {
     'idle' | 'saving' | 'saved' | 'error'
   >('idle');
   const [inventoryError, setInventoryError] = useState('');
-  const [packageSizeG, setPackageSizeG] = useState('250');
+  const [showInventoryDetails, setShowInventoryDetails] = useState(false);
+  const [packageSizeG, setPackageSizeG] = useState('');
   const [remainingG, setRemainingG] = useState('');
   const { user } = useAuth();
 
@@ -81,7 +82,10 @@ function OcrResultScreen({ route }: Props) {
             labelImageBase64,
             coffeeProfile,
             aiMatchResult: matchResult,
-            packageSizeG: Number.parseInt(packageSizeG, 10),
+            packageSizeG:
+              packageSizeG.trim().length > 0
+                ? Number.parseInt(packageSizeG, 10)
+                : null,
             remainingG: remainingG.trim().length > 0 ? Number.parseInt(remainingG, 10) : null,
             trackingMode: remainingG.trim().length > 0 || packageSizeG.trim().length > 0
               ? 'manual'
@@ -104,6 +108,7 @@ function OcrResultScreen({ route }: Props) {
       }
 
       setInventoryState('saved');
+      setShowInventoryDetails(false);
     } catch (error) {
       const message =
         error instanceof Error
@@ -112,7 +117,16 @@ function OcrResultScreen({ route }: Props) {
       setInventoryError(message);
       setInventoryState('error');
     }
-  }, [coffeeProfile, correctedText, labelImageBase64, matchResult, rawText, user]);
+  }, [
+    coffeeProfile,
+    correctedText,
+    labelImageBase64,
+    matchResult,
+    packageSizeG,
+    rawText,
+    remainingG,
+    user,
+  ]);
 
   useEffect(() => {
     let isActive = true;
@@ -248,73 +262,89 @@ function OcrResultScreen({ route }: Props) {
         <View style={styles.inventoryBlock}>
           <Text style={styles.label}>Inventár</Text>
           <Text style={styles.text}>
-            Kúpil si túto kávu? Ak áno, uložím ju do tvojho inventára.
+            Ak si túto kávu nekúpil, nič nemusíš vypĺňať. Inventár je len voliteľný.
           </Text>
-          <Text style={styles.profileTitle}>Veľkosť balíka (g)</Text>
-          <View style={styles.packageOptionsRow}>
-            {['250', '500', '1000'].map((value) => {
-              const isActive = packageSizeG === value;
-              return (
-                <Pressable
-                  key={value}
-                  style={[styles.packageOption, isActive && styles.packageOptionActive]}
-                  onPress={() => setPackageSizeG(value)}
-                >
-                  <Text
-                    style={[
-                      styles.packageOptionText,
-                      isActive && styles.packageOptionTextActive,
-                    ]}
-                  >
-                    {value} g
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <Text style={styles.profileTitle}>Zostáva teraz (voliteľné)</Text>
-          <View style={styles.remainingInputWrap}>
-            <Text style={styles.remainingPrefix}>g</Text>
-            <Text
-              style={styles.remainingValue}
+          {!showInventoryDetails ? (
+            <Pressable
+              style={({ pressed }) => [styles.inventoryButton, pressed && styles.saveButtonPressed]}
+              onPress={() => {
+                setInventoryState('idle');
+                setInventoryError('');
+                setShowInventoryDetails(true);
+              }}
             >
-              {remainingG.trim().length > 0 ? remainingG : 'nevyplnené'}
-            </Text>
-          </View>
-          <View style={styles.packageOptionsRow}>
-            {['', '50', '100', '150', '200'].map((value) => {
-              const isActive = remainingG === value;
-              return (
-                <Pressable
-                  key={value || 'none'}
-                  style={[styles.packageOption, isActive && styles.packageOptionActive]}
-                  onPress={() => setRemainingG(value)}
-                >
-                  <Text
-                    style={[
-                      styles.packageOptionText,
-                      isActive && styles.packageOptionTextActive,
-                    ]}
-                  >
-                    {value ? `${value} g` : 'nechať prázdne'}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <Pressable
-            style={({ pressed }) => [
-              styles.inventoryButton,
-              pressed && styles.saveButtonPressed,
-              (inventoryState === 'saving' || !user) && styles.saveButtonDisabled,
-            ]}
-            onPress={handleInventorySave}
-            disabled={inventoryState === 'saving' || !user}
-          >
-            <Text style={styles.saveButtonText}>
-              {inventoryState === 'saving' ? 'Ukladám...' : 'Áno, kúpil som'}
-            </Text>
-          </Pressable>
+              <Text style={styles.saveButtonText}>Kúpil som ju, pridať do inventára</Text>
+            </Pressable>
+          ) : null}
+          {showInventoryDetails ? (
+            <>
+              <Text style={styles.profileTitle}>Veľkosť balíka (voliteľné)</Text>
+              <View style={styles.packageOptionsRow}>
+                {['', '250', '500', '1000'].map((value) => {
+                  const isActive = packageSizeG === value;
+                  return (
+                    <Pressable
+                      key={value || 'empty'}
+                      style={[styles.packageOption, isActive && styles.packageOptionActive]}
+                      onPress={() => setPackageSizeG(value)}
+                    >
+                      <Text
+                        style={[
+                          styles.packageOptionText,
+                          isActive && styles.packageOptionTextActive,
+                        ]}
+                      >
+                        {value ? `${value} g` : 'nechať prázdne'}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <Text style={styles.profileTitle}>Zostáva teraz (voliteľné)</Text>
+              <View style={styles.remainingInputWrap}>
+                <Text style={styles.remainingPrefix}>g</Text>
+                <Text style={styles.remainingValue}>
+                  {remainingG.trim().length > 0 ? remainingG : 'nevyplnené'}
+                </Text>
+              </View>
+              <View style={styles.packageOptionsRow}>
+                {['', '50', '100', '150', '200'].map((value) => {
+                  const isActive = remainingG === value;
+                  return (
+                    <Pressable
+                      key={value || 'none'}
+                      style={[styles.packageOption, isActive && styles.packageOptionActive]}
+                      onPress={() => setRemainingG(value)}
+                    >
+                      <Text
+                        style={[
+                          styles.packageOptionText,
+                          isActive && styles.packageOptionTextActive,
+                        ]}
+                      >
+                        {value ? `${value} g` : 'nechať prázdne'}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          ) : null}
+          {showInventoryDetails ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.inventoryButton,
+                pressed && styles.saveButtonPressed,
+                (inventoryState === 'saving' || !user) && styles.saveButtonDisabled,
+              ]}
+              onPress={handleInventorySave}
+              disabled={inventoryState === 'saving' || !user}
+            >
+              <Text style={styles.saveButtonText}>
+                {inventoryState === 'saving' ? 'Ukladám...' : 'Uložiť do inventára'}
+              </Text>
+            </Pressable>
+          ) : null}
           {!user ? (
             <Text style={styles.helperNote}>
               Pre uloženie do inventára sa musíš prihlásiť.
