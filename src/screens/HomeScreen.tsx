@@ -246,7 +246,7 @@ function HomeScreen({ navigation }: Props) {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Rýchly prehľad</Text>
-          {dashboardState === 'loading' ? <ActivityIndicator color="#1f6f5b" /> : null}
+          {dashboardState === 'loading' ? <ActivityIndicator color="#6B4F3A" /> : null}
           {dashboardState === 'error' ? <Text style={styles.errorText}>{dashboardError}</Text> : null}
 
           <View style={styles.metricsWrap}>
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 24,
     paddingBottom: 48,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#F6F3EE',
   },
   title: {
     fontSize: 32,
@@ -400,11 +400,11 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   section: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#E3DED6',
     marginBottom: 20,
   },
   inlineHeader: {
@@ -417,18 +417,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 8,
-    color: '#0f172a',
+    color: '#3E2F25',
   },
   placeholder: {
     fontSize: 14,
-    color: '#475569',
+    color: '#6F6A64',
     marginBottom: 12,
   },
   matchScore: {
     marginTop: 12,
     fontSize: 16,
     fontWeight: '700',
-    color: '#1f6f5b',
+    color: '#6B4F3A',
   },
   metricsWrap: {
     flexDirection: 'row',
@@ -438,93 +438,93 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     minWidth: '47%',
-    backgroundColor: '#f1f5f9',
-    borderRadius: 12,
+    backgroundColor: '#EDE8E0',
+    borderRadius: 16,
     padding: 12,
   },
   metricValue: {
-    color: '#0f172a',
+    color: '#3E2F25',
     fontSize: 18,
     fontWeight: '700',
   },
   metricLabel: {
-    color: '#475569',
+    color: '#6F6A64',
     marginTop: 3,
     fontSize: 13,
   },
   summaryText: {
     marginTop: 10,
-    color: '#334155',
+    color: '#6F6A64',
   },
   previewCard: {
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#E3DED6',
     borderRadius: 10,
     padding: 10,
     marginBottom: 8,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#F6F3EE',
   },
   previewTitle: {
-    color: '#0f172a',
+    color: '#3E2F25',
     fontWeight: '700',
     fontSize: 14,
   },
   previewMeta: {
-    color: '#475569',
+    color: '#6F6A64',
     marginTop: 3,
     fontSize: 12,
   },
   recommendCard: {
-    backgroundColor: '#eefbf3',
+    backgroundColor: '#EEF1E5',
     borderWidth: 1,
-    borderColor: '#bbf7d0',
+    borderColor: '#D8DECA',
     borderRadius: 10,
     padding: 10,
     marginBottom: 8,
   },
   link: {
-    color: '#1f6f5b',
+    color: '#6B4F3A',
     fontWeight: '700',
   },
   errorText: {
-    color: '#b91c1c',
+    color: '#B3261E',
     marginTop: 6,
   },
   button: {
-    backgroundColor: '#1f6f5b',
+    backgroundColor: '#6B4F3A',
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 8,
+    borderRadius: 16,
     marginBottom: 12,
     minWidth: 200,
     alignItems: 'center',
   },
   buttonSecondary: {
-    backgroundColor: '#0f172a',
+    backgroundColor: '#3E2F25',
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 8,
+    borderRadius: 16,
     minWidth: 200,
     alignItems: 'center',
     marginBottom: 12,
   },
   buttonText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
   buttonOutline: {
-    borderColor: '#1f6f5b',
+    borderColor: '#6B4F3A',
     borderWidth: 1,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 8,
+    borderRadius: 16,
     minWidth: 200,
     alignItems: 'center',
     marginTop: 12,
   },
   buttonOutlineText: {
-    color: '#1f6f5b',
+    color: '#6B4F3A',
     fontSize: 16,
     fontWeight: '600',
   },

@@ -50,22 +50,22 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0f172a',
+    color: '#3E2F25',
   },
   value: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1f6f5b',
+    color: '#6B4F3A',
   },
   bar: {
     height: 8,
-    backgroundColor: '#e2e8f0',
+    backgroundColor: '#E3DED6',
     borderRadius: 999,
     overflow: 'hidden',
   },
   barFill: {
     height: '100%',
-    backgroundColor: '#1f6f5b',
+    backgroundColor: '#6B4F3A',
     borderRadius: 999,
   },
 });

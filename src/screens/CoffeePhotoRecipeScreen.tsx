@@ -532,7 +532,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
   },
   container: {
     flexGrow: 1,
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#4a4a4a',
+    color: '#6F6A64',
     marginBottom: 16,
   },
   block: {
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
   helperText: {
     marginTop: 8,
     fontSize: 12,
-    color: '#6b6b6b',
+    color: '#6F6A64',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -569,13 +569,13 @@ const styles = StyleSheet.create({
   secondaryButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#1f6f5b',
+    borderColor: '#6B4F3A',
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 16,
     alignItems: 'center',
   },
   secondaryButtonText: {
-    color: '#1f6f5b',
+    color: '#6B4F3A',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -588,29 +588,29 @@ const styles = StyleSheet.create({
   },
   inventoryItem: {
     borderWidth: 1,
-    borderColor: '#d0d0d0',
-    borderRadius: 8,
+    borderColor: '#B7B7B7',
+    borderRadius: 16,
     padding: 10,
   },
   inventoryItemTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1f2933',
+    color: '#3E2F25',
   },
   inventoryItemMeta: {
     marginTop: 4,
     fontSize: 12,
-    color: '#6b6b6b',
+    color: '#6F6A64',
   },
   primaryButton: {
-    backgroundColor: '#1f6f5b',
+    backgroundColor: '#6B4F3A',
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 16,
     alignItems: 'center',
     marginBottom: 12,
   },
   primaryButtonText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -618,11 +618,11 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   errorText: {
-    color: '#b00020',
+    color: '#B3261E',
     marginTop: 8,
   },
   infoText: {
-    color: '#1f6f5b',
+    color: '#6B4F3A',
     marginTop: 8,
   },
   profileTitle: {
@@ -632,19 +632,19 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 14,
-    color: '#1f2933',
+    color: '#3E2F25',
     marginTop: 4,
   },
   optionCard: {
     borderWidth: 1,
-    borderColor: '#d0d0d0',
+    borderColor: '#B7B7B7',
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,
   },
   optionCardActive: {
-    borderColor: '#1f6f5b',
-    backgroundColor: '#ecf5f2',
+    borderColor: '#6B4F3A',
+    backgroundColor: '#EEF1E5',
   },
   optionTitle: {
     fontSize: 15,
@@ -653,7 +653,7 @@ const styles = StyleSheet.create({
   },
   optionText: {
     fontSize: 13,
-    color: '#4a4a4a',
+    color: '#6F6A64',
   },
   radioGroup: {
     gap: 10,
@@ -668,22 +668,22 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#1f6f5b',
+    borderColor: '#6B4F3A',
     alignItems: 'center',
     justifyContent: 'center',
   },
   radioOuterActive: {
-    borderColor: '#1f6f5b',
+    borderColor: '#6B4F3A',
   },
   radioInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#1f6f5b',
+    backgroundColor: '#6B4F3A',
   },
   radioLabel: {
     fontSize: 14,
-    color: '#1f2933',
+    color: '#3E2F25',
   },
 });
 

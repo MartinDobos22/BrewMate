@@ -373,7 +373,7 @@ function CoffeeInventoryScreen() {
           </Pressable>
         </View>
 
-        {state === 'loading' ? <ActivityIndicator color="#1f6f5b" /> : null}
+        {state === 'loading' ? <ActivityIndicator color="#6B4F3A" /> : null}
         {state === 'error' ? <Text style={styles.error}>{errorMessage}</Text> : null}
 
         <Text style={styles.caption}>Zobrazená kategória: {filterLabel}</Text>
@@ -512,7 +512,7 @@ function CoffeeInventoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#ffffff' },
+  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   container: { padding: 20, paddingBottom: 40 },
   title: { fontSize: 24, fontWeight: '700', marginBottom: 12 },
   filterTabs: {
@@ -523,31 +523,31 @@ const styles = StyleSheet.create({
   },
   filterButton: {
     borderWidth: 1,
-    borderColor: '#1f6f5b',
+    borderColor: '#6B4F3A',
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
   },
   filterButtonActive: {
-    backgroundColor: '#1f6f5b',
+    backgroundColor: '#6B4F3A',
   },
-  filterButtonText: { color: '#1f6f5b', fontWeight: '700' },
-  filterButtonTextActive: { color: '#ffffff' },
-  caption: { color: '#475569', marginBottom: 12 },
-  error: { color: '#b91c1c', marginBottom: 12 },
-  empty: { color: '#475569', fontSize: 14 },
+  filterButtonText: { color: '#6B4F3A', fontWeight: '700' },
+  filterButtonTextActive: { color: '#FFFFFF' },
+  caption: { color: '#6F6A64', marginBottom: 12 },
+  error: { color: '#B3261E', marginBottom: 12 },
+  empty: { color: '#6F6A64', fontSize: 14 },
   card: {
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
+    borderColor: '#E3DED6',
+    borderRadius: 16,
     padding: 14,
     marginBottom: 12,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#F6F3EE',
   },
-  date: { color: '#64748b', fontSize: 12, marginBottom: 8 },
-  label: { fontSize: 13, fontWeight: '700', color: '#1f6f5b', marginTop: 8 },
-  text: { fontSize: 14, color: '#0f172a', marginTop: 4 },
+  date: { color: '#6F6A64', fontSize: 12, marginBottom: 8 },
+  label: { fontSize: 13, fontWeight: '700', color: '#6B4F3A', marginTop: 8 },
+  text: { fontSize: 14, color: '#3E2F25', marginTop: 4 },
   quickActionsWrap: {
     marginTop: 10,
     flexDirection: 'row',
@@ -555,12 +555,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   quickAction: {
-    backgroundColor: '#e2e8f0',
-    borderRadius: 8,
+    backgroundColor: '#E3DED6',
+    borderRadius: 16,
     paddingVertical: 8,
     paddingHorizontal: 10,
   },
-  quickActionText: { color: '#1f2937', fontWeight: '600' },
+  quickActionText: { color: '#3E2F25', fontWeight: '600' },
   inlineRow: {
     marginTop: 10,
     flexDirection: 'row',
@@ -569,52 +569,52 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
+    borderColor: '#D1CBC2',
+    borderRadius: 16,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
   },
   inlineButton: {
-    backgroundColor: '#1f6f5b',
-    borderRadius: 8,
+    backgroundColor: '#6B4F3A',
+    borderRadius: 16,
     paddingVertical: 8,
     paddingHorizontal: 12,
     justifyContent: 'center',
   },
-  inlineButtonText: { color: '#ffffff', fontWeight: '700' },
+  inlineButtonText: { color: '#FFFFFF', fontWeight: '700' },
   actions: { marginTop: 12, gap: 8 },
   badge: {
-    backgroundColor: '#e2e8f0',
+    backgroundColor: '#E3DED6',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: 16,
     alignItems: 'center',
   },
   badgeActive: {
     backgroundColor: '#fef08a',
   },
-  badgeText: { fontWeight: '600', color: '#1f2937' },
+  badgeText: { fontWeight: '600', color: '#3E2F25' },
   statusButton: {
-    backgroundColor: '#0f172a',
+    backgroundColor: '#3E2F25',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: 16,
     alignItems: 'center',
   },
   statusButtonText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   deleteButton: {
-    backgroundColor: '#ef4444',
+    backgroundColor: '#B3261E',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: 16,
     alignItems: 'center',
   },
   deleteButtonText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
     fontWeight: '700',
   },
 });

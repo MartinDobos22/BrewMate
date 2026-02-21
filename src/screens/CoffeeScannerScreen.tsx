@@ -455,7 +455,7 @@ function CoffeeScannerScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
   },
   flex: {
     flex: 1,
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#4a4a4a',
+    color: '#6F6A64',
     marginBottom: 16,
   },
   field: {
@@ -490,50 +490,50 @@ const styles = StyleSheet.create({
   secondaryButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#1f6f5b',
+    borderColor: '#6B4F3A',
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 16,
     alignItems: 'center',
   },
   secondaryButtonText: {
-    color: '#1f6f5b',
+    color: '#6B4F3A',
     fontSize: 14,
     fontWeight: '600',
   },
   helperText: {
     marginTop: 8,
     fontSize: 12,
-    color: '#6b6b6b',
+    color: '#6F6A64',
   },
   hintInput: {
     borderWidth: 1,
-    borderColor: '#d0d0d0',
-    borderRadius: 8,
+    borderColor: '#B7B7B7',
+    borderRadius: 16,
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontSize: 14,
     color: '#222222',
   },
   errorText: {
-    color: '#b00020',
+    color: '#B3261E',
     marginBottom: 12,
   },
   statusText: {
-    color: '#1f6f5b',
+    color: '#6B4F3A',
     marginBottom: 12,
     fontWeight: '600',
   },
   button: {
-    backgroundColor: '#1f6f5b',
+    backgroundColor: '#6B4F3A',
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 16,
     alignItems: 'center',
   },
   buttonDisabled: {
     opacity: 0.7,
   },
   buttonText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 999,
   },
   loadingMetaRow: {
@@ -558,12 +558,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   loadingText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
   },
   loadingStageText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '500',
   },

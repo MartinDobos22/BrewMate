@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   saveButton: {
-    backgroundColor: '#1f6f5b',
+    backgroundColor: '#6B4F3A',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 10,
@@ -137,17 +137,17 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   saveButtonText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   saveHint: {
     marginTop: 8,
-    color: '#14532d',
+    color: '#6B4F3A',
     fontWeight: '600',
   },
   saveError: {
     marginTop: 8,
-    color: '#b91c1c',
+    color: '#B3261E',
     fontWeight: '600',
   },
   section: {
@@ -159,38 +159,38 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   profileBlock: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
+    backgroundColor: '#F6F3EE',
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#E3DED6',
   },
   profileLabel: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1f6f5b',
+    color: '#6B4F3A',
     marginBottom: 6,
   },
   profileText: {
     fontSize: 14,
-    color: '#111827',
+    color: '#3E2F25',
     lineHeight: 20,
   },
   answerRow: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#E3DED6',
   },
   answerQuestion: {
     fontWeight: '600',
     marginBottom: 4,
   },
   answerValue: {
-    color: '#374151',
+    color: '#6F6A64',
   },
 });
 
