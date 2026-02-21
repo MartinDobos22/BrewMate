@@ -200,7 +200,7 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
         >
           {isSubmitting ? (
             <View style={styles.submitRow}>
-              <ActivityIndicator color="#ffffff" />
+              <ActivityIndicator color="#FFFFFF" />
               <Text style={styles.submitText}>Vyhodnocujem...</Text>
             </View>
           ) : (
@@ -231,12 +231,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   card: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
+    backgroundColor: '#F6F3EE',
+    borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#E3DED6',
   },
   question: {
     fontSize: 16,
@@ -250,33 +250,33 @@ const styles = StyleSheet.create({
   },
   optionSelected: {
     backgroundColor: '#e0f2f1',
-    borderRadius: 8,
+    borderRadius: 16,
     paddingHorizontal: 8,
   },
   radio: {
     width: 16,
     height: 16,
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#6b7280',
+    borderColor: '#6F6A64',
     marginRight: 10,
   },
   radioSelected: {
-    borderColor: '#1f6f5b',
-    backgroundColor: '#1f6f5b',
+    borderColor: '#6B4F3A',
+    backgroundColor: '#6B4F3A',
   },
   optionLabel: {
     flex: 1,
     fontSize: 14,
-    color: '#111827',
+    color: '#3E2F25',
   },
   error: {
-    color: '#b91c1c',
+    color: '#B3261E',
     marginBottom: 16,
     fontWeight: '600',
   },
   submitButton: {
-    backgroundColor: '#1f6f5b',
+    backgroundColor: '#6B4F3A',
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   submitText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 16,
   },

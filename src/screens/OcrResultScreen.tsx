@@ -467,7 +467,7 @@ function OcrResultScreen({ route }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
   },
   container: {
     padding: 24,
@@ -481,7 +481,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   saveButton: {
-    backgroundColor: '#1f6f5b',
+    backgroundColor: '#6B4F3A',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 10,
@@ -494,17 +494,17 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   saveButtonText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   saveHint: {
     marginTop: 8,
-    color: '#14532d',
+    color: '#6B4F3A',
     fontWeight: '600',
   },
   saveError: {
     marginTop: 8,
-    color: '#b91c1c',
+    color: '#B3261E',
     fontWeight: '600',
   },
   inventoryBlock: {
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
   },
   inventoryButton: {
     marginTop: 12,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#8A9A5B',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 10,
@@ -526,23 +526,23 @@ const styles = StyleSheet.create({
   },
   packageOption: {
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: '#D1CBC2',
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
   },
   packageOptionActive: {
-    borderColor: '#2563eb',
-    backgroundColor: '#dbeafe',
+    borderColor: '#8A9A5B',
+    backgroundColor: '#EEF1E5',
   },
   packageOptionText: {
     fontSize: 12,
-    color: '#334155',
+    color: '#6F6A64',
     fontWeight: '600',
   },
   packageOptionTextActive: {
-    color: '#1d4ed8',
+    color: '#6B4F3A',
   },
   remainingInputWrap: {
     flexDirection: 'row',
@@ -551,11 +551,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   remainingPrefix: {
-    color: '#64748b',
+    color: '#6F6A64',
     fontSize: 12,
   },
   remainingValue: {
-    color: '#0f172a',
+    color: '#3E2F25',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 10,
     marginBottom: 4,
-    color: '#1f6f5b',
+    color: '#6B4F3A',
   },
   text: {
     fontSize: 14,
@@ -581,38 +581,38 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
-    color: '#b91c1c',
+    color: '#B3261E',
     fontWeight: '600',
   },
   verdictBadge: {
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 12,
     marginBottom: 12,
   },
   verdictPositive: {
-    backgroundColor: '#dcfce7',
+    backgroundColor: '#EEF1E5',
     borderWidth: 1,
-    borderColor: '#16a34a',
+    borderColor: '#8A9A5B',
   },
   verdictNegative: {
     backgroundColor: '#fee2e2',
     borderWidth: 1,
-    borderColor: '#ef4444',
+    borderColor: '#B3261E',
   },
   verdictText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: '#3E2F25',
   },
   verdictSubText: {
     marginTop: 4,
     fontSize: 12,
-    color: '#374151',
+    color: '#6F6A64',
   },
   helperNote: {
     marginTop: 12,
     fontSize: 12,
-    color: '#6b7280',
+    color: '#6F6A64',
   },
 });
 

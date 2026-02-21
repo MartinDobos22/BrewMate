@@ -171,7 +171,7 @@ function LoginScreen({ navigation, route }: Props) {
           onPress={handleLogin}
           disabled={loading}
         >
-          {loading ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.primaryButtonText}>Prihlásiť</Text>}
+          {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>Prihlásiť</Text>}
         </Pressable>
 
         <View style={styles.dividerContainer}>
@@ -210,7 +210,7 @@ function LoginScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0b0b0b',
+    backgroundColor: '#F6F3EE',
   },
   container: {
     flexGrow: 1,
@@ -220,42 +220,42 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#ffffff',
+    color: '#FFFFFF',
   },
   subtitle: {
     fontSize: 16,
-    color: '#cbd5f5',
+    color: '#6F6A64',
     marginBottom: 24,
   },
   inputGroup: {
     marginBottom: 16,
   },
   label: {
-    color: '#94a3b8',
+    color: '#6F6A64',
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#111827',
-    borderRadius: 10,
+    backgroundColor: '#3E2F25',
+    borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: '#ffffff',
+    color: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#1f2937',
+    borderColor: '#B7B7B7',
   },
   errorText: {
-    color: '#f87171',
+    color: '#B3261E',
     marginBottom: 12,
   },
   primaryButton: {
-    backgroundColor: '#1f6f5b',
+    backgroundColor: '#6B4F3A',
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 16,
     alignItems: 'center',
     marginTop: 8,
   },
   primaryButtonText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -267,23 +267,23 @@ const styles = StyleSheet.create({
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: '#1f2937',
+    backgroundColor: '#3E2F25',
   },
   dividerText: {
-    color: '#64748b',
+    color: '#6F6A64',
     paddingHorizontal: 12,
   },
   socialButton: {
-    backgroundColor: '#111827',
-    borderRadius: 10,
+    backgroundColor: '#3E2F25',
+    borderRadius: 16,
     paddingVertical: 12,
     alignItems: 'center',
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#1f2937',
+    borderColor: '#B7B7B7',
   },
   socialButtonText: {
-    color: '#e2e8f0',
+    color: '#E3DED6',
     fontWeight: '600',
   },
   disabledButton: {
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   footerText: {
-    color: '#94a3b8',
+    color: '#6F6A64',
     marginRight: 6,
   },
   footerLink: {

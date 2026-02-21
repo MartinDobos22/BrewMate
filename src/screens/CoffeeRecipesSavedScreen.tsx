@@ -100,16 +100,16 @@ function CoffeeRecipesSavedScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { padding: 20, gap: 14 },
-  title: { fontSize: 28, fontWeight: '700', color: '#0f172a' },
-  card: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 16, padding: 14 },
-  cardTitle: { fontSize: 17, fontWeight: '700', marginBottom: 8, color: '#0f172a' },
-  text: { color: '#0f172a' },
-  favorite: { marginTop: 8, color: '#1f6f5b', fontWeight: '600' },
-  item: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  itemTitle: { color: '#0f172a', fontWeight: '600' },
-  meta: { color: '#475569', fontSize: 12, marginTop: 2 },
-  muted: { color: '#64748b' },
-  error: { color: '#b91c1c', fontWeight: '600' },
+  title: { fontSize: 28, fontWeight: '700', color: '#3E2F25' },
+  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E3DED6', borderRadius: 16, padding: 14 },
+  cardTitle: { fontSize: 17, fontWeight: '700', marginBottom: 8, color: '#3E2F25' },
+  text: { color: '#3E2F25' },
+  favorite: { marginTop: 8, color: '#6B4F3A', fontWeight: '600' },
+  item: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#EDE8E0' },
+  itemTitle: { color: '#3E2F25', fontWeight: '600' },
+  meta: { color: '#6F6A64', fontSize: 12, marginTop: 2 },
+  muted: { color: '#6F6A64' },
+  error: { color: '#B3261E', fontWeight: '600' },
 });
 
 export default CoffeeRecipesSavedScreen;

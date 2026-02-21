@@ -115,21 +115,21 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#fff' },
+  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   container: { padding: 24, gap: 12 },
-  title: { fontSize: 24, fontWeight: '700', color: '#0f172a' },
-  card: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, padding: 14 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8, color: '#0f172a' },
-  text: { fontSize: 14, color: '#334155', marginBottom: 4 },
-  highlight: { fontWeight: '700', color: '#1f6f5b', marginBottom: 8 },
+  title: { fontSize: 24, fontWeight: '700', color: '#3E2F25' },
+  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E3DED6', borderRadius: 16, padding: 14 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8, color: '#3E2F25' },
+  text: { fontSize: 14, color: '#6F6A64', marginBottom: 4 },
+  highlight: { fontWeight: '700', color: '#6B4F3A', marginBottom: 8 },
   warning: { color: '#b45309', fontWeight: '600' },
-  primaryButton: { backgroundColor: '#1f6f5b', borderRadius: 8, alignItems: 'center', paddingVertical: 12 },
-  primaryButtonText: { color: '#fff', fontWeight: '600' },
-  secondaryButton: { borderWidth: 1, borderColor: '#1f6f5b', borderRadius: 8, alignItems: 'center', paddingVertical: 12 },
-  secondaryButtonText: { color: '#1f6f5b', fontWeight: '600' },
+  primaryButton: { backgroundColor: '#6B4F3A', borderRadius: 16, alignItems: 'center', paddingVertical: 12 },
+  primaryButtonText: { color: '#FFFFFF', fontWeight: '600' },
+  secondaryButton: { borderWidth: 1, borderColor: '#6B4F3A', borderRadius: 16, alignItems: 'center', paddingVertical: 12 },
+  secondaryButtonText: { color: '#6B4F3A', fontWeight: '600' },
   buttonDisabled: { opacity: 0.6 },
-  success: { color: '#166534', fontWeight: '600' },
-  error: { color: '#b91c1c', fontWeight: '600' },
+  success: { color: '#8A9A5B', fontWeight: '600' },
+  error: { color: '#B3261E', fontWeight: '600' },
 });
 
 export default CoffeePhotoRecipeResultScreen;
