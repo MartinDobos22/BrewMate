@@ -217,21 +217,6 @@ function HomeScreen({ navigation }: Props) {
     [inventoryTotals.active],
   );
 
-  const recommendedCoffee = useMemo(() => {
-    const withScore = inventoryTotals.active.map((item) => {
-      const openedPenalty = item.openedAt
-        ? Math.floor((Date.now() - new Date(item.openedAt).getTime()) / (1000 * 60 * 60 * 24))
-        : 0;
-      const lowStockBonus = typeof item.remainingG === 'number' && item.remainingG <= 80 ? 12 : 0;
-      return {
-        item,
-        score: openedPenalty + lowStockBonus,
-      };
-    });
-
-    return withScore.sort((a, b) => b.score - a.score).slice(0, 3);
-  }, [inventoryTotals.active]);
-
   const recipeHighlights = useMemo(() => {
     const sorted = [...recipes].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -290,36 +275,7 @@ function HomeScreen({ navigation }: Props) {
               return (
                 <View key={item.id} style={styles.previewCard}>
                   <Text style={styles.previewTitle}>{name}</Text>
-                  <Text style={styles.previewMeta}>
-                    {item.coffeeProfile?.origin || 'Neznámy pôvod'} • {item.coffeeProfile?.roastLevel || 'Neznáme praženie'}
-                  </Text>
                   <Text style={styles.previewMeta}>Zostáva: {remaining}</Text>
-                </View>
-              );
-            })
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Odporúčame vypiť najskôr</Text>
-          {recommendedCoffee.length === 0 ? (
-            <Text style={styles.placeholder}>Keď pridáš aktívne kávy, ukážeme ktoré otvoriť ako prvé.</Text>
-          ) : (
-            recommendedCoffee.map(({item}) => {
-              const coffeeName = item.correctedText || item.rawText || 'Neznáma káva';
-              const openDays = item.openedAt
-                ? Math.max(
-                  1,
-                  Math.floor((Date.now() - new Date(item.openedAt).getTime()) / (1000 * 60 * 60 * 24)),
-                )
-                : null;
-              return (
-                <View key={`${item.id}-recommendation`} style={styles.recommendCard}>
-                  <Text style={styles.previewTitle}>{coffeeName}</Text>
-                  <Text style={styles.previewMeta}>
-                    {openDays ? `Otvorená ${openDays} dní` : 'Bez dátumu otvorenia'}
-                    {typeof item.remainingG === 'number' ? ` • Zostáva ${item.remainingG} g` : ''}
-                  </Text>
                 </View>
               );
             })
@@ -473,14 +429,6 @@ const styles = StyleSheet.create({
     color: '#6F6A64',
     marginTop: 3,
     fontSize: 12,
-  },
-  recommendCard: {
-    backgroundColor: '#EEF1E5',
-    borderWidth: 1,
-    borderColor: '#D8DECA',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 8,
   },
   link: {
     color: '#6B4F3A',
