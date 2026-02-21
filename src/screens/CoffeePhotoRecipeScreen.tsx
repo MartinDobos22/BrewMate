@@ -26,6 +26,14 @@ type PhotoAnalysis = {
   summary: string;
 };
 
+type InventoryCoffee = {
+  id: string;
+  rawText: string | null;
+  correctedText: string | null;
+  labelImageBase64: string | null;
+  status: 'active' | 'empty' | 'archived';
+};
+
 const PICKER_TIMEOUT_MS = 2000000;
 const MAX_IMAGE_DIMENSION = 1600;
 const IMAGE_QUALITY = 0.6;
@@ -34,16 +42,21 @@ const MAX_BASE64_BYTES = 2_000_000;
 const estimateBase64Bytes = (base64: string) =>
   Math.ceil((base64.length * 3) / 4);
 
+const normalizeBase64 = (value: string) => value.replace(/^data:image\/\w+;base64,/, '').trim();
+
 function CoffeePhotoRecipeScreen({ navigation }: Props) {
   const [imageBase64, setImageBase64] = useState('');
-  const [imageUri, setImageUri] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<PhotoAnalysis | null>(null);
   const [selectedPreparation, setSelectedPreparation] = useState<string | null>(null);
   const [strengthPreference, setStrengthPreference] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [infoMessage, setInfoMessage] = useState('');
   const [isPicking, setIsPicking] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [inventoryItems, setInventoryItems] = useState<InventoryCoffee[]>([]);
+  const [isInventoryVisible, setIsInventoryVisible] = useState(false);
+  const [isInventoryLoading, setIsInventoryLoading] = useState(false);
 
   const strengthOptions = useMemo(
     () => ['jemné chute', 'slabšie', 'výraznejšie'],
@@ -69,7 +82,8 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
       return;
     }
 
-    const base64Bytes = estimateBase64Bytes(asset.base64);
+    const normalizedImage = normalizeBase64(asset.base64);
+    const base64Bytes = estimateBase64Bytes(normalizedImage);
     if (base64Bytes > MAX_BASE64_BYTES) {
       setErrorMessage(
         'Obrázok je stále príliš veľký. Skúste menší záber alebo iný súbor.',
@@ -78,8 +92,71 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     }
 
     setErrorMessage('');
-    setImageBase64(asset.base64);
-    setImageUri(asset.uri ?? null);
+    setInfoMessage('');
+    setImageBase64(normalizedImage);
+    setIsInventoryVisible(false);
+  };
+
+  const loadInventory = async () => {
+    if (isInventoryLoading) {
+      return;
+    }
+
+    setIsInventoryLoading(true);
+    setErrorMessage('');
+    setInfoMessage('');
+
+    try {
+      const response = await apiFetch(
+        `${DEFAULT_API_HOST}/api/user-coffee`,
+        {
+          method: 'GET',
+          credentials: 'include',
+        },
+        {
+          feature: 'PhotoRecipe',
+          action: 'inventory-load',
+        },
+      );
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Nepodarilo sa načítať inventár.');
+      }
+
+      const items = Array.isArray(payload?.items) ? payload.items : [];
+      setInventoryItems(items.filter((item: InventoryCoffee) => item.status === 'active'));
+      setIsInventoryVisible(true);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Nepodarilo sa načítať inventár.';
+      setErrorMessage(message);
+    } finally {
+      setIsInventoryLoading(false);
+    }
+  };
+
+  const handleSelectInventoryCoffee = (item: InventoryCoffee) => {
+    if (!item.labelImageBase64) {
+      setErrorMessage('Táto káva v inventári nemá uloženú fotku etikety.');
+      return;
+    }
+
+    const normalizedImage = normalizeBase64(item.labelImageBase64);
+    const base64Bytes = estimateBase64Bytes(normalizedImage);
+    if (base64Bytes > MAX_BASE64_BYTES) {
+      setErrorMessage('Fotka etikety tejto kávy je príliš veľká na analýzu.');
+      return;
+    }
+
+    const coffeeName = item.correctedText || item.rawText || 'káva z inventára';
+    setErrorMessage('');
+    setInfoMessage(`Vybraná ${coffeeName}. Teraz môžeš spustiť analýzu.`);
+    setImageBase64(normalizedImage);
+    setIsInventoryVisible(false);
+    setAnalysis(null);
+    setSelectedPreparation(null);
+    setStrengthPreference(null);
   };
 
   const withPickerTimeout = async <T,>(promise: Promise<T>): Promise<T> =>
@@ -147,6 +224,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     }
 
     setErrorMessage('');
+    setInfoMessage('');
     setIsAnalyzing(true);
     setAnalysis(null);
     setSelectedPreparation(null);
@@ -220,6 +298,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     }
 
     setErrorMessage('');
+    setInfoMessage('');
     setIsGenerating(true);
 
     try {
@@ -308,8 +387,52 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
               <Text style={styles.secondaryButtonText}>Odfotiť</Text>
             </Pressable>
           </View>
+          <Pressable
+            style={[
+              styles.secondaryButton,
+              styles.inventoryButton,
+              (isInventoryLoading || isPicking) && styles.buttonDisabled,
+            ]}
+            onPress={loadInventory}
+            disabled={isInventoryLoading || isPicking}
+          >
+            <Text style={styles.secondaryButtonText}>
+              {isInventoryLoading ? 'Načítavam inventár…' : 'Vybrať z inventára'}
+            </Text>
+          </Pressable>
+
+          {isInventoryVisible ? (
+            <View style={styles.inventoryList}>
+              {inventoryItems.length > 0 ? (
+                inventoryItems.map((item) => {
+                  const coffeeName = item.correctedText || item.rawText || 'Neznáma káva';
+                  const hasImage = Boolean(item.labelImageBase64);
+
+                  return (
+                    <Pressable
+                      key={item.id}
+                      style={[styles.inventoryItem, !hasImage && styles.buttonDisabled]}
+                      onPress={() => handleSelectInventoryCoffee(item)}
+                      disabled={!hasImage}
+                    >
+                      <Text style={styles.inventoryItemTitle}>{coffeeName}</Text>
+                      <Text style={styles.inventoryItemMeta}>
+                        {hasImage
+                          ? 'Použiť fotku etikety z inventára'
+                          : 'Bez fotky etikety'}
+                      </Text>
+                    </Pressable>
+                  );
+                })
+              ) : (
+                <Text style={styles.helperText}>V inventári nemáš žiadnu aktívnu kávu.</Text>
+              )}
+            </View>
+          ) : null}
           <Text style={styles.helperText}>
-            {imageUri ? 'Fotka je pripravená.' : 'Zatiaľ nie je vybraná žiadna fotka.'}
+            {imageBase64
+              ? 'Fotka je pripravená.'
+              : 'Zatiaľ nie je vybraná žiadna fotka.'}
           </Text>
         </View>
 
@@ -399,6 +522,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
           </>
         ) : null}
 
+        {infoMessage ? <Text style={styles.infoText}>{infoMessage}</Text> : null}
         {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
       </ScrollView>
     </SafeAreaView>
@@ -455,6 +579,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  inventoryButton: {
+    marginTop: 12,
+  },
+  inventoryList: {
+    marginTop: 10,
+    gap: 8,
+  },
+  inventoryItem: {
+    borderWidth: 1,
+    borderColor: '#d0d0d0',
+    borderRadius: 8,
+    padding: 10,
+  },
+  inventoryItemTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1f2933',
+  },
+  inventoryItemMeta: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#6b6b6b',
+  },
   primaryButton: {
     backgroundColor: '#1f6f5b',
     paddingVertical: 12,
@@ -472,6 +619,10 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: '#b00020',
+    marginTop: 8,
+  },
+  infoText: {
+    color: '#1f6f5b',
     marginTop: 8,
   },
   profileTitle: {
