@@ -108,23 +108,16 @@ function CoffeeRecipesSavedScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
-  container: { padding: 20, gap: 14, backgroundColor: '#F5F1EC' },
-  title: { fontSize: 28, fontWeight: '700', color: '#271508', marginBottom: 4 },
-  heroCard: { backgroundColor: '#EDE0D4', borderRadius: 28, padding: 16 },
-  sectionHead: { flexDirection:'row', justifyContent:'space-between', alignItems:'center' },
+  container: { padding: 20, gap: 14 },
+  title: { fontSize: 28, fontWeight: '700', color: '#271508' },
+  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDD3C9', borderRadius: 16, padding: 14 },
   cardTitle: { fontSize: 17, fontWeight: '700', marginBottom: 8, color: '#271508' },
   text: { color: '#271508' },
   favorite: { marginTop: 8, color: '#6B4F3A', fontWeight: '600' },
-  recipeCard: { backgroundColor:'#FFFFFF', borderWidth:1, borderColor:'#DDD3C9', borderRadius:20, padding:14, marginBottom:10 },
-  recipeHead: { flexDirection:'row', justifyContent:'space-between', alignItems:'center' },
-  itemTitle: { color: '#271508', fontWeight: '600', fontSize:16 },
+  item: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#EDE7DF' },
+  itemTitle: { color: '#271508', fontWeight: '600' },
   meta: { color: '#6B5C52', fontSize: 12, marginTop: 2 },
   muted: { color: '#6B5C52' },
-  filterChip:{ backgroundColor:'#D8ECBA', borderRadius:999, paddingHorizontal:12,paddingVertical:6 },
-  filterChipText:{ color:'#1A2D08', fontWeight:'600', fontSize:12 },
-  badge:{ backgroundColor:'#EDE0D4', color:'#271508', borderRadius:999, paddingHorizontal:10, paddingVertical:4, overflow:'hidden' },
-  tagsRow:{ flexDirection:'row', flexWrap:'wrap', gap:6, marginTop:8 },
-  tag:{ backgroundColor:'#EDE7DF', color:'#6B5C52', borderRadius:999, paddingHorizontal:10, paddingVertical:4, fontSize:11 },
   error: { color: '#BA1A1A', fontWeight: '600' },
 });
 

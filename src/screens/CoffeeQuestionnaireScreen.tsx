@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   },
   progressFill: { height: '100%', backgroundColor: '#6B4F3A', borderRadius: 4 },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F5F1EC',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
@@ -334,18 +334,21 @@ const styles = StyleSheet.create({
   },
   optionsGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'center',
+    paddingVertical: 10,
   },
-  optionCard: {
-    width: '48%',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#DDD3C9',
-    borderRadius: 20,
-    padding: 12,
-    minHeight: 76,
-    justifyContent: 'center',
+  optionSelected: {
+    backgroundColor: '#D8ECBA',
+    borderRadius: 16,
+    paddingHorizontal: 8,
+  },
+  radio: {
+    width: 16,
+    height: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#6B5C52',
+    marginRight: 10,
   },
   optionSelected: {
     borderColor: '#6B4F3A',
@@ -353,11 +356,7 @@ const styles = StyleSheet.create({
   },
   optionLabel: {
     fontSize: 14,
-    color: '#6B5C52',
-  },
-  optionLabelSelected: {
-    color: '#6B4F3A',
-    fontWeight: '700',
+    color: '#271508',
   },
   error: {
     color: '#BA1A1A',

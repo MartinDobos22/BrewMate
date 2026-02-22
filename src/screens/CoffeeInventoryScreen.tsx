@@ -577,8 +577,6 @@ const styles = StyleSheet.create({
   date: { color: '#6B5C52', fontSize: 12, marginBottom: 8 },
   label: { fontSize: 13, fontWeight: '700', color: '#6B4F3A', marginTop: 8 },
   text: { fontSize: 14, color: '#271508', marginTop: 4 },
-  itemProgress:{ marginTop:8, height:6, backgroundColor:'#DDD3C9', borderRadius:3, overflow:'hidden' },
-  itemProgressFill:{ height:'100%', backgroundColor:'#6B4F3A' },
   quickActionsWrap: {
     marginTop: 10,
     flexDirection: 'row',

@@ -371,19 +371,6 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
     backgroundColor: '#F5F1EC',
   },
-
-  hero: {
-    backgroundColor: '#EDE0D4',
-    borderRadius: 28,
-    padding: 20,
-    marginBottom: 16,
-  },
-  heroTag: {
-    color: '#6B4F3A',
-    fontSize: 12,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
   heroTitle: {
     fontSize: 30,
     color: '#271508',
@@ -485,22 +472,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: '#6B5C52',
   },
-  coffeeRow: { gap: 8 },
-  coffeeCard: {
-    borderWidth: 1,
-    borderColor: '#DDD3C9',
-    borderRadius: 20,
-    padding: 14,
-    backgroundColor: '#FFFFFF',
-    width: 170,
-  },
   previewCard: {
     borderWidth: 1,
     borderColor: '#DDD3C9',
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 10,
+    padding: 10,
     marginBottom: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F5F1EC',
   },
   previewTitle: {
     color: '#271508',
