@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   },
   saveError: {
     marginTop: 8,
-    color: '#B3261E',
+    color: '#BA1A1A',
     fontWeight: '600',
   },
   section: {
@@ -159,12 +159,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   profileBlock: {
-    backgroundColor: '#F6F3EE',
+    backgroundColor: '#F5F1EC',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E3DED6',
+    borderColor: '#DDD3C9',
   },
   profileLabel: {
     fontSize: 14,
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   },
   profileText: {
     fontSize: 14,
-    color: '#3E2F25',
+    color: '#271508',
     lineHeight: 20,
   },
   answerRow: {
@@ -183,14 +183,14 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E3DED6',
+    borderColor: '#DDD3C9',
   },
   answerQuestion: {
     fontWeight: '600',
     marginBottom: 4,
   },
   answerValue: {
-    color: '#6F6A64',
+    color: '#6B5C52',
   },
 });
 

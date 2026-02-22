@@ -404,7 +404,7 @@ function CoffeeScannerScreen({ navigation }: Props) {
             <TextInput
               style={styles.hintInput}
               placeholder="sk, en"
-              placeholderTextColor="#8b8b8b"
+              placeholderTextColor="#6B5C52"
               value={languageHints}
               onChangeText={setLanguageHints}
               autoCapitalize="none"
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#6F6A64',
+    color: '#6B5C52',
     marginBottom: 16,
   },
   field: {
@@ -503,19 +503,19 @@ const styles = StyleSheet.create({
   helperText: {
     marginTop: 8,
     fontSize: 12,
-    color: '#6F6A64',
+    color: '#6B5C52',
   },
   hintInput: {
     borderWidth: 1,
-    borderColor: '#B7B7B7',
+    borderColor: '#C8BAB0',
     borderRadius: 16,
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontSize: 14,
-    color: '#222222',
+    color: '#1C1917',
   },
   errorText: {
-    color: '#B3261E',
+    color: '#BA1A1A',
     marginBottom: 12,
   },
   statusText: {

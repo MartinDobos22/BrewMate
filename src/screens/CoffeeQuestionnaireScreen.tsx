@@ -227,16 +227,16 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    color: '#4b5563',
+    color: '#6B5C52',
     marginBottom: 16,
   },
   card: {
-    backgroundColor: '#F6F3EE',
+    backgroundColor: '#F5F1EC',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E3DED6',
+    borderColor: '#DDD3C9',
   },
   question: {
     fontSize: 16,
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   optionSelected: {
-    backgroundColor: '#e0f2f1',
+    backgroundColor: '#D8ECBA',
     borderRadius: 16,
     paddingHorizontal: 8,
   },
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#6F6A64',
+    borderColor: '#6B5C52',
     marginRight: 10,
   },
   radioSelected: {
@@ -268,10 +268,10 @@ const styles = StyleSheet.create({
   optionLabel: {
     flex: 1,
     fontSize: 14,
-    color: '#3E2F25',
+    color: '#271508',
   },
   error: {
-    color: '#B3261E',
+    color: '#BA1A1A',
     marginBottom: 16,
     fontWeight: '600',
   },
