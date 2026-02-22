@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { QuizStackParamList } from '../navigation/types';
+import { RootStackParamList } from '../navigation/types';
 import { ensureQuestionnaireProfile } from '../utils/tasteVector';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 
@@ -70,7 +70,7 @@ const QUESTIONNAIRE = [
   },
 ];
 
-type Props = NativeStackScreenProps<QuizStackParamList, 'CoffeeQuestionnaire'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'CoffeeQuestionnaire'>;
 
 type AnswerMap = Record<string, string>;
 
