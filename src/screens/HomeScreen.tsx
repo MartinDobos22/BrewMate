@@ -227,24 +227,10 @@ function HomeScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.container}>
-        <View style={styles.hero}>
-          <Text style={styles.heroTag}>🌅 Dobré ráno</Text>
-          <Text style={styles.heroTitle}>Čo dnes uvaríš?</Text>
-          <View style={styles.heroRecommendation}>
-            <View style={styles.flexOne}>
-              <Text style={styles.heroRecLabel}>Odporúčanie dňa</Text>
-              <Text style={styles.heroRecTitle}>
-                {activeCoffeePreview[0]?.correctedText || activeCoffeePreview[0]?.rawText || 'Ethiopia Yirgacheffe'}
-              </Text>
-            </View>
-            <Pressable style={styles.heroCta} onPress={handleSavedRecipesPress}>
-              <Text style={styles.heroCtaText}>Uvariť</Text>
-            </Pressable>
-          </View>
-        </View>
+        <Text style={styles.title}>BrewMate</Text>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Prehľad</Text>
+          <Text style={styles.sectionTitle}>Rýchly prehľad</Text>
           {dashboardState === 'loading' ? <ActivityIndicator color="#6B4F3A" /> : null}
           {dashboardState === 'error' ? <Text style={styles.errorText}>{dashboardError}</Text> : null}
 
@@ -275,7 +261,7 @@ function HomeScreen({ navigation }: Props) {
 
         <View style={styles.section}>
           <View style={styles.inlineHeader}>
-            <Text style={styles.sectionTitle}>Moje kávy</Text>
+            <Text style={styles.sectionTitle}>Aktuálne kávy</Text>
             <Pressable onPress={handleInventoryPress}>
               <Text style={styles.link}>Celý inventár</Text>
             </Pressable>
@@ -283,18 +269,16 @@ function HomeScreen({ navigation }: Props) {
           {activeCoffeePreview.length === 0 ? (
             <Text style={styles.placeholder}>Zatiaľ nemáš aktívne kávy. Pridaj prvý balík do inventára.</Text>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.coffeeRow}>
-              {activeCoffeePreview.map((item) => {
+            activeCoffeePreview.map((item) => {
               const name = item.correctedText || item.rawText || 'Neznáma káva';
               const remaining = item.remainingG === null ? 'Neznáme' : `${item.remainingG} g`;
               return (
-                <View key={item.id} style={styles.coffeeCard}>
+                <View key={item.id} style={styles.previewCard}>
                   <Text style={styles.previewTitle}>{name}</Text>
                   <Text style={styles.previewMeta}>Zostáva: {remaining}</Text>
                 </View>
               );
-              })}
-            </ScrollView>
+            })
           )}
         </View>
 
@@ -325,11 +309,6 @@ function HomeScreen({ navigation }: Props) {
             </Text>
           ) : null}
           <TasteProfileBars vector={userVector} />
-          <View style={styles.badgeRow}>
-            <Text style={styles.badge}>☕ Pour Over</Text>
-            <Text style={styles.badge}>🍫 Tmavé</Text>
-            <Text style={styles.badge}>🌍 Afrika</Text>
-          </View>
           {matchScore !== null ? (
             <Text style={styles.matchScore}>Zhoda: {matchScore}%</Text>
           ) : null}
@@ -371,45 +350,6 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
     backgroundColor: '#F5F1EC',
   },
-  heroTitle: {
-    fontSize: 30,
-    color: '#271508',
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  heroRecommendation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(255,255,255,0.65)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
-    padding: 12,
-  },
-  heroRecLabel: {
-    color: '#6B4F3A',
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    marginBottom: 2,
-  },
-  heroRecTitle: {
-    color: '#271508',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  heroCta: {
-    backgroundColor: '#6B4F3A',
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-  },
-  heroCtaText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  flexOne: { flex: 1 },
   title: {
     fontSize: 32,
     fontWeight: '700',
@@ -489,21 +429,6 @@ const styles = StyleSheet.create({
     color: '#6B5C52',
     marginTop: 3,
     fontSize: 12,
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 10,
-  },
-  badge: {
-    backgroundColor: '#EDE7DF',
-    color: '#271508',
-    fontSize: 11,
-    fontWeight: '600',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
   },
   link: {
     color: '#6B4F3A',
