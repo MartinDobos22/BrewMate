@@ -326,23 +326,10 @@ function CoffeeInventoryScreen() {
     return 'Archivované';
   }, [activeFilter]);
 
-
-  const totalCount = items.length;
-  const activePct = totalCount ? Math.round((totalsByStatus.active / totalCount) * 100) : 0;
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Zásobník</Text>
-
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>Celkovo zásobník</Text>
-          <Text style={styles.summaryValue}>{totalsByStatus.active}</Text>
-          <Text style={styles.caption}>kávy v aktívnom stave</Text>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${activePct}%` }]} />
-          </View>
-          <Text style={styles.progressText}>{activePct}% aktívnych položiek</Text>
-        </View>
+        <Text style={styles.title}>Coffee inventár</Text>
 
         <View style={styles.filterTabs}>
           <Pressable
@@ -419,16 +406,6 @@ function CoffeeInventoryScreen() {
               <Text style={styles.label}>Stav: {statusLabel}</Text>
               <Text style={styles.text}>Balík: {packageLabel}</Text>
               <Text style={styles.text}>Zostáva: {remainingLabel}</Text>
-              {item.packageSizeG && item.remainingG !== null ? (
-                <View style={styles.itemProgress}>
-                  <View
-                    style={[
-                      styles.itemProgressFill,
-                      { width: `${Math.max(0, Math.min(100, Math.round((item.remainingG / item.packageSizeG) * 100)))}%` },
-                    ]}
-                  />
-                </View>
-              ) : null}
               <Text style={styles.text}>
                 Režim trackingu: {item.trackingMode === 'manual' ? 'Manual' : 'Estimated'}
               </Text>
@@ -537,13 +514,7 @@ function CoffeeInventoryScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   container: { padding: 20, paddingBottom: 40 },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 12, color:'#271508' },
-  summaryCard: { backgroundColor:'#EDE0D4', borderRadius:28, padding:16, marginBottom:12 },
-  summaryLabel: { color:'#6B4F3A', fontSize:12, fontWeight:'700', textTransform:'uppercase' },
-  summaryValue: { fontSize:48, lineHeight:54, fontWeight:'700', color:'#271508' },
-  progressTrack:{ height:6, backgroundColor:'#DDD3C9', borderRadius:4, marginTop:10 },
-  progressFill:{ height:'100%', backgroundColor:'#7A9255', borderRadius:4 },
-  progressText:{ marginTop:6, color:'#6B5C52', fontSize:12 },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 12 },
   filterTabs: {
     flexDirection: 'row',
     flexWrap: 'wrap',
