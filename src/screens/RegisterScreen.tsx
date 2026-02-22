@@ -177,7 +177,7 @@ function RegisterScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F6F3EE',
+    backgroundColor: '#F5F1EC',
   },
   container: {
     flexGrow: 1,
@@ -191,27 +191,27 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: '#6F6A64',
+    color: '#6B5C52',
     marginBottom: 24,
   },
   inputGroup: {
     marginBottom: 16,
   },
   label: {
-    color: '#6F6A64',
+    color: '#6B5C52',
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#3E2F25',
+    backgroundColor: '#271508',
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 12,
     color: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#B7B7B7',
+    borderColor: '#C8BAB0',
   },
   errorText: {
-    color: '#B3261E',
+    color: '#BA1A1A',
     marginBottom: 12,
   },
   primaryButton: {
@@ -235,11 +235,11 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   footerText: {
-    color: '#6F6A64',
+    color: '#6B5C52',
     marginRight: 6,
   },
   footerLink: {
-    color: '#38bdf8',
+    color: '#6B4F3A',
     fontWeight: '600',
   },
 });

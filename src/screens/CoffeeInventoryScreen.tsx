@@ -326,10 +326,23 @@ function CoffeeInventoryScreen() {
     return 'Archivované';
   }, [activeFilter]);
 
+
+  const totalCount = items.length;
+  const activePct = totalCount ? Math.round((totalsByStatus.active / totalCount) * 100) : 0;
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Coffee inventár</Text>
+        <Text style={styles.title}>Zásobník</Text>
+
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryLabel}>Celkovo zásobník</Text>
+          <Text style={styles.summaryValue}>{totalsByStatus.active}</Text>
+          <Text style={styles.caption}>kávy v aktívnom stave</Text>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${activePct}%` }]} />
+          </View>
+          <Text style={styles.progressText}>{activePct}% aktívnych položiek</Text>
+        </View>
 
         <View style={styles.filterTabs}>
           <Pressable
@@ -406,6 +419,16 @@ function CoffeeInventoryScreen() {
               <Text style={styles.label}>Stav: {statusLabel}</Text>
               <Text style={styles.text}>Balík: {packageLabel}</Text>
               <Text style={styles.text}>Zostáva: {remainingLabel}</Text>
+              {item.packageSizeG && item.remainingG !== null ? (
+                <View style={styles.itemProgress}>
+                  <View
+                    style={[
+                      styles.itemProgressFill,
+                      { width: `${Math.max(0, Math.min(100, Math.round((item.remainingG / item.packageSizeG) * 100)))}%` },
+                    ]}
+                  />
+                </View>
+              ) : null}
               <Text style={styles.text}>
                 Režim trackingu: {item.trackingMode === 'manual' ? 'Manual' : 'Estimated'}
               </Text>
@@ -514,7 +537,13 @@ function CoffeeInventoryScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   container: { padding: 20, paddingBottom: 40 },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 12 },
+  title: { fontSize: 24, fontWeight: '700', marginBottom: 12, color:'#271508' },
+  summaryCard: { backgroundColor:'#EDE0D4', borderRadius:28, padding:16, marginBottom:12 },
+  summaryLabel: { color:'#6B4F3A', fontSize:12, fontWeight:'700', textTransform:'uppercase' },
+  summaryValue: { fontSize:48, lineHeight:54, fontWeight:'700', color:'#271508' },
+  progressTrack:{ height:6, backgroundColor:'#DDD3C9', borderRadius:4, marginTop:10 },
+  progressFill:{ height:'100%', backgroundColor:'#7A9255', borderRadius:4 },
+  progressText:{ marginTop:6, color:'#6B5C52', fontSize:12 },
   filterTabs: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -534,20 +563,22 @@ const styles = StyleSheet.create({
   },
   filterButtonText: { color: '#6B4F3A', fontWeight: '700' },
   filterButtonTextActive: { color: '#FFFFFF' },
-  caption: { color: '#6F6A64', marginBottom: 12 },
-  error: { color: '#B3261E', marginBottom: 12 },
-  empty: { color: '#6F6A64', fontSize: 14 },
+  caption: { color: '#6B5C52', marginBottom: 12 },
+  error: { color: '#BA1A1A', marginBottom: 12 },
+  empty: { color: '#6B5C52', fontSize: 14 },
   card: {
     borderWidth: 1,
-    borderColor: '#E3DED6',
+    borderColor: '#DDD3C9',
     borderRadius: 16,
     padding: 14,
     marginBottom: 12,
-    backgroundColor: '#F6F3EE',
+    backgroundColor: '#F5F1EC',
   },
-  date: { color: '#6F6A64', fontSize: 12, marginBottom: 8 },
+  date: { color: '#6B5C52', fontSize: 12, marginBottom: 8 },
   label: { fontSize: 13, fontWeight: '700', color: '#6B4F3A', marginTop: 8 },
-  text: { fontSize: 14, color: '#3E2F25', marginTop: 4 },
+  text: { fontSize: 14, color: '#271508', marginTop: 4 },
+  itemProgress:{ marginTop:8, height:6, backgroundColor:'#DDD3C9', borderRadius:3, overflow:'hidden' },
+  itemProgressFill:{ height:'100%', backgroundColor:'#6B4F3A' },
   quickActionsWrap: {
     marginTop: 10,
     flexDirection: 'row',
@@ -555,12 +586,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   quickAction: {
-    backgroundColor: '#E3DED6',
+    backgroundColor: '#DDD3C9',
     borderRadius: 16,
     paddingVertical: 8,
     paddingHorizontal: 10,
   },
-  quickActionText: { color: '#3E2F25', fontWeight: '600' },
+  quickActionText: { color: '#271508', fontWeight: '600' },
   inlineRow: {
     marginTop: 10,
     flexDirection: 'row',
@@ -569,7 +600,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#D1CBC2',
+    borderColor: '#DDD3C9',
     borderRadius: 16,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -585,18 +616,18 @@ const styles = StyleSheet.create({
   inlineButtonText: { color: '#FFFFFF', fontWeight: '700' },
   actions: { marginTop: 12, gap: 8 },
   badge: {
-    backgroundColor: '#E3DED6',
+    backgroundColor: '#DDD3C9',
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 16,
     alignItems: 'center',
   },
   badgeActive: {
-    backgroundColor: '#fef08a',
+    backgroundColor: '#F2DEC4',
   },
-  badgeText: { fontWeight: '600', color: '#3E2F25' },
+  badgeText: { fontWeight: '600', color: '#271508' },
   statusButton: {
-    backgroundColor: '#3E2F25',
+    backgroundColor: '#271508',
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 16,
@@ -607,7 +638,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   deleteButton: {
-    backgroundColor: '#B3261E',
+    backgroundColor: '#BA1A1A',
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 16,

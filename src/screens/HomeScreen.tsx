@@ -227,10 +227,24 @@ function HomeScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.container}>
-        <Text style={styles.title}>BrewMate</Text>
+        <View style={styles.hero}>
+          <Text style={styles.heroTag}>🌅 Dobré ráno</Text>
+          <Text style={styles.heroTitle}>Čo dnes uvaríš?</Text>
+          <View style={styles.heroRecommendation}>
+            <View style={styles.flexOne}>
+              <Text style={styles.heroRecLabel}>Odporúčanie dňa</Text>
+              <Text style={styles.heroRecTitle}>
+                {activeCoffeePreview[0]?.correctedText || activeCoffeePreview[0]?.rawText || 'Ethiopia Yirgacheffe'}
+              </Text>
+            </View>
+            <Pressable style={styles.heroCta} onPress={handleSavedRecipesPress}>
+              <Text style={styles.heroCtaText}>Uvariť</Text>
+            </Pressable>
+          </View>
+        </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Rýchly prehľad</Text>
+          <Text style={styles.sectionTitle}>Prehľad</Text>
           {dashboardState === 'loading' ? <ActivityIndicator color="#6B4F3A" /> : null}
           {dashboardState === 'error' ? <Text style={styles.errorText}>{dashboardError}</Text> : null}
 
@@ -261,7 +275,7 @@ function HomeScreen({ navigation }: Props) {
 
         <View style={styles.section}>
           <View style={styles.inlineHeader}>
-            <Text style={styles.sectionTitle}>Aktuálne kávy</Text>
+            <Text style={styles.sectionTitle}>Moje kávy</Text>
             <Pressable onPress={handleInventoryPress}>
               <Text style={styles.link}>Celý inventár</Text>
             </Pressable>
@@ -269,16 +283,18 @@ function HomeScreen({ navigation }: Props) {
           {activeCoffeePreview.length === 0 ? (
             <Text style={styles.placeholder}>Zatiaľ nemáš aktívne kávy. Pridaj prvý balík do inventára.</Text>
           ) : (
-            activeCoffeePreview.map((item) => {
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.coffeeRow}>
+              {activeCoffeePreview.map((item) => {
               const name = item.correctedText || item.rawText || 'Neznáma káva';
               const remaining = item.remainingG === null ? 'Neznáme' : `${item.remainingG} g`;
               return (
-                <View key={item.id} style={styles.previewCard}>
+                <View key={item.id} style={styles.coffeeCard}>
                   <Text style={styles.previewTitle}>{name}</Text>
                   <Text style={styles.previewMeta}>Zostáva: {remaining}</Text>
                 </View>
               );
-            })
+              })}
+            </ScrollView>
           )}
         </View>
 
@@ -309,6 +325,11 @@ function HomeScreen({ navigation }: Props) {
             </Text>
           ) : null}
           <TasteProfileBars vector={userVector} />
+          <View style={styles.badgeRow}>
+            <Text style={styles.badge}>☕ Pour Over</Text>
+            <Text style={styles.badge}>🍫 Tmavé</Text>
+            <Text style={styles.badge}>🌍 Afrika</Text>
+          </View>
           {matchScore !== null ? (
             <Text style={styles.matchScore}>Zhoda: {matchScore}%</Text>
           ) : null}
@@ -348,8 +369,60 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 24,
     paddingBottom: 48,
-    backgroundColor: '#F6F3EE',
+    backgroundColor: '#F5F1EC',
   },
+
+  hero: {
+    backgroundColor: '#EDE0D4',
+    borderRadius: 28,
+    padding: 20,
+    marginBottom: 16,
+  },
+  heroTag: {
+    color: '#6B4F3A',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  heroTitle: {
+    fontSize: 30,
+    color: '#271508',
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  heroRecommendation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.65)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    padding: 12,
+  },
+  heroRecLabel: {
+    color: '#6B4F3A',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  heroRecTitle: {
+    color: '#271508',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  heroCta: {
+    backgroundColor: '#6B4F3A',
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  heroCtaText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  flexOne: { flex: 1 },
   title: {
     fontSize: 32,
     fontWeight: '700',
@@ -360,7 +433,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E3DED6',
+    borderColor: '#DDD3C9',
     marginBottom: 20,
   },
   inlineHeader: {
@@ -373,11 +446,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 8,
-    color: '#3E2F25',
+    color: '#271508',
   },
   placeholder: {
     fontSize: 14,
-    color: '#6F6A64',
+    color: '#6B5C52',
     marginBottom: 12,
   },
   matchScore: {
@@ -394,48 +467,72 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     minWidth: '47%',
-    backgroundColor: '#EDE8E0',
+    backgroundColor: '#EDE7DF',
     borderRadius: 16,
     padding: 12,
   },
   metricValue: {
-    color: '#3E2F25',
+    color: '#271508',
     fontSize: 18,
     fontWeight: '700',
   },
   metricLabel: {
-    color: '#6F6A64',
+    color: '#6B5C52',
     marginTop: 3,
     fontSize: 13,
   },
   summaryText: {
     marginTop: 10,
-    color: '#6F6A64',
+    color: '#6B5C52',
+  },
+  coffeeRow: { gap: 8 },
+  coffeeCard: {
+    borderWidth: 1,
+    borderColor: '#DDD3C9',
+    borderRadius: 20,
+    padding: 14,
+    backgroundColor: '#FFFFFF',
+    width: 170,
   },
   previewCard: {
     borderWidth: 1,
-    borderColor: '#E3DED6',
-    borderRadius: 10,
-    padding: 10,
+    borderColor: '#DDD3C9',
+    borderRadius: 16,
+    padding: 12,
     marginBottom: 8,
-    backgroundColor: '#F6F3EE',
+    backgroundColor: '#FFFFFF',
   },
   previewTitle: {
-    color: '#3E2F25',
+    color: '#271508',
     fontWeight: '700',
     fontSize: 14,
   },
   previewMeta: {
-    color: '#6F6A64',
+    color: '#6B5C52',
     marginTop: 3,
     fontSize: 12,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 10,
+  },
+  badge: {
+    backgroundColor: '#EDE7DF',
+    color: '#271508',
+    fontSize: 11,
+    fontWeight: '600',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
   },
   link: {
     color: '#6B4F3A',
     fontWeight: '700',
   },
   errorText: {
-    color: '#B3261E',
+    color: '#BA1A1A',
     marginTop: 6,
   },
   button: {
@@ -448,7 +545,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonSecondary: {
-    backgroundColor: '#3E2F25',
+    backgroundColor: '#271508',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 16,
