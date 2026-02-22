@@ -1,8 +1,16 @@
+import { NavigatorScreenParams } from '@react-navigation/native';
+
 import { CoffeeProfile, QuestionnaireProfile } from '../utils/tasteVector';
 
-export type RootStackParamList = {
+export type HomeStackParamList = {
   Home: undefined;
   CoffeeScanner: undefined;
+  OcrResult: {
+    rawText: string;
+    correctedText: string;
+    coffeeProfile: CoffeeProfile;
+    labelImageBase64: string;
+  };
   CoffeePhotoRecipe: undefined;
   CoffeePhotoRecipeResult: {
     analysis: {
@@ -35,6 +43,9 @@ export type RootStackParamList = {
       reason: string;
     };
   };
+};
+
+export type QuizStackParamList = {
   CoffeeQuestionnaire: undefined;
   CoffeeQuestionnaireResult: {
     answers: Array<{
@@ -43,14 +54,26 @@ export type RootStackParamList = {
     }>;
     profile: QuestionnaireProfile;
   };
-  OcrResult: {
-    rawText: string;
-    correctedText: string;
-    coffeeProfile: CoffeeProfile;
-    labelImageBase64: string;
-  };
+};
+
+export type InventoryStackParamList = {
   CoffeeInventory: undefined;
+};
+
+export type RecipesStackParamList = {
   CoffeeRecipesSaved: undefined;
+};
+
+export type ProfileStackParamList = {
+  Profile: undefined;
+};
+
+export type MainTabParamList = {
+  HomeTab: NavigatorScreenParams<HomeStackParamList>;
+  QuizTab: NavigatorScreenParams<QuizStackParamList>;
+  InventoryTab: NavigatorScreenParams<InventoryStackParamList>;
+  RecipesTab: NavigatorScreenParams<RecipesStackParamList>;
+  ProfileTab: NavigatorScreenParams<ProfileStackParamList>;
 };
 
 export type AuthStackParamList = {

@@ -8,10 +8,10 @@ import {
   launchCamera,
   launchImageLibrary,
 } from 'react-native-image-picker';
-import { RootStackParamList } from '../navigation/types';
+import { HomeStackParamList } from '../navigation/types';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'CoffeePhotoRecipe'>;
+type Props = NativeStackScreenProps<HomeStackParamList, 'CoffeePhotoRecipe'>;
 
 type PhotoPreparation = {
   method: string;
