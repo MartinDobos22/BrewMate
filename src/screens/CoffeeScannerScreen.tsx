@@ -17,11 +17,11 @@ import {
   launchCamera,
   launchImageLibrary,
 } from 'react-native-image-picker';
-import { HomeStackParamList } from '../navigation/types';
+import { RootStackParamList } from '../navigation/types';
 import { ensureCoffeeProfile } from '../utils/tasteVector';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 
-type Props = NativeStackScreenProps<HomeStackParamList, 'CoffeeScanner'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'CoffeeScanner'>;
 
 const PICKER_TIMEOUT_MS = 2000000;
 const MAX_IMAGE_DIMENSION = 1600;

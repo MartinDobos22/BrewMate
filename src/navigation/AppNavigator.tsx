@@ -1,14 +1,23 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import HomeScreen from '../screens/HomeScreen';
+import CoffeeScannerScreen from '../screens/CoffeeScannerScreen';
+import CoffeePhotoRecipeScreen from '../screens/CoffeePhotoRecipeScreen';
+import CoffeePhotoRecipeResultScreen from '../screens/CoffeePhotoRecipeResultScreen';
+import OcrResultScreen from '../screens/OcrResultScreen';
+import CoffeeQuestionnaireScreen from '../screens/CoffeeQuestionnaireScreen';
+import CoffeeQuestionnaireResultScreen from '../screens/CoffeeQuestionnaireResultScreen';
+import CoffeeInventoryScreen from '../screens/CoffeeInventoryScreen';
+import CoffeeRecipesSavedScreen from '../screens/CoffeeRecipesSavedScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import AuthLoadingScreen from '../screens/AuthLoadingScreen';
-import { AuthStackParamList } from './types';
+import { AuthStackParamList, RootStackParamList } from './types';
 import { useAuth } from '../context/AuthContext';
 import { appTheme } from '../theme/theme';
-import MainTabNavigator from './MainTabNavigator';
 
+const AppStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 
 function AuthNavigator() {
@@ -35,6 +44,84 @@ function AuthNavigator() {
   );
 }
 
+function MainNavigator() {
+  return (
+    <AppStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: appTheme.colors.surface },
+        headerTintColor: appTheme.colors.primary,
+        headerTitleStyle: { ...appTheme.typography.title, color: appTheme.colors.text },
+        contentStyle: { backgroundColor: appTheme.colors.background },
+      }}
+    >
+      <AppStack.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          title: 'BrewMate',
+          headerBackVisible: false,
+        }}
+      />
+      <AppStack.Screen
+        name="CoffeeScanner"
+        component={CoffeeScannerScreen}
+        options={{
+          title: 'Coffee Scanner',
+        }}
+      />
+      <AppStack.Screen
+        name="CoffeePhotoRecipe"
+        component={CoffeePhotoRecipeScreen}
+        options={{
+          title: 'Coffee Recipe Generator',
+        }}
+      />
+      <AppStack.Screen
+        name="CoffeePhotoRecipeResult"
+        component={CoffeePhotoRecipeResultScreen}
+        options={{
+          title: 'Barista recept',
+        }}
+      />
+      <AppStack.Screen
+        name="CoffeeQuestionnaire"
+        component={CoffeeQuestionnaireScreen}
+        options={{
+          title: 'Chuťový dotazník',
+        }}
+      />
+      <AppStack.Screen
+        name="CoffeeQuestionnaireResult"
+        component={CoffeeQuestionnaireResultScreen}
+        options={{
+          title: 'Výsledok dotazníka',
+        }}
+      />
+      <AppStack.Screen
+        name="OcrResult"
+        component={OcrResultScreen}
+        options={{
+          title: 'OCR Result',
+        }}
+      />
+      <AppStack.Screen
+        name="CoffeeInventory"
+        component={CoffeeInventoryScreen}
+        options={{
+          title: 'Coffee inventár',
+        }}
+      />
+      <AppStack.Screen
+        name="CoffeeRecipesSaved"
+        component={CoffeeRecipesSavedScreen}
+        options={{
+          title: 'Coffee Recipes Saved',
+        }}
+      />
+    </AppStack.Navigator>
+  );
+}
+
 function AppNavigator() {
   const { user, initializing } = useAuth();
 
@@ -42,7 +129,9 @@ function AppNavigator() {
     return <AuthLoadingScreen />;
   }
 
-  return user ? <MainTabNavigator /> : <AuthNavigator />;
+  return (
+    user ? <MainNavigator /> : <AuthNavigator />
+  );
 }
 
 export default AppNavigator;

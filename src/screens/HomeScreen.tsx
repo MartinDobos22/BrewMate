@@ -1,10 +1,8 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import { CompositeScreenProps } from '@react-navigation/native';
-import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { HomeStackParamList, MainTabParamList } from '../navigation/types';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../navigation/types';
 import {apiFetch, DEFAULT_API_HOST} from '../utils/api';
 import {useAuth} from '../context/AuthContext';
 import TasteProfileBars from '../components/TasteProfileBars';
@@ -16,10 +14,7 @@ import {
   QuestionnaireResultPayload,
 } from '../utils/localSave';
 
-type Props = CompositeScreenProps<
-  NativeStackScreenProps<HomeStackParamList, 'Home'>,
-  BottomTabScreenProps<MainTabParamList>
->;
+type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 type InventoryStatus = 'active' | 'empty' | 'archived';
 
@@ -72,7 +67,7 @@ function HomeScreen({ navigation }: Props) {
   };
 
   const handleQuestionnairePress = () => {
-    navigation.navigate('QuizTab', { screen: 'CoffeeQuestionnaire' });
+    navigation.navigate('CoffeeQuestionnaire');
   };
 
   const handlePhotoRecipePress = () => {
@@ -80,11 +75,11 @@ function HomeScreen({ navigation }: Props) {
   };
 
   const handleInventoryPress = () => {
-    navigation.navigate('InventoryTab', { screen: 'CoffeeInventory' });
+    navigation.navigate('CoffeeInventory');
   };
 
   const handleSavedRecipesPress = () => {
-    navigation.navigate('RecipesTab', { screen: 'CoffeeRecipesSaved' });
+    navigation.navigate('CoffeeRecipesSaved');
   };
 
   const handleLogout = async () => {

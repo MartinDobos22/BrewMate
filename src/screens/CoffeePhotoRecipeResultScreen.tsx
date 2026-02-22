@@ -1,17 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CompositeScreenProps } from '@react-navigation/native';
-import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { HomeStackParamList, MainTabParamList } from '../navigation/types';
+import { RootStackParamList } from '../navigation/types';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 
-type Props = CompositeScreenProps<
-  NativeStackScreenProps<HomeStackParamList, 'CoffeePhotoRecipeResult'>,
-  BottomTabScreenProps<MainTabParamList>
->;
+type Props = NativeStackScreenProps<RootStackParamList, 'CoffeePhotoRecipeResult'>;
 
 const APPROVAL_THRESHOLD = 70;
 
@@ -108,7 +103,7 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           <Text style={styles.primaryButtonText}>{saveState === 'saving' ? 'Ukladám…' : 'Uložiť recept'}</Text>
         </Pressable>
 
-        <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('RecipesTab', { screen: 'CoffeeRecipesSaved' })}>
+        <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('CoffeeRecipesSaved')}>
           <Text style={styles.secondaryButtonText}>Prejsť na Saved Recipes</Text>
         </Pressable>
 
