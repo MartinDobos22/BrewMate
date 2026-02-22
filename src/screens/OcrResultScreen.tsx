@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { RootStackParamList } from '../navigation/types';
+import { HomeStackParamList } from '../navigation/types';
 import {
   loadLatestQuestionnaireResult,
   QuestionnaireResultPayload,
@@ -13,7 +13,7 @@ import {
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'OcrResult'>;
+type Props = NativeStackScreenProps<HomeStackParamList, 'OcrResult'>;
 
 type MatchResult = {
   willLike: boolean;

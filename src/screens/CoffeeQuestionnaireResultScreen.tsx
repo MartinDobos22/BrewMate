@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
+import { QuizStackParamList } from '../navigation/types';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import { saveQuestionnaireResult } from '../utils/localSave';
 
@@ -13,7 +13,7 @@ const SECTION_LABELS = {
   brewingTips: 'Tipy na prípravu',
 };
 
-type Props = NativeStackScreenProps<RootStackParamList, 'CoffeeQuestionnaireResult'>;
+type Props = NativeStackScreenProps<QuizStackParamList, 'CoffeeQuestionnaireResult'>;
 
 function CoffeeQuestionnaireResultScreen({ route }: Props) {
   const { answers, profile } = route.params;
