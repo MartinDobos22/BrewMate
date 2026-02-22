@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#6F6A64',
+    color: '#6B5C52',
     marginBottom: 16,
   },
   block: {
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
   helperText: {
     marginTop: 8,
     fontSize: 12,
-    color: '#6F6A64',
+    color: '#6B5C52',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -588,19 +588,19 @@ const styles = StyleSheet.create({
   },
   inventoryItem: {
     borderWidth: 1,
-    borderColor: '#B7B7B7',
+    borderColor: '#C8BAB0',
     borderRadius: 16,
     padding: 10,
   },
   inventoryItemTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3E2F25',
+    color: '#271508',
   },
   inventoryItemMeta: {
     marginTop: 4,
     fontSize: 12,
-    color: '#6F6A64',
+    color: '#6B5C52',
   },
   primaryButton: {
     backgroundColor: '#6B4F3A',
@@ -618,7 +618,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   errorText: {
-    color: '#B3261E',
+    color: '#BA1A1A',
     marginTop: 8,
   },
   infoText: {
@@ -632,19 +632,19 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 14,
-    color: '#3E2F25',
+    color: '#271508',
     marginTop: 4,
   },
   optionCard: {
     borderWidth: 1,
-    borderColor: '#B7B7B7',
+    borderColor: '#C8BAB0',
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,
   },
   optionCardActive: {
     borderColor: '#6B4F3A',
-    backgroundColor: '#EEF1E5',
+    backgroundColor: '#D8ECBA',
   },
   optionTitle: {
     fontSize: 15,
@@ -653,7 +653,7 @@ const styles = StyleSheet.create({
   },
   optionText: {
     fontSize: 13,
-    color: '#6F6A64',
+    color: '#6B5C52',
   },
   radioGroup: {
     gap: 10,
@@ -683,7 +683,7 @@ const styles = StyleSheet.create({
   },
   radioLabel: {
     fontSize: 14,
-    color: '#3E2F25',
+    color: '#271508',
   },
 });
 

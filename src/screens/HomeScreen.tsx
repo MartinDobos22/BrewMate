@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 24,
     paddingBottom: 48,
-    backgroundColor: '#F6F3EE',
+    backgroundColor: '#F5F1EC',
   },
   title: {
     fontSize: 32,
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E3DED6',
+    borderColor: '#DDD3C9',
     marginBottom: 20,
   },
   inlineHeader: {
@@ -373,11 +373,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 8,
-    color: '#3E2F25',
+    color: '#271508',
   },
   placeholder: {
     fontSize: 14,
-    color: '#6F6A64',
+    color: '#6B5C52',
     marginBottom: 12,
   },
   matchScore: {
@@ -394,39 +394,39 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     minWidth: '47%',
-    backgroundColor: '#EDE8E0',
+    backgroundColor: '#EDE7DF',
     borderRadius: 16,
     padding: 12,
   },
   metricValue: {
-    color: '#3E2F25',
+    color: '#271508',
     fontSize: 18,
     fontWeight: '700',
   },
   metricLabel: {
-    color: '#6F6A64',
+    color: '#6B5C52',
     marginTop: 3,
     fontSize: 13,
   },
   summaryText: {
     marginTop: 10,
-    color: '#6F6A64',
+    color: '#6B5C52',
   },
   previewCard: {
     borderWidth: 1,
-    borderColor: '#E3DED6',
+    borderColor: '#DDD3C9',
     borderRadius: 10,
     padding: 10,
     marginBottom: 8,
-    backgroundColor: '#F6F3EE',
+    backgroundColor: '#F5F1EC',
   },
   previewTitle: {
-    color: '#3E2F25',
+    color: '#271508',
     fontWeight: '700',
     fontSize: 14,
   },
   previewMeta: {
-    color: '#6F6A64',
+    color: '#6B5C52',
     marginTop: 3,
     fontSize: 12,
   },
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   errorText: {
-    color: '#B3261E',
+    color: '#BA1A1A',
     marginTop: 6,
   },
   button: {
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonSecondary: {
-    backgroundColor: '#3E2F25',
+    backgroundColor: '#271508',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 16,

@@ -117,19 +117,19 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   container: { padding: 24, gap: 12 },
-  title: { fontSize: 24, fontWeight: '700', color: '#3E2F25' },
-  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E3DED6', borderRadius: 16, padding: 14 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8, color: '#3E2F25' },
-  text: { fontSize: 14, color: '#6F6A64', marginBottom: 4 },
+  title: { fontSize: 24, fontWeight: '700', color: '#271508' },
+  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDD3C9', borderRadius: 16, padding: 14 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8, color: '#271508' },
+  text: { fontSize: 14, color: '#6B5C52', marginBottom: 4 },
   highlight: { fontWeight: '700', color: '#6B4F3A', marginBottom: 8 },
-  warning: { color: '#b45309', fontWeight: '600' },
+  warning: { color: '#9B6F42', fontWeight: '600' },
   primaryButton: { backgroundColor: '#6B4F3A', borderRadius: 16, alignItems: 'center', paddingVertical: 12 },
   primaryButtonText: { color: '#FFFFFF', fontWeight: '600' },
   secondaryButton: { borderWidth: 1, borderColor: '#6B4F3A', borderRadius: 16, alignItems: 'center', paddingVertical: 12 },
   secondaryButtonText: { color: '#6B4F3A', fontWeight: '600' },
   buttonDisabled: { opacity: 0.6 },
-  success: { color: '#8A9A5B', fontWeight: '600' },
-  error: { color: '#B3261E', fontWeight: '600' },
+  success: { color: '#7A9255', fontWeight: '600' },
+  error: { color: '#BA1A1A', fontWeight: '600' },
 });
 
 export default CoffeePhotoRecipeResultScreen;
