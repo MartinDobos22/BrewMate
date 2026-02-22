@@ -138,9 +138,13 @@ function LoginScreen({ navigation, route }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Prihlásenie</Text>
-        <Text style={styles.subtitle}>Vitaj späť v BrewMate.</Text>
+        <View style={styles.hero}>
+          <Text style={styles.heroTag}>☕ BrewMate</Text>
+          <Text style={styles.title}>Prihlásenie</Text>
+          <Text style={styles.subtitle}>Vitaj späť v BrewMate.</Text>
+        </View>
 
+        <View style={styles.formCard}>
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Email</Text>
           <TextInput
@@ -162,6 +166,8 @@ function LoginScreen({ navigation, route }: Props) {
             value={password}
             onChangeText={setPassword}
           />
+        </View>
+
         </View>
 
         {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
@@ -210,47 +216,69 @@ function LoginScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F6F3EE',
+    backgroundColor: '#F5F1EC',
   },
   container: {
     flexGrow: 1,
     padding: 24,
     justifyContent: 'center',
+    backgroundColor: '#F5F1EC',
+  },
+  hero: {
+    backgroundColor: '#EDE0D4',
+    borderRadius: 28,
+    padding: 20,
+    marginBottom: 16,
+  },
+  heroTag: {
+    color: '#6B4F3A',
+    textTransform: 'uppercase',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  formCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DDD3C9',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 10,
   },
   title: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#271508',
   },
   subtitle: {
     fontSize: 16,
-    color: '#6F6A64',
+    color: '#6B5C52',
     marginBottom: 24,
   },
   inputGroup: {
     marginBottom: 16,
   },
   label: {
-    color: '#6F6A64',
+    color: '#6B5C52',
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#3E2F25',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: '#FFFFFF',
+    color: '#1C1917',
     borderWidth: 1,
-    borderColor: '#B7B7B7',
+    borderColor: '#C8BAB0',
   },
   errorText: {
-    color: '#B3261E',
+    color: '#BA1A1A',
     marginBottom: 12,
   },
   primaryButton: {
     backgroundColor: '#6B4F3A',
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: 999,
     alignItems: 'center',
     marginTop: 8,
   },
@@ -267,23 +295,23 @@ const styles = StyleSheet.create({
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: '#3E2F25',
+    backgroundColor: '#271508',
   },
   dividerText: {
-    color: '#6F6A64',
+    color: '#6B5C52',
     paddingHorizontal: 12,
   },
   socialButton: {
-    backgroundColor: '#3E2F25',
+    backgroundColor: '#271508',
     borderRadius: 16,
     paddingVertical: 12,
     alignItems: 'center',
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#B7B7B7',
+    borderColor: '#C8BAB0',
   },
   socialButtonText: {
-    color: '#E3DED6',
+    color: '#DDD3C9',
     fontWeight: '600',
   },
   disabledButton: {
@@ -295,11 +323,11 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   footerText: {
-    color: '#6F6A64',
+    color: '#6B5C52',
     marginRight: 6,
   },
   footerLink: {
-    color: '#38bdf8',
+    color: '#6B4F3A',
     fontWeight: '600',
   },
 });

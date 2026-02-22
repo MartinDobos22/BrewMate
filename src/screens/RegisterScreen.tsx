@@ -112,9 +112,13 @@ function RegisterScreen({ navigation }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Registrácia</Text>
-        <Text style={styles.subtitle}>Začni s BrewMate ešte dnes.</Text>
+        <View style={styles.hero}>
+          <Text style={styles.heroTag}>☕ BrewMate</Text>
+          <Text style={styles.title}>Registrácia</Text>
+          <Text style={styles.subtitle}>Začni s BrewMate ešte dnes.</Text>
+        </View>
 
+        <View style={styles.formCard}>
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Email</Text>
           <TextInput
@@ -149,6 +153,8 @@ function RegisterScreen({ navigation }: Props) {
           />
         </View>
 
+        </View>
+
         {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
         <Pressable
@@ -177,47 +183,69 @@ function RegisterScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F6F3EE',
+    backgroundColor: '#F5F1EC',
   },
   container: {
     flexGrow: 1,
     padding: 24,
     justifyContent: 'center',
+    backgroundColor: '#F5F1EC',
+  },
+  hero: {
+    backgroundColor: '#EDE0D4',
+    borderRadius: 28,
+    padding: 20,
+    marginBottom: 16,
+  },
+  heroTag: {
+    color: '#6B4F3A',
+    textTransform: 'uppercase',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  formCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DDD3C9',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 10,
   },
   title: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#271508',
   },
   subtitle: {
     fontSize: 16,
-    color: '#6F6A64',
+    color: '#6B5C52',
     marginBottom: 24,
   },
   inputGroup: {
     marginBottom: 16,
   },
   label: {
-    color: '#6F6A64',
+    color: '#6B5C52',
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#3E2F25',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: '#FFFFFF',
+    color: '#1C1917',
     borderWidth: 1,
-    borderColor: '#B7B7B7',
+    borderColor: '#C8BAB0',
   },
   errorText: {
-    color: '#B3261E',
+    color: '#BA1A1A',
     marginBottom: 12,
   },
   primaryButton: {
     backgroundColor: '#6B4F3A',
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: 999,
     alignItems: 'center',
     marginTop: 8,
   },
@@ -235,11 +263,11 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   footerText: {
-    color: '#6F6A64',
+    color: '#6B5C52',
     marginRight: 6,
   },
   footerLink: {
-    color: '#38bdf8',
+    color: '#6B4F3A',
     fontWeight: '600',
   },
 });

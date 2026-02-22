@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
   },
   saveError: {
     marginTop: 8,
-    color: '#B3261E',
+    color: '#BA1A1A',
     fontWeight: '600',
   },
   inventoryBlock: {
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
   },
   inventoryButton: {
     marginTop: 12,
-    backgroundColor: '#8A9A5B',
+    backgroundColor: '#7A9255',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 10,
@@ -526,19 +526,19 @@ const styles = StyleSheet.create({
   },
   packageOption: {
     borderWidth: 1,
-    borderColor: '#D1CBC2',
+    borderColor: '#DDD3C9',
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 16,
     backgroundColor: '#FFFFFF',
   },
   packageOptionActive: {
-    borderColor: '#8A9A5B',
-    backgroundColor: '#EEF1E5',
+    borderColor: '#7A9255',
+    backgroundColor: '#D8ECBA',
   },
   packageOptionText: {
     fontSize: 12,
-    color: '#6F6A64',
+    color: '#6B5C52',
     fontWeight: '600',
   },
   packageOptionTextActive: {
@@ -551,11 +551,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   remainingPrefix: {
-    color: '#6F6A64',
+    color: '#6B5C52',
     fontSize: 12,
   },
   remainingValue: {
-    color: '#3E2F25',
+    color: '#271508',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -577,11 +577,11 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#2b2b2b',
+    color: '#1C1917',
   },
   errorText: {
     fontSize: 14,
-    color: '#B3261E',
+    color: '#BA1A1A',
     fontWeight: '600',
   },
   verdictBadge: {
@@ -590,29 +590,29 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   verdictPositive: {
-    backgroundColor: '#EEF1E5',
+    backgroundColor: '#D8ECBA',
     borderWidth: 1,
-    borderColor: '#8A9A5B',
+    borderColor: '#7A9255',
   },
   verdictNegative: {
-    backgroundColor: '#fee2e2',
+    backgroundColor: '#FFDAD6',
     borderWidth: 1,
-    borderColor: '#B3261E',
+    borderColor: '#BA1A1A',
   },
   verdictText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#3E2F25',
+    color: '#271508',
   },
   verdictSubText: {
     marginTop: 4,
     fontSize: 12,
-    color: '#6F6A64',
+    color: '#6B5C52',
   },
   helperNote: {
     marginTop: 12,
     fontSize: 12,
-    color: '#6F6A64',
+    color: '#6B5C52',
   },
 });
 

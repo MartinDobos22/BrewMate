@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
@@ -70,26 +70,35 @@ function CoffeeRecipesSavedScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Coffee Recipes Saved</Text>
+        <Text style={styles.title}>Recepty</Text>
 
-        <View style={styles.card}>
+        <View style={styles.heroCard}>
           <Text style={styles.cardTitle}>AI sumarizácia (30 dní)</Text>
           {loading ? <Text style={styles.muted}>Načítavam...</Text> : null}
           {!loading && insights ? <Text style={styles.text}>{insights.aiSummary}</Text> : null}
           {favorite ? <Text style={styles.favorite}>Aktuálny favorit: {favorite}</Text> : null}
         </View>
 
-        <View style={styles.card}>
+        <View style={styles.sectionHead}>
           <Text style={styles.cardTitle}>Uložené recepty</Text>
-          {items.map((item) => (
-            <View key={item.id} style={styles.item}>
-              <Text style={styles.itemTitle}>{item.title}</Text>
-              <Text style={styles.meta}>{item.method} • {item.strengthPreference} • {item.likeScore}%</Text>
-              <Text style={styles.meta}>{item.dose} • {item.water} • {item.totalTime}</Text>
-            </View>
-          ))}
-          {!loading && items.length === 0 ? <Text style={styles.muted}>Zatiaľ bez receptov.</Text> : null}
+          <View style={styles.filterChip}><Text style={styles.filterChipText}>Všetky</Text></View>
         </View>
+        {items.map((item) => (
+            <Pressable key={item.id} style={styles.recipeCard}>
+              <View style={styles.recipeHead}>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                <Text style={styles.badge}>{item.likeScore}%</Text>
+              </View>
+              <Text style={styles.meta}>{item.method} • {item.strengthPreference}</Text>
+              <Text style={styles.meta}>{item.dose} • {item.water} • {item.totalTime}</Text>
+              <View style={styles.tagsRow}>
+                {(item.flavorNotes || []).slice(0,3).map((note) => (
+                  <Text key={note} style={styles.tag}>{note}</Text>
+                ))}
+              </View>
+            </Pressable>
+          ))}
+        {!loading && items.length === 0 ? <Text style={styles.muted}>Zatiaľ bez receptov.</Text> : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
@@ -99,17 +108,24 @@ function CoffeeRecipesSavedScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
-  container: { padding: 20, gap: 14 },
-  title: { fontSize: 28, fontWeight: '700', color: '#3E2F25' },
-  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E3DED6', borderRadius: 16, padding: 14 },
-  cardTitle: { fontSize: 17, fontWeight: '700', marginBottom: 8, color: '#3E2F25' },
-  text: { color: '#3E2F25' },
+  container: { padding: 20, gap: 14, backgroundColor: '#F5F1EC' },
+  title: { fontSize: 28, fontWeight: '700', color: '#271508', marginBottom: 4 },
+  heroCard: { backgroundColor: '#EDE0D4', borderRadius: 28, padding: 16 },
+  sectionHead: { flexDirection:'row', justifyContent:'space-between', alignItems:'center' },
+  cardTitle: { fontSize: 17, fontWeight: '700', marginBottom: 8, color: '#271508' },
+  text: { color: '#271508' },
   favorite: { marginTop: 8, color: '#6B4F3A', fontWeight: '600' },
-  item: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#EDE8E0' },
-  itemTitle: { color: '#3E2F25', fontWeight: '600' },
-  meta: { color: '#6F6A64', fontSize: 12, marginTop: 2 },
-  muted: { color: '#6F6A64' },
-  error: { color: '#B3261E', fontWeight: '600' },
+  recipeCard: { backgroundColor:'#FFFFFF', borderWidth:1, borderColor:'#DDD3C9', borderRadius:20, padding:14, marginBottom:10 },
+  recipeHead: { flexDirection:'row', justifyContent:'space-between', alignItems:'center' },
+  itemTitle: { color: '#271508', fontWeight: '600', fontSize:16 },
+  meta: { color: '#6B5C52', fontSize: 12, marginTop: 2 },
+  muted: { color: '#6B5C52' },
+  filterChip:{ backgroundColor:'#D8ECBA', borderRadius:999, paddingHorizontal:12,paddingVertical:6 },
+  filterChipText:{ color:'#1A2D08', fontWeight:'600', fontSize:12 },
+  badge:{ backgroundColor:'#EDE0D4', color:'#271508', borderRadius:999, paddingHorizontal:10, paddingVertical:4, overflow:'hidden' },
+  tagsRow:{ flexDirection:'row', flexWrap:'wrap', gap:6, marginTop:8 },
+  tag:{ backgroundColor:'#EDE7DF', color:'#6B5C52', borderRadius:999, paddingHorizontal:10, paddingVertical:4, fontSize:11 },
+  error: { color: '#BA1A1A', fontWeight: '600' },
 });
 
 export default CoffeeRecipesSavedScreen;

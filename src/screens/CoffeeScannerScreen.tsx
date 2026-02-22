@@ -367,13 +367,15 @@ function CoffeeScannerScreen({ navigation }: Props) {
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.title}>Coffee Scanner</Text>
-          <Text style={styles.description}>
-            Vyberte alebo odfoťte obrázok etikety a odošlite ho na backend.
-            Server použije Google Vision OCR a následne opraví text cez OpenAI
-            API. Následne vráti odhad chuťového profilu bez hardcoded slovníkov.
-          </Text>
+          <View style={styles.hero}>
+            <Text style={styles.heroTag}>✨ Scan & Analyze</Text>
+            <Text style={styles.title}>Coffee Scanner</Text>
+            <Text style={styles.description}>
+              Vyberte alebo odfoťte etiketu. BrewMate spraví OCR a navrhne chuťový profil.
+            </Text>
+          </View>
 
+          <View style={styles.card}>
           <View style={styles.field}>
             <Text style={styles.label}>Obrázok etikety</Text>
             <View style={styles.buttonRow}>
@@ -404,11 +406,13 @@ function CoffeeScannerScreen({ navigation }: Props) {
             <TextInput
               style={styles.hintInput}
               placeholder="sk, en"
-              placeholderTextColor="#8b8b8b"
+              placeholderTextColor="#6B5C52"
               value={languageHints}
               onChangeText={setLanguageHints}
               autoCapitalize="none"
             />
+          </View>
+
           </View>
 
           {isPicking ? (
@@ -455,7 +459,7 @@ function CoffeeScannerScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F5F1EC',
   },
   flex: {
     flex: 1,
@@ -463,6 +467,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
+    backgroundColor: '#F5F1EC',
+  },
+  hero:{
+    backgroundColor:'#EDE0D4',
+    borderRadius:28,
+    padding:20,
+    marginBottom:12,
+  },
+  heroTag:{
+    color:'#6B4F3A',
+    fontSize:12,
+    fontWeight:'700',
+    textTransform:'uppercase',
+    marginBottom:6,
+  },
+  card:{
+    backgroundColor:'#FFFFFF',
+    borderWidth:1,
+    borderColor:'#DDD3C9',
+    borderRadius:20,
+    padding:14,
+    marginBottom:12,
   },
   title: {
     fontSize: 26,
@@ -472,11 +498,11 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#6F6A64',
-    marginBottom: 16,
+    color: '#6B5C52',
+    marginBottom: 10,
   },
   field: {
-    marginBottom: 16,
+    marginBottom: 10,
   },
   label: {
     fontSize: 14,
@@ -503,19 +529,19 @@ const styles = StyleSheet.create({
   helperText: {
     marginTop: 8,
     fontSize: 12,
-    color: '#6F6A64',
+    color: '#6B5C52',
   },
   hintInput: {
     borderWidth: 1,
-    borderColor: '#B7B7B7',
+    borderColor: '#C8BAB0',
     borderRadius: 16,
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontSize: 14,
-    color: '#222222',
+    color: '#1C1917',
   },
   errorText: {
-    color: '#B3261E',
+    color: '#BA1A1A',
     marginBottom: 12,
   },
   statusText: {
@@ -526,7 +552,7 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: '#6B4F3A',
     paddingVertical: 12,
-    borderRadius: 16,
+    borderRadius: 999,
     alignItems: 'center',
   },
   buttonDisabled: {
