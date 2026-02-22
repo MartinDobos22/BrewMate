@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
@@ -70,26 +70,35 @@ function CoffeeRecipesSavedScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Coffee Recipes Saved</Text>
+        <Text style={styles.title}>Recepty</Text>
 
-        <View style={styles.card}>
+        <View style={styles.heroCard}>
           <Text style={styles.cardTitle}>AI sumarizácia (30 dní)</Text>
           {loading ? <Text style={styles.muted}>Načítavam...</Text> : null}
           {!loading && insights ? <Text style={styles.text}>{insights.aiSummary}</Text> : null}
           {favorite ? <Text style={styles.favorite}>Aktuálny favorit: {favorite}</Text> : null}
         </View>
 
-        <View style={styles.card}>
+        <View style={styles.sectionHead}>
           <Text style={styles.cardTitle}>Uložené recepty</Text>
-          {items.map((item) => (
-            <View key={item.id} style={styles.item}>
-              <Text style={styles.itemTitle}>{item.title}</Text>
-              <Text style={styles.meta}>{item.method} • {item.strengthPreference} • {item.likeScore}%</Text>
-              <Text style={styles.meta}>{item.dose} • {item.water} • {item.totalTime}</Text>
-            </View>
-          ))}
-          {!loading && items.length === 0 ? <Text style={styles.muted}>Zatiaľ bez receptov.</Text> : null}
+          <View style={styles.filterChip}><Text style={styles.filterChipText}>Všetky</Text></View>
         </View>
+        {items.map((item) => (
+            <Pressable key={item.id} style={styles.recipeCard}>
+              <View style={styles.recipeHead}>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                <Text style={styles.badge}>{item.likeScore}%</Text>
+              </View>
+              <Text style={styles.meta}>{item.method} • {item.strengthPreference}</Text>
+              <Text style={styles.meta}>{item.dose} • {item.water} • {item.totalTime}</Text>
+              <View style={styles.tagsRow}>
+                {(item.flavorNotes || []).slice(0,3).map((note) => (
+                  <Text key={note} style={styles.tag}>{note}</Text>
+                ))}
+              </View>
+            </Pressable>
+          ))}
+        {!loading && items.length === 0 ? <Text style={styles.muted}>Zatiaľ bez receptov.</Text> : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
