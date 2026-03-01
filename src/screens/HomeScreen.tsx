@@ -6,7 +6,7 @@ import {RootStackParamList} from '../navigation/types';
 import {apiFetch, DEFAULT_API_HOST} from '../utils/api';
 import {useAuth} from '../context/AuthContext';
 import TasteProfileBars from '../components/TasteProfileBars';
-import {DEFAULT_TASTE_VECTOR, normalizeTasteVector, TasteVector,} from '../utils/tasteVector';
+import {DEFAULT_TASTE_VECTOR, normalizeTasteVector, TasteVector} from '../utils/tasteVector';
 import {
   CoffeeProfilePayload,
   loadLatestCoffeeProfile,
@@ -41,14 +41,19 @@ type RecipeItem = {
   createdAt: string;
 };
 
-function HomeScreen({ navigation }: Props) {
-  const { clearSession } = useAuth();
+function HomeScreen({navigation}: Props) {
+  const {clearSession} = useAuth();
   const [userProfile, setUserProfile] = useState<QuestionnaireResultPayload['profile'] | null>(
     null,
   );
   const [coffeeProfile, setCoffeeProfile] = useState<CoffeeProfilePayload['coffeeProfile'] | null>(
     null,
   );
+  const [inventoryItems, setInventoryItems] = useState<HomeInventoryItem[]>([]);
+  const [recipes, setRecipes] = useState<RecipeItem[]>([]);
+  const [dashboardState, setDashboardState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [dashboardError, setDashboardError] = useState('');
+
   const loadSavedProfiles = useCallback(async () => {
     const [latestQuestionnaire, latestCoffee] = await Promise.all([
       loadLatestQuestionnaireResult(),
@@ -57,30 +62,6 @@ function HomeScreen({ navigation }: Props) {
     setUserProfile(latestQuestionnaire?.payload?.profile ?? null);
     setCoffeeProfile(latestCoffee?.payload?.coffeeProfile ?? null);
   }, []);
-  const [inventoryItems, setInventoryItems] = useState<HomeInventoryItem[]>([]);
-  const [recipes, setRecipes] = useState<RecipeItem[]>([]);
-  const [dashboardState, setDashboardState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
-  const [dashboardError, setDashboardError] = useState('');
-
-  const handleScanPress = () => {
-    navigation.navigate('CoffeeScanner');
-  };
-
-  const handleQuestionnairePress = () => {
-    navigation.navigate('CoffeeQuestionnaire');
-  };
-
-  const handlePhotoRecipePress = () => {
-    navigation.navigate('CoffeePhotoRecipe');
-  };
-
-  const handleInventoryPress = () => {
-    navigation.navigate('CoffeeInventory');
-  };
-
-  const handleSavedRecipesPress = () => {
-    navigation.navigate('CoffeeRecipesSaved');
-  };
 
   const handleLogout = async () => {
     try {
@@ -120,7 +101,7 @@ function HomeScreen({ navigation }: Props) {
       const [inventoryResponse, recipesResponse] = await Promise.all([
         apiFetch(
           `${DEFAULT_API_HOST}/api/user-coffee?includeInactive=true`,
-          { method: 'GET', credentials: 'include' },
+          {method: 'GET', credentials: 'include'},
           {
             feature: 'HomeDashboard',
             action: 'load-inventory',
@@ -128,7 +109,7 @@ function HomeScreen({ navigation }: Props) {
         ),
         apiFetch(
           `${DEFAULT_API_HOST}/api/coffee-recipes?days=90`,
-          { method: 'GET', credentials: 'include' },
+          {method: 'GET', credentials: 'include'},
           {
             feature: 'HomeDashboard',
             action: 'load-recipes',
@@ -176,17 +157,8 @@ function HomeScreen({ navigation }: Props) {
     const user = normalizeTasteVector(userProfile.tasteVector);
     const coffee = normalizeTasteVector(coffeeProfile.tasteVector);
     type TasteAxis = Exclude<keyof TasteVector, 'confidence'>;
-    const axes: TasteAxis[] = [
-      'acidity',
-      'sweetness',
-      'bitterness',
-      'body',
-      'fruity',
-      'roast',
-    ];
-    const avgDiff =
-      axes.reduce((sum, key) => sum + Math.abs(user[key] - coffee[key]), 0)
-      / axes.length;
+    const axes: TasteAxis[] = ['acidity', 'sweetness', 'bitterness', 'body', 'fruity', 'roast'];
+    const avgDiff = axes.reduce((sum, key) => sum + Math.abs(user[key] - coffee[key]), 0) / axes.length;
     return Math.round(100 - avgDiff);
   }, [coffeeProfile?.tasteVector, userProfile?.tasteVector]);
 
@@ -212,10 +184,7 @@ function HomeScreen({ navigation }: Props) {
     };
   }, [inventoryItems]);
 
-  const activeCoffeePreview = useMemo(
-    () => inventoryTotals.active.slice(0, 4),
-    [inventoryTotals.active],
-  );
+  const activeCoffeePreview = useMemo(() => inventoryTotals.active.slice(0, 4), [inventoryTotals.active]);
 
   const recipeHighlights = useMemo(() => {
     const sorted = [...recipes].sort(
@@ -227,110 +196,116 @@ function HomeScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.container}>
-        <Text style={styles.title}>BrewMate</Text>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Rýchly prehľad</Text>
-          {dashboardState === 'loading' ? <ActivityIndicator color="#6B4F3A" /> : null}
-          {dashboardState === 'error' ? <Text style={styles.errorText}>{dashboardError}</Text> : null}
-
-          <View style={styles.metricsWrap}>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricValue}>{inventoryTotals.active.length}</Text>
-              <Text style={styles.metricLabel}>Aktívne kávy</Text>
-            </View>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricValue}>{inventoryTotals.gramsAvailable} g</Text>
-              <Text style={styles.metricLabel}>Aktuálne gramy</Text>
-            </View>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricValue}>{recipes.length}</Text>
-              <Text style={styles.metricLabel}>Uložené recepty</Text>
-            </View>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricValue}>{inventoryTotals.lowStock.length}</Text>
-              <Text style={styles.metricLabel}>Takmer minuté</Text>
-            </View>
-          </View>
-
-          <Text style={styles.summaryText}>
-            Inventár: {inventoryTotals.active.length} aktívnych • {inventoryTotals.empty.length} dopitých
-            {' '}• {inventoryTotals.archived.length} archivovaných.
-          </Text>
+        <View style={styles.heroCard}>
+          <Text style={styles.heroLabel}>🌅 Dobré ráno</Text>
+          <Text style={styles.heroTitle}>Čo dnes uvaríš?</Text>
+          <Text style={styles.heroSubtitle}>Prehľad zásob, chutí a odporúčaných receptov na jednom mieste.</Text>
+          <Pressable style={styles.heroButton} onPress={() => navigation.navigate('CoffeeRecipesSaved')}>
+            <Text style={styles.heroButtonText}>Odporúčané recepty</Text>
+          </Pressable>
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.inlineHeader}>
-            <Text style={styles.sectionTitle}>Aktuálne kávy</Text>
-            <Pressable onPress={handleInventoryPress}>
-              <Text style={styles.link}>Celý inventár</Text>
-            </Pressable>
+        <View style={styles.statsGrid}>
+          <View style={styles.statTile}>
+            <Text style={styles.statValue}>{inventoryTotals.active.length}</Text>
+            <Text style={styles.statLabel}>Aktívne kávy</Text>
           </View>
+          <View style={styles.statTile}>
+            <Text style={styles.statValue}>{inventoryTotals.gramsAvailable} g</Text>
+            <Text style={styles.statLabel}>Zostáva spolu</Text>
+          </View>
+          <View style={styles.statTile}>
+            <Text style={styles.statValue}>{recipes.length}</Text>
+            <Text style={styles.statLabel}>Uložené recepty</Text>
+          </View>
+        </View>
+
+        {inventoryTotals.lowStock.length > 0 ? (
+          <View style={styles.banner}>
+            <Text style={styles.bannerTitle}>⚠️ Nízky stav zásob</Text>
+            <Text style={styles.bannerText}>{inventoryTotals.lowStock.length} kávy sú takmer minuté.</Text>
+          </View>
+        ) : null}
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Môj chuťový profil</Text>
+          <Pressable onPress={() => navigation.navigate('CoffeeQuestionnaire')}>
+            <Text style={styles.link}>Upraviť</Text>
+          </Pressable>
+        </View>
+        <View style={styles.sectionCard}>
+          {!userProfile ? (
+            <Text style={styles.placeholder}>Vyplň dotazník, aby sme nastavili tvoj chuťový profil.</Text>
+          ) : null}
+          <TasteProfileBars vector={userVector} />
+          <View style={styles.tagRow}>
+            <Text style={styles.tag}>☕ Pour Over</Text>
+            <Text style={styles.tag}>🍫 Tmavšie chute</Text>
+            <Text style={styles.tag}>🌍 Single origin</Text>
+          </View>
+          {matchScore !== null ? <Text style={styles.matchScore}>Zhoda posledného skenu: {matchScore}%</Text> : null}
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Moje kávy</Text>
+          <Pressable onPress={() => navigation.navigate('CoffeeInventory')}>
+            <Text style={styles.link}>Všetky</Text>
+          </Pressable>
+        </View>
+        {dashboardState === 'loading' ? <ActivityIndicator color="#6B4F3A" style={styles.loader} /> : null}
+        {dashboardState === 'error' ? <Text style={styles.errorText}>{dashboardError}</Text> : null}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
           {activeCoffeePreview.length === 0 ? (
-            <Text style={styles.placeholder}>Zatiaľ nemáš aktívne kávy. Pridaj prvý balík do inventára.</Text>
+            <View style={styles.emptyHorizontalCard}>
+              <Text style={styles.placeholder}>Zatiaľ nemáš aktívne kávy v zásobníku.</Text>
+            </View>
           ) : (
             activeCoffeePreview.map((item) => {
               const name = item.correctedText || item.rawText || 'Neznáma káva';
-              const remaining = item.remainingG === null ? 'Neznáme' : `${item.remainingG} g`;
+              const remaining = item.remainingG === null ? 'Neznáme množstvo' : `${item.remainingG} g`;
               return (
-                <View key={item.id} style={styles.previewCard}>
-                  <Text style={styles.previewTitle}>{name}</Text>
-                  <Text style={styles.previewMeta}>Zostáva: {remaining}</Text>
+                <View key={item.id} style={styles.coffeeCard}>
+                  <Text style={styles.coffeeTitle}>{name}</Text>
+                  <Text style={styles.coffeeMeta}>{item.coffeeProfile.origin || 'Neznámy pôvod'}</Text>
+                  <Text style={styles.coffeeRemaining}>{remaining}</Text>
                 </View>
               );
             })
           )}
+        </ScrollView>
+
+        <View style={styles.actionStack}>
+          <Pressable style={[styles.actionCard, styles.actionCardPrimary]} onPress={() => navigation.navigate('CoffeeScanner')}>
+            <Text style={styles.actionTitle}>📷 Coffee Scanner</Text>
+            <Text style={styles.actionText}>Naskenuj etiketu a doplň profil kávy.</Text>
+          </Pressable>
+          <Pressable style={[styles.actionCard, styles.actionCardSecondary]} onPress={() => navigation.navigate('CoffeePhotoRecipe')}>
+            <Text style={styles.actionTitle}>🍃 Foto recept</Text>
+            <Text style={styles.actionText}>Ofoť balenie a nechaj AI navrhnúť recept.</Text>
+          </Pressable>
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.inlineHeader}>
-            <Text style={styles.sectionTitle}>Recepty na rýchly štart</Text>
-            <Pressable onPress={handleSavedRecipesPress}>
-              <Text style={styles.link}>Všetky recepty</Text>
-            </Pressable>
-          </View>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Posledné recepty</Text>
+          <Pressable onPress={() => navigation.navigate('CoffeeRecipesSaved')}>
+            <Text style={styles.link}>Všetky</Text>
+          </Pressable>
+        </View>
+        <View style={styles.recipeList}>
           {recipeHighlights.length === 0 ? (
-            <Text style={styles.placeholder}>Zatiaľ nemáš uložené recepty. Vytvor ich cez Foto recept.</Text>
+            <Text style={styles.placeholder}>Zatiaľ nemáš uložené recepty.</Text>
           ) : (
             recipeHighlights.map((recipe) => (
-              <View key={recipe.id} style={styles.previewCard}>
-                <Text style={styles.previewTitle}>{recipe.title || 'Recipe'}</Text>
-                <Text style={styles.previewMeta}>{recipe.method} • Predikcia chuti {recipe.likeScore}%</Text>
+              <View key={recipe.id} style={styles.recipeCard}>
+                <Text style={styles.recipeTitle}>{recipe.title || 'Recept'}</Text>
+                <Text style={styles.recipeMeta}>{recipe.method} • Predikcia chuti {recipe.likeScore}%</Text>
               </View>
             ))
           )}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tvoj chuťový profil</Text>
-          {!userProfile ? (
-            <Text style={styles.placeholder}>
-              Vyplňte dotazník, aby sme nastavili váš chuťový profil.
-            </Text>
-          ) : null}
-          <TasteProfileBars vector={userVector} />
-          {matchScore !== null ? (
-            <Text style={styles.matchScore}>Zhoda: {matchScore}%</Text>
-          ) : null}
-        </View>
-
-        <Pressable style={styles.button} onPress={handleScanPress}>
-          <Text style={styles.buttonText}>Scan Coffee</Text>
-        </Pressable>
-        <Pressable style={styles.buttonSecondary} onPress={handlePhotoRecipePress}>
-          <Text style={styles.buttonText}>Foto recept</Text>
-        </Pressable>
-        <Pressable style={styles.buttonSecondary} onPress={handleQuestionnairePress}>
-          <Text style={styles.buttonText}>Chuťový dotazník</Text>
-        </Pressable>
-        <Pressable style={styles.buttonSecondary} onPress={handleInventoryPress}>
-          <Text style={styles.buttonText}>Coffee inventár</Text>
-        </Pressable>
-        <Pressable style={styles.buttonSecondary} onPress={handleSavedRecipesPress}>
-          <Text style={styles.buttonText}>Saved coffee recipes</Text>
-        </Pressable>
-        <Pressable style={styles.buttonOutline} onPress={handleLogout}>
-          <Text style={styles.buttonOutlineText}>Odhlásiť sa</Text>
+        <Pressable style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Odhlásiť sa</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -338,144 +313,142 @@ function HomeScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
+  safeArea: {flex: 1, backgroundColor: '#F5F1EC'},
+  scrollView: {flex: 1},
   container: {
     flexGrow: 1,
-    padding: 24,
-    paddingBottom: 48,
-    backgroundColor: '#F5F1EC',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    marginBottom: 24,
-  },
-  section: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
     padding: 16,
+    paddingBottom: 40,
+    backgroundColor: '#F5F1EC',
+    gap: 14,
+  },
+  heroCard: {
+    borderRadius: 28,
+    backgroundColor: '#EDE0D4',
+    padding: 20,
     borderWidth: 1,
     borderColor: '#DDD3C9',
-    marginBottom: 20,
   },
-  inlineHeader: {
+  heroLabel: {fontSize: 12, fontWeight: '700', color: '#6B4F3A', marginBottom: 8},
+  heroTitle: {fontSize: 30, fontWeight: '700', color: '#271508'},
+  heroSubtitle: {fontSize: 14, color: '#6B5C52', marginTop: 8, lineHeight: 20},
+  heroButton: {
+    marginTop: 14,
+    alignSelf: 'flex-start',
+    backgroundColor: '#6B4F3A',
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  heroButtonText: {color: '#FFFFFF', fontWeight: '700', fontSize: 13},
+  statsGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    gap: 8,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
-    color: '#271508',
-  },
-  placeholder: {
-    fontSize: 14,
-    color: '#6B5C52',
-    marginBottom: 12,
-  },
-  matchScore: {
-    marginTop: 12,
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#6B4F3A',
-  },
-  metricsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 8,
-  },
-  metricCard: {
-    minWidth: '47%',
-    backgroundColor: '#EDE7DF',
+  statTile: {
+    flex: 1,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DDD3C9',
+    backgroundColor: '#FFFFFF',
     padding: 12,
   },
-  metricValue: {
-    color: '#271508',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  metricLabel: {
-    color: '#6B5C52',
-    marginTop: 3,
-    fontSize: 13,
-  },
-  summaryText: {
-    marginTop: 10,
-    color: '#6B5C52',
-  },
-  previewCard: {
+  statValue: {fontSize: 21, fontWeight: '700', color: '#271508'},
+  statLabel: {fontSize: 12, color: '#6B5C52', marginTop: 2},
+  banner: {
+    borderRadius: 16,
+    backgroundColor: '#F2DEC4',
     borderWidth: 1,
     borderColor: '#DDD3C9',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 8,
-    backgroundColor: '#F5F1EC',
+    padding: 12,
   },
-  previewTitle: {
-    color: '#271508',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  previewMeta: {
-    color: '#6B5C52',
-    marginTop: 3,
-    fontSize: 12,
-  },
-  link: {
-    color: '#6B4F3A',
-    fontWeight: '700',
-  },
-  errorText: {
-    color: '#BA1A1A',
-    marginTop: 6,
-  },
-  button: {
-    backgroundColor: '#6B4F3A',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    marginBottom: 12,
-    minWidth: 200,
-    alignItems: 'center',
-  },
-  buttonSecondary: {
-    backgroundColor: '#271508',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    minWidth: 200,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonOutline: {
-    borderColor: '#6B4F3A',
+  bannerTitle: {fontSize: 14, fontWeight: '700', color: '#2B1800'},
+  bannerText: {fontSize: 13, color: '#6B5C52', marginTop: 4},
+  sectionHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6},
+  sectionTitle: {fontSize: 17, fontWeight: '700', color: '#271508'},
+  link: {fontSize: 13, fontWeight: '700', color: '#6B4F3A'},
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     borderWidth: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    borderColor: '#DDD3C9',
+    padding: 14,
+  },
+  placeholder: {fontSize: 13, color: '#6B5C52'},
+  matchScore: {marginTop: 8, color: '#6B4F3A', fontWeight: '700'},
+  tagRow: {flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10},
+  tag: {
+    backgroundColor: '#EDE7DF',
+    color: '#271508',
+    fontSize: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  loader: {marginTop: 8},
+  errorText: {color: '#BA1A1A', fontSize: 13, marginTop: 6},
+  horizontalList: {gap: 8, paddingVertical: 4},
+  emptyHorizontalCard: {
+    width: 210,
+    padding: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#DDD3C9',
+    backgroundColor: '#FFFFFF',
+  },
+  coffeeCard: {
+    width: 170,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#DDD3C9',
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+  },
+  coffeeTitle: {fontSize: 15, fontWeight: '700', color: '#271508'},
+  coffeeMeta: {marginTop: 2, fontSize: 12, color: '#6B5C52'},
+  coffeeRemaining: {marginTop: 8, fontSize: 13, fontWeight: '700', color: '#6B4F3A'},
+  actionStack: {gap: 10},
+  actionCard: {
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+  },
+  actionCardPrimary: {
+    backgroundColor: '#6B4F3A',
+    borderColor: '#6B4F3A',
+  },
+  actionCardSecondary: {
+    backgroundColor: '#7A9255',
+    borderColor: '#7A9255',
+  },
+  actionTitle: {fontSize: 18, fontWeight: '700', color: '#FFFFFF'},
+  actionText: {marginTop: 4, color: 'rgba(255,255,255,0.9)', fontSize: 13},
+  recipeList: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#DDD3C9',
+    padding: 12,
+    gap: 8,
+  },
+  recipeCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#EDE7DF',
+    backgroundColor: '#F9F6F2',
+    padding: 10,
+  },
+  recipeTitle: {fontSize: 14, fontWeight: '700', color: '#271508'},
+  recipeMeta: {marginTop: 2, fontSize: 12, color: '#6B5C52'},
+  logoutButton: {
+    marginTop: 10,
     borderRadius: 16,
-    minWidth: 200,
+    borderWidth: 1,
+    borderColor: '#6B4F3A',
+    paddingVertical: 12,
     alignItems: 'center',
-    marginTop: 12,
   },
-  buttonOutlineText: {
-    color: '#6B4F3A',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  logoutText: {color: '#6B4F3A', fontWeight: '700'},
 });
 
 export default HomeScreen;
