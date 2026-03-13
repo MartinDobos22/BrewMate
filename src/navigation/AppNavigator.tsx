@@ -15,7 +15,6 @@ import RegisterScreen from '../screens/RegisterScreen';
 import AuthLoadingScreen from '../screens/AuthLoadingScreen';
 import { AuthStackParamList, RootStackParamList } from './types';
 import { useAuth } from '../context/AuthContext';
-import { appTheme } from '../theme/theme';
 
 const AppStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -24,10 +23,11 @@ function AuthNavigator() {
   return (
     <AuthStack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: appTheme.colors.surface },
-        headerTintColor: appTheme.colors.primary,
-        headerTitleStyle: { ...appTheme.typography.title, color: appTheme.colors.text },
-        contentStyle: { backgroundColor: appTheme.colors.background },
+        headerStyle: { backgroundColor: '#FFFFFF' },
+        headerTintColor: '#2C2C2C',
+        headerTitleStyle: { fontSize: 17, fontWeight: '600', color: '#1A1A1A' },
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: '#FAFAFA' },
       }}
     >
       <AuthStack.Screen
@@ -48,10 +48,11 @@ function MainNavigator() {
   return (
     <AppStack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: appTheme.colors.surface },
-        headerTintColor: appTheme.colors.primary,
-        headerTitleStyle: { ...appTheme.typography.title, color: appTheme.colors.text },
-        contentStyle: { backgroundColor: appTheme.colors.background },
+        headerStyle: { backgroundColor: '#FFFFFF' },
+        headerTintColor: '#2C2C2C',
+        headerTitleStyle: { fontSize: 17, fontWeight: '600', color: '#1A1A1A' },
+        headerShadowVisible: true,
+        contentStyle: { backgroundColor: '#FAFAFA' },
       }}
     >
       <AppStack.Screen

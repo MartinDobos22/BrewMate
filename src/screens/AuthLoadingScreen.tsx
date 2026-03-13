@@ -4,7 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 function AuthLoadingScreen() {
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color="#6B4F3A" />
+      <ActivityIndicator size="large" color="#2C2C2C" />
       <Text style={styles.text}>Načítavam účet...</Text>
     </View>
   );
@@ -15,12 +15,13 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F5F1EC',
+    backgroundColor: '#FAFAFA',
   },
   text: {
-    marginTop: 12,
-    color: '#DDD3C9',
-    fontSize: 16,
+    marginTop: 16,
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#6B6B6B',
   },
 });
 
