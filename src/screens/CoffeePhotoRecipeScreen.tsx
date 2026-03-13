@@ -363,40 +363,44 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Foto recept</Text>
-        <Text style={styles.description}>
-          Nahrajte fotku kávy, nechajte AI odhadnúť chuť a vyberte si najlepší
-          spôsob prípravy.
-        </Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Foto recept</Text>
+          <Text style={styles.description}>
+            Nahrajte fotku kávy, nechajte AI odhadnúť chuť a vyberte si najlepší
+            spôsob prípravy.
+          </Text>
+        </View>
 
-        <View style={styles.block}>
+        {/* Photo Source Block */}
+        <View style={styles.card}>
           <Text style={styles.label}>Fotografia kávy</Text>
           <View style={styles.buttonRow}>
             <Pressable
-              style={[styles.secondaryButton, isPicking && styles.buttonDisabled]}
+              style={[styles.outlineButton, styles.buttonRowItem, isPicking && styles.buttonDisabled]}
               onPress={handleSelectFromGallery}
               disabled={isPicking}
             >
-              <Text style={styles.secondaryButtonText}>Vybrať z galérie</Text>
+              <Text style={styles.outlineButtonText}>Vybrať z galérie</Text>
             </Pressable>
             <Pressable
-              style={[styles.secondaryButton, isPicking && styles.buttonDisabled]}
+              style={[styles.outlineButton, styles.buttonRowItem, isPicking && styles.buttonDisabled]}
               onPress={handleTakePhoto}
               disabled={isPicking}
             >
-              <Text style={styles.secondaryButtonText}>Odfotiť</Text>
+              <Text style={styles.outlineButtonText}>Odfotiť</Text>
             </Pressable>
           </View>
           <Pressable
             style={[
-              styles.secondaryButton,
+              styles.outlineButton,
               styles.inventoryButton,
               (isInventoryLoading || isPicking) && styles.buttonDisabled,
             ]}
             onPress={loadInventory}
             disabled={isInventoryLoading || isPicking}
           >
-            <Text style={styles.secondaryButtonText}>
+            <Text style={styles.outlineButtonText}>
               {isInventoryLoading ? 'Načítavam inventár…' : 'Vybrať z inventára'}
             </Text>
           </Pressable>
@@ -429,11 +433,15 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
               )}
             </View>
           ) : null}
-          <Text style={styles.helperText}>
-            {imageBase64
-              ? 'Fotka je pripravená.'
-              : 'Zatiaľ nie je vybraná žiadna fotka.'}
-          </Text>
+
+          <View style={styles.imageStatusRow}>
+            <View style={[styles.imageStatusDot, imageBase64 ? styles.imageStatusDotActive : styles.imageStatusDotInactive]} />
+            <Text style={styles.helperText}>
+              {imageBase64
+                ? 'Fotka je pripravená.'
+                : 'Zatiaľ nie je vybraná žiadna fotka.'}
+            </Text>
+          </View>
         </View>
 
         <Pressable
@@ -448,25 +456,47 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
 
         {analysis ? (
           <>
-            <View style={styles.block}>
+            {/* AI Taste Profile */}
+            <View style={styles.card}>
               <Text style={styles.label}>Chuť kávy podľa AI</Text>
-              <Text style={styles.profileTitle}>Chuťové tóny</Text>
-              <Text style={styles.text}>
-                {analysis.flavorNotes.length > 0
-                  ? analysis.flavorNotes.join(', ')
-                  : 'Neurčené'}
-              </Text>
-              <Text style={styles.profileTitle}>Profil chuti</Text>
-              <Text style={styles.text}>{analysis.tasteProfile}</Text>
-              <Text style={styles.profileTitle}>Krátke zhrnutie</Text>
-              <Text style={styles.text}>{analysis.summary}</Text>
-              <Text style={styles.profileTitle}>Istota</Text>
-              <Text style={styles.text}>
-                {Math.round(analysis.confidence * 100)}%
-              </Text>
+
+              <View style={styles.profileRow}>
+                <Text style={styles.profileTitle}>Chuťové tóny</Text>
+                <Text style={styles.text}>
+                  {analysis.flavorNotes.length > 0
+                    ? analysis.flavorNotes.join(', ')
+                    : 'Neurčené'}
+                </Text>
+              </View>
+
+              <View style={styles.divider} />
+
+              <View style={styles.profileRow}>
+                <Text style={styles.profileTitle}>Profil chuti</Text>
+                <Text style={styles.text}>{analysis.tasteProfile}</Text>
+              </View>
+
+              <View style={styles.divider} />
+
+              <View style={styles.profileRow}>
+                <Text style={styles.profileTitle}>Krátke zhrnutie</Text>
+                <Text style={styles.text}>{analysis.summary}</Text>
+              </View>
+
+              <View style={styles.divider} />
+
+              <View style={styles.confidenceRow}>
+                <Text style={styles.profileTitle}>Istota</Text>
+                <View style={styles.confidenceBadge}>
+                  <Text style={styles.confidenceBadgeText}>
+                    {Math.round(analysis.confidence * 100)}%
+                  </Text>
+                </View>
+              </View>
             </View>
 
-            <View style={styles.block}>
+            {/* Preparation Methods */}
+            <View style={styles.card}>
               <Text style={styles.label}>Najvhodnejšia príprava</Text>
               {analysis.recommendedPreparations.map((prep) => (
                 <Pressable
@@ -477,13 +507,28 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
                   ]}
                   onPress={() => setSelectedPreparation(prep.method)}
                 >
-                  <Text style={styles.optionTitle}>{prep.method}</Text>
-                  <Text style={styles.optionText}>{prep.description}</Text>
+                  <Text
+                    style={[
+                      styles.optionTitle,
+                      selectedPreparation === prep.method && styles.optionTitleActive,
+                    ]}
+                  >
+                    {prep.method}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      selectedPreparation === prep.method && styles.optionTextActive,
+                    ]}
+                  >
+                    {prep.description}
+                  </Text>
                 </Pressable>
               ))}
             </View>
 
-            <View style={styles.block}>
+            {/* Strength Preference */}
+            <View style={styles.card}>
               <Text style={styles.label}>
                 Aké chute chceš: jemné chute, slabšie alebo výraznejšie?
               </Text>
@@ -522,8 +567,16 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
           </>
         ) : null}
 
-        {infoMessage ? <Text style={styles.infoText}>{infoMessage}</Text> : null}
-        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+        {infoMessage ? (
+          <View style={styles.infoBox}>
+            <Text style={styles.infoText}>{infoMessage}</Text>
+          </View>
+        ) : null}
+        {errorMessage ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -532,158 +585,271 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFAFA',
   },
   container: {
     flexGrow: 1,
-    padding: 24,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#6B5C52',
-    marginBottom: 16,
-  },
-  block: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  helperText: {
-    marginTop: 8,
-    fontSize: 12,
-    color: '#6B5C52',
-  },
-  buttonRow: {
-    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 32,
     gap: 12,
   },
-  secondaryButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#6B4F3A',
-    paddingVertical: 10,
-    borderRadius: 16,
-    alignItems: 'center',
+
+  // Header
+  header: {
+    marginBottom: 4,
   },
-  secondaryButtonText: {
-    color: '#6B4F3A',
-    fontSize: 14,
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    letterSpacing: -0.3,
+    marginBottom: 8,
+  },
+  description: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#6B6B6B',
+    fontWeight: '400',
+  },
+
+  // Card
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+
+  // Labels
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B6B6B',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+
+  // Helper / status text
+  helperText: {
+    fontSize: 13,
+    color: '#6B6B6B',
+    lineHeight: 18,
+  },
+  imageStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 14,
+  },
+  imageStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  imageStatusDotActive: {
+    backgroundColor: '#4A9B6E',
+  },
+  imageStatusDotInactive: {
+    backgroundColor: '#E8E8E8',
+  },
+
+  // Button row
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+  },
+  buttonRowItem: {
+    flex: 1,
+  },
+
+  // Outline button
+  outlineButton: {
+    borderWidth: 1.5,
+    borderColor: '#E8E8E8',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  outlineButtonText: {
+    color: '#2C2C2C',
+    fontSize: 15,
     fontWeight: '600',
   },
   inventoryButton: {
-    marginTop: 12,
+    marginTop: 2,
   },
+
+  // Inventory list
   inventoryList: {
-    marginTop: 10,
+    marginTop: 12,
     gap: 8,
   },
   inventoryItem: {
-    borderWidth: 1,
-    borderColor: '#C8BAB0',
-    borderRadius: 16,
-    padding: 10,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    padding: 14,
   },
   inventoryItemTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#271508',
+    color: '#1A1A1A',
   },
   inventoryItemMeta: {
-    marginTop: 4,
-    fontSize: 12,
-    color: '#6B5C52',
+    marginTop: 3,
+    fontSize: 13,
+    color: '#6B6B6B',
   },
+
+  // Primary button
   primaryButton: {
-    backgroundColor: '#6B4F3A',
-    paddingVertical: 12,
-    borderRadius: 16,
+    backgroundColor: '#2C2C2C',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
   primaryButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.45,
   },
-  errorText: {
-    color: '#BA1A1A',
-    marginTop: 8,
-  },
-  infoText: {
-    color: '#6B4F3A',
-    marginTop: 8,
+
+  // Profile rows inside card
+  profileRow: {
+    paddingVertical: 4,
   },
   profileTitle: {
     fontSize: 13,
     fontWeight: '600',
-    marginTop: 8,
+    color: '#1A1A1A',
+    marginBottom: 4,
   },
   text: {
-    fontSize: 14,
-    color: '#271508',
-    marginTop: 4,
+    fontSize: 15,
+    color: '#1A1A1A',
+    lineHeight: 22,
   },
+  divider: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+    marginVertical: 10,
+  },
+  confidenceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  confidenceBadge: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  confidenceBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B7355',
+  },
+
+  // Option cards (preparation methods)
   optionCard: {
-    borderWidth: 1,
-    borderColor: '#C8BAB0',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 8,
   },
   optionCardActive: {
-    borderColor: '#6B4F3A',
-    backgroundColor: '#D8ECBA',
+    backgroundColor: '#2C2C2C',
   },
   optionTitle: {
     fontSize: 15,
     fontWeight: '600',
+    color: '#1A1A1A',
     marginBottom: 4,
+  },
+  optionTitleActive: {
+    color: '#FFFFFF',
   },
   optionText: {
     fontSize: 13,
-    color: '#6B5C52',
+    color: '#6B6B6B',
+    lineHeight: 18,
   },
+  optionTextActive: {
+    color: 'rgba(255,255,255,0.75)',
+  },
+
+  // Radio buttons
   radioGroup: {
-    gap: 10,
+    gap: 12,
   },
   radioRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   radioOuter: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
-    borderColor: '#6B4F3A',
+    borderColor: '#E8E8E8',
     alignItems: 'center',
     justifyContent: 'center',
   },
   radioOuterActive: {
-    borderColor: '#6B4F3A',
+    borderColor: '#2C2C2C',
   },
   radioInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#6B4F3A',
+    backgroundColor: '#2C2C2C',
   },
   radioLabel: {
+    fontSize: 15,
+    color: '#1A1A1A',
+    lineHeight: 22,
+  },
+
+  // Info / error banners
+  infoBox: {
+    backgroundColor: '#FFF8F0',
+    borderRadius: 12,
+    padding: 14,
+  },
+  infoText: {
     fontSize: 14,
-    color: '#271508',
+    color: '#C08B3E',
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  errorBox: {
+    backgroundColor: '#FDF2F2',
+    borderRadius: 12,
+    padding: 14,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#D64545',
+    fontWeight: '500',
+    lineHeight: 20,
   },
 });
 
