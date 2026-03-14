@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
@@ -8,10 +8,21 @@ import {
   launchCamera,
   launchImageLibrary,
 } from 'react-native-image-picker';
-import { RootStackParamList } from '../navigation/types';
+import {
+  Text,
+  Card,
+  Button,
+  Chip,
+  useTheme,
+  Divider,
+  ProgressBar,
+} from 'react-native-paper';
+import type { MD3Theme } from 'react-native-paper';
+import { HomeStackParamList } from '../navigation/types';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import spacing from '../styles/spacing';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'CoffeePhotoRecipe'>;
+type Props = NativeStackScreenProps<HomeStackParamList, 'CoffeePhotoRecipe'>;
 
 type PhotoPreparation = {
   method: string;
@@ -45,6 +56,8 @@ const estimateBase64Bytes = (base64: string) =>
 const normalizeBase64 = (value: string) => value.replace(/^data:image\/\w+;base64,/, '').trim();
 
 function CoffeePhotoRecipeScreen({ navigation }: Props) {
+  const theme = useTheme<MD3Theme>();
+
   const [imageBase64, setImageBase64] = useState('');
   const [analysis, setAnalysis] = useState<PhotoAnalysis | null>(null);
   const [selectedPreparation, setSelectedPreparation] = useState<string | null>(null);
@@ -361,221 +374,388 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.container}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
+      edges={['bottom']}
+    >
+      <ScrollView
+        style={[styles.scroll, { backgroundColor: theme.colors.background }]}
+        contentContainerStyle={styles.content}
+      >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Foto recept</Text>
-          <Text style={styles.description}>
+          <Text variant="headlineMedium" style={[styles.title, { color: theme.colors.onSurface }]}>
+            Foto recept
+          </Text>
+          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
             Nahrajte fotku kávy, nechajte AI odhadnúť chuť a vyberte si najlepší
             spôsob prípravy.
           </Text>
         </View>
 
-        {/* Photo Source Block */}
-        <View style={styles.card}>
-          <Text style={styles.label}>Fotografia kávy</Text>
-          <View style={styles.buttonRow}>
-            <Pressable
-              style={[styles.outlineButton, styles.buttonRowItem, isPicking && styles.buttonDisabled]}
-              onPress={handleSelectFromGallery}
-              disabled={isPicking}
+        {/* Step 1: Photo Source */}
+        <Card
+          mode="contained"
+          style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}
+        >
+          <Card.Content style={styles.cardContent}>
+            <Text
+              variant="labelLarge"
+              style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant }]}
             >
-              <Text style={styles.outlineButtonText}>Vybrať z galérie</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.outlineButton, styles.buttonRowItem, isPicking && styles.buttonDisabled]}
-              onPress={handleTakePhoto}
-              disabled={isPicking}
-            >
-              <Text style={styles.outlineButtonText}>Odfotiť</Text>
-            </Pressable>
-          </View>
-          <Pressable
-            style={[
-              styles.outlineButton,
-              styles.inventoryButton,
-              (isInventoryLoading || isPicking) && styles.buttonDisabled,
-            ]}
-            onPress={loadInventory}
-            disabled={isInventoryLoading || isPicking}
-          >
-            <Text style={styles.outlineButtonText}>
-              {isInventoryLoading ? 'Načítavam inventár…' : 'Vybrať z inventára'}
+              Fotografia kávy
             </Text>
-          </Pressable>
 
-          {isInventoryVisible ? (
-            <View style={styles.inventoryList}>
-              {inventoryItems.length > 0 ? (
-                inventoryItems.map((item) => {
-                  const coffeeName = item.correctedText || item.rawText || 'Neznáma káva';
-                  const hasImage = Boolean(item.labelImageBase64);
-
-                  return (
-                    <Pressable
-                      key={item.id}
-                      style={[styles.inventoryItem, !hasImage && styles.buttonDisabled]}
-                      onPress={() => handleSelectInventoryCoffee(item)}
-                      disabled={!hasImage}
-                    >
-                      <Text style={styles.inventoryItemTitle}>{coffeeName}</Text>
-                      <Text style={styles.inventoryItemMeta}>
-                        {hasImage
-                          ? 'Použiť fotku etikety z inventára'
-                          : 'Bez fotky etikety'}
-                      </Text>
-                    </Pressable>
-                  );
-                })
-              ) : (
-                <Text style={styles.helperText}>V inventári nemáš žiadnu aktívnu kávu.</Text>
-              )}
+            <View style={styles.buttonRow}>
+              <Button
+                mode="outlined"
+                onPress={handleSelectFromGallery}
+                disabled={isPicking}
+                style={styles.buttonRowItem}
+                contentStyle={styles.buttonContent}
+              >
+                Vybrať z galérie
+              </Button>
+              <Button
+                mode="outlined"
+                onPress={handleTakePhoto}
+                disabled={isPicking}
+                style={styles.buttonRowItem}
+                contentStyle={styles.buttonContent}
+              >
+                Odfotiť
+              </Button>
             </View>
-          ) : null}
 
-          <View style={styles.imageStatusRow}>
-            <View style={[styles.imageStatusDot, imageBase64 ? styles.imageStatusDotActive : styles.imageStatusDotInactive]} />
-            <Text style={styles.helperText}>
-              {imageBase64
-                ? 'Fotka je pripravená.'
-                : 'Zatiaľ nie je vybraná žiadna fotka.'}
-            </Text>
-          </View>
-        </View>
+            <Button
+              mode="outlined"
+              onPress={loadInventory}
+              disabled={isInventoryLoading || isPicking}
+              loading={isInventoryLoading}
+              style={styles.inventoryButton}
+              contentStyle={styles.buttonContent}
+            >
+              {isInventoryLoading ? 'Načítavam inventár…' : 'Vybrať z inventára'}
+            </Button>
 
-        <Pressable
-          style={[styles.primaryButton, (isAnalyzing || isPicking) && styles.buttonDisabled]}
+            {isInventoryVisible ? (
+              <View style={styles.inventoryList}>
+                {inventoryItems.length > 0 ? (
+                  inventoryItems.map((item) => {
+                    const coffeeName = item.correctedText || item.rawText || 'Neznáma káva';
+                    const hasImage = Boolean(item.labelImageBase64);
+
+                    return (
+                      <Card
+                        key={item.id}
+                        mode="contained"
+                        style={[
+                          styles.inventoryItemCard,
+                          { backgroundColor: hasImage ? theme.colors.surface : theme.colors.surfaceVariant },
+                          !hasImage && styles.inventoryItemDisabled,
+                        ]}
+                        onPress={hasImage ? () => handleSelectInventoryCoffee(item) : undefined}
+                      >
+                        <Card.Content style={styles.inventoryItemContent}>
+                          <Text
+                            variant="titleMedium"
+                            style={{ color: theme.colors.onSurface }}
+                          >
+                            {coffeeName}
+                          </Text>
+                          <Text
+                            variant="bodyMedium"
+                            style={{ color: theme.colors.onSurfaceVariant }}
+                          >
+                            {hasImage
+                              ? 'Použiť fotku etikety z inventára'
+                              : 'Bez fotky etikety'}
+                          </Text>
+                        </Card.Content>
+                      </Card>
+                    );
+                  })
+                ) : (
+                  <Text
+                    variant="bodyMedium"
+                    style={{ color: theme.colors.onSurfaceVariant }}
+                  >
+                    V inventári nemáš žiadnu aktívnu kávu.
+                  </Text>
+                )}
+              </View>
+            ) : null}
+
+            <View style={styles.imageStatusRow}>
+              <View
+                style={[
+                  styles.imageStatusDot,
+                  {
+                    backgroundColor: imageBase64
+                      ? theme.colors.secondary
+                      : theme.colors.outlineVariant,
+                  },
+                ]}
+              />
+              <Text
+                variant="bodyMedium"
+                style={{ color: theme.colors.onSurfaceVariant }}
+              >
+                {imageBase64
+                  ? 'Fotka je pripravená.'
+                  : 'Zatiaľ nie je vybraná žiadna fotka.'}
+              </Text>
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* Analyze CTA */}
+        <Button
+          mode="contained"
           onPress={handleAnalyze}
           disabled={isAnalyzing || isPicking}
+          loading={isAnalyzing}
+          contentStyle={styles.primaryButtonContent}
+          style={styles.primaryButton}
         >
-          <Text style={styles.primaryButtonText}>
-            {isAnalyzing ? 'Analyzujem fotku…' : 'Analyzovať fotku'}
-          </Text>
-        </Pressable>
+          {isAnalyzing ? 'Analyzujem fotku…' : 'Analyzovať fotku'}
+        </Button>
 
         {analysis ? (
           <>
-            {/* AI Taste Profile */}
-            <View style={styles.card}>
-              <Text style={styles.label}>Chuť kávy podľa AI</Text>
-
-              <View style={styles.profileRow}>
-                <Text style={styles.profileTitle}>Chuťové tóny</Text>
-                <Text style={styles.text}>
-                  {analysis.flavorNotes.length > 0
-                    ? analysis.flavorNotes.join(', ')
-                    : 'Neurčené'}
+            {/* Step 2: AI Taste Profile */}
+            <Card
+              mode="elevated"
+              elevation={1}
+              style={[styles.card, { backgroundColor: theme.colors.surface }]}
+            >
+              <Card.Content style={styles.cardContent}>
+                <Text
+                  variant="labelLarge"
+                  style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant }]}
+                >
+                  Chuť kávy podľa AI
                 </Text>
-              </View>
 
-              <View style={styles.divider} />
+                <View style={styles.profileRow}>
+                  <Text
+                    variant="labelLarge"
+                    style={{ color: theme.colors.onSurface, marginBottom: spacing.xs }}
+                  >
+                    Chuťové tóny
+                  </Text>
+                  <View style={styles.chipRow}>
+                    {analysis.flavorNotes.length > 0
+                      ? analysis.flavorNotes.map((note) => (
+                          <Chip
+                            key={note}
+                            mode="flat"
+                            style={[styles.flavorChip, { backgroundColor: theme.colors.secondaryContainer }]}
+                            textStyle={{ color: theme.colors.onSecondaryContainer }}
+                          >
+                            {note}
+                          </Chip>
+                        ))
+                      : (
+                          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                            Neurčené
+                          </Text>
+                        )}
+                  </View>
+                </View>
 
-              <View style={styles.profileRow}>
-                <Text style={styles.profileTitle}>Profil chuti</Text>
-                <Text style={styles.text}>{analysis.tasteProfile}</Text>
-              </View>
+                <Divider style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />
 
-              <View style={styles.divider} />
-
-              <View style={styles.profileRow}>
-                <Text style={styles.profileTitle}>Krátke zhrnutie</Text>
-                <Text style={styles.text}>{analysis.summary}</Text>
-              </View>
-
-              <View style={styles.divider} />
-
-              <View style={styles.confidenceRow}>
-                <Text style={styles.profileTitle}>Istota</Text>
-                <View style={styles.confidenceBadge}>
-                  <Text style={styles.confidenceBadgeText}>
-                    {Math.round(analysis.confidence * 100)}%
+                <View style={styles.profileRow}>
+                  <Text
+                    variant="labelLarge"
+                    style={{ color: theme.colors.onSurface, marginBottom: spacing.xs }}
+                  >
+                    Profil chuti
+                  </Text>
+                  <Text variant="bodyLarge" style={{ color: theme.colors.onSurface }}>
+                    {analysis.tasteProfile}
                   </Text>
                 </View>
-              </View>
-            </View>
 
-            {/* Preparation Methods */}
-            <View style={styles.card}>
-              <Text style={styles.label}>Najvhodnejšia príprava</Text>
-              {analysis.recommendedPreparations.map((prep) => (
-                <Pressable
-                  key={prep.method}
-                  style={[
-                    styles.optionCard,
-                    selectedPreparation === prep.method && styles.optionCardActive,
-                  ]}
-                  onPress={() => setSelectedPreparation(prep.method)}
+                <Divider style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />
+
+                <View style={styles.profileRow}>
+                  <Text
+                    variant="labelLarge"
+                    style={{ color: theme.colors.onSurface, marginBottom: spacing.xs }}
+                  >
+                    Krátke zhrnutie
+                  </Text>
+                  <Text variant="bodyLarge" style={{ color: theme.colors.onSurface }}>
+                    {analysis.summary}
+                  </Text>
+                </View>
+
+                <Divider style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />
+
+                <View style={styles.confidenceRow}>
+                  <Text
+                    variant="labelLarge"
+                    style={{ color: theme.colors.onSurface }}
+                  >
+                    Istota
+                  </Text>
+                  <Chip
+                    mode="flat"
+                    style={[styles.confidenceChip, { backgroundColor: theme.colors.primaryContainer }]}
+                    textStyle={{ color: theme.colors.onPrimaryContainer }}
+                  >
+                    {Math.round(analysis.confidence * 100)}%
+                  </Chip>
+                </View>
+              </Card.Content>
+            </Card>
+
+            {/* Step 3: Preparation Methods */}
+            <Card
+              mode="elevated"
+              elevation={1}
+              style={[styles.card, { backgroundColor: theme.colors.surface }]}
+            >
+              <Card.Content style={styles.cardContent}>
+                <Text
+                  variant="labelLarge"
+                  style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant }]}
                 >
-                  <Text
-                    style={[
-                      styles.optionTitle,
-                      selectedPreparation === prep.method && styles.optionTitleActive,
-                    ]}
-                  >
-                    {prep.method}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.optionText,
-                      selectedPreparation === prep.method && styles.optionTextActive,
-                    ]}
-                  >
-                    {prep.description}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
-            {/* Strength Preference */}
-            <View style={styles.card}>
-              <Text style={styles.label}>
-                Aké chute chceš: jemné chute, slabšie alebo výraznejšie?
-              </Text>
-              <View style={styles.radioGroup}>
-                {strengthOptions.map((option) => (
-                  <Pressable
-                    key={option}
-                    style={styles.radioRow}
-                    onPress={() => setStrengthPreference(option)}
-                  >
-                    <View
+                  Najvhodnejšia príprava
+                </Text>
+                {analysis.recommendedPreparations.map((prep) => {
+                  const isSelected = selectedPreparation === prep.method;
+                  return (
+                    <Card
+                      key={prep.method}
+                      mode="contained"
                       style={[
-                        styles.radioOuter,
-                        strengthPreference === option && styles.radioOuterActive,
+                        styles.optionCard,
+                        {
+                          backgroundColor: isSelected
+                            ? theme.colors.primaryContainer
+                            : theme.colors.surfaceVariant,
+                        },
                       ]}
+                      onPress={() => setSelectedPreparation(prep.method)}
                     >
-                      {strengthPreference === option ? (
-                        <View style={styles.radioInner} />
-                      ) : null}
-                    </View>
-                    <Text style={styles.radioLabel}>{option}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
+                      <Card.Content style={styles.optionCardContent}>
+                        <Text
+                          variant="titleMedium"
+                          style={{
+                            color: isSelected
+                              ? theme.colors.onPrimaryContainer
+                              : theme.colors.onSurface,
+                            marginBottom: spacing.xs,
+                          }}
+                        >
+                          {prep.method}
+                        </Text>
+                        <Text
+                          variant="bodyMedium"
+                          style={{
+                            color: isSelected
+                              ? theme.colors.onPrimaryContainer
+                              : theme.colors.onSurfaceVariant,
+                          }}
+                        >
+                          {prep.description}
+                        </Text>
+                      </Card.Content>
+                    </Card>
+                  );
+                })}
+              </Card.Content>
+            </Card>
 
-            <Pressable
-              style={[styles.primaryButton, isGenerating && styles.buttonDisabled]}
+            {/* Step 4: Strength Preference */}
+            <Card
+              mode="elevated"
+              elevation={1}
+              style={[styles.card, { backgroundColor: theme.colors.surface }]}
+            >
+              <Card.Content style={styles.cardContent}>
+                <Text
+                  variant="labelLarge"
+                  style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant }]}
+                >
+                  Aké chute chceš: jemné chute, slabšie alebo výraznejšie?
+                </Text>
+                <View style={styles.chipRow}>
+                  {strengthOptions.map((option) => {
+                    const isSelected = strengthPreference === option;
+                    return (
+                      <Chip
+                        key={option}
+                        mode={isSelected ? 'flat' : 'outlined'}
+                        selected={isSelected}
+                        onPress={() => setStrengthPreference(option)}
+                        style={[
+                          styles.strengthChip,
+                          isSelected && { backgroundColor: theme.colors.primaryContainer },
+                        ]}
+                        textStyle={{
+                          color: isSelected
+                            ? theme.colors.onPrimaryContainer
+                            : theme.colors.onSurface,
+                        }}
+                        showSelectedCheck={false}
+                      >
+                        {option}
+                      </Chip>
+                    );
+                  })}
+                </View>
+              </Card.Content>
+            </Card>
+
+            {/* Generate Recipe CTA */}
+            <Button
+              mode="contained"
               onPress={handleGenerateRecipe}
               disabled={isGenerating}
+              loading={isGenerating}
+              contentStyle={styles.primaryButtonContent}
+              style={styles.primaryButton}
             >
-              <Text style={styles.primaryButtonText}>
-                {isGenerating ? 'Generujem recept…' : 'Generovať recept'}
-              </Text>
-            </Pressable>
+              {isGenerating ? 'Generujem recept…' : 'Generovať recept'}
+            </Button>
           </>
         ) : null}
 
+        {/* Info / Error banners */}
         {infoMessage ? (
-          <View style={styles.infoBox}>
-            <Text style={styles.infoText}>{infoMessage}</Text>
-          </View>
+          <Card
+            mode="contained"
+            style={[styles.bannerCard, { backgroundColor: theme.colors.secondaryContainer }]}
+          >
+            <Card.Content>
+              <Text
+                variant="bodyMedium"
+                style={{ color: theme.colors.onSecondaryContainer }}
+              >
+                {infoMessage}
+              </Text>
+            </Card.Content>
+          </Card>
         ) : null}
+
         {errorMessage ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{errorMessage}</Text>
-          </View>
+          <Card
+            mode="contained"
+            style={[styles.bannerCard, { backgroundColor: theme.colors.errorContainer }]}
+          >
+            <Card.Content>
+              <Text
+                variant="bodyMedium"
+                style={{ color: theme.colors.error }}
+              >
+                {errorMessage}
+              </Text>
+            </Card.Content>
+          </Card>
         ) : null}
       </ScrollView>
     </SafeAreaView>
@@ -585,271 +765,137 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
   },
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 32,
-    gap: 12,
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
+    gap: spacing.lg,
   },
 
   // Header
   header: {
-    marginBottom: 4,
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    letterSpacing: -0.3,
-    marginBottom: 8,
-  },
-  description: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#6B6B6B',
-    fontWeight: '400',
+    // color via theme
   },
 
-  // Card
+  // Cards
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: spacing.lg,
   },
-
-  // Labels
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B6B6B',
-    marginBottom: 12,
+  cardContent: {
+    paddingVertical: spacing.lg,
+    gap: spacing.sm,
+  },
+  sectionLabel: {
     textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
+    marginBottom: spacing.xs,
   },
 
-  // Helper / status text
-  helperText: {
-    fontSize: 13,
-    color: '#6B6B6B',
-    lineHeight: 18,
+  // Button row (gallery + camera)
+  buttonRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
+  buttonRowItem: {
+    flex: 1,
+  },
+  buttonContent: {
+    height: 44,
+  },
+
+  // Inventory
+  inventoryButton: {
+    marginTop: spacing.xs,
+  },
+  inventoryList: {
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  inventoryItemCard: {
+    borderRadius: spacing.md,
+  },
+  inventoryItemContent: {
+    paddingVertical: spacing.sm,
+    gap: spacing.xs,
+  },
+  inventoryItemDisabled: {
+    opacity: 0.5,
+  },
+
+  // Image status
   imageStatusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 14,
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
   imageStatusDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
   },
-  imageStatusDotActive: {
-    backgroundColor: '#4A9B6E',
-  },
-  imageStatusDotInactive: {
-    backgroundColor: '#E8E8E8',
-  },
-
-  // Button row
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 10,
-  },
-  buttonRowItem: {
-    flex: 1,
-  },
-
-  // Outline button
-  outlineButton: {
-    borderWidth: 1.5,
-    borderColor: '#E8E8E8',
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-  },
-  outlineButtonText: {
-    color: '#2C2C2C',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  inventoryButton: {
-    marginTop: 2,
-  },
-
-  // Inventory list
-  inventoryList: {
-    marginTop: 12,
-    gap: 8,
-  },
-  inventoryItem: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    padding: 14,
-  },
-  inventoryItemTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1A1A1A',
-  },
-  inventoryItemMeta: {
-    marginTop: 3,
-    fontSize: 13,
-    color: '#6B6B6B',
-  },
 
   // Primary button
   primaryButton: {
-    backgroundColor: '#2C2C2C',
-    paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
   },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.45,
+  primaryButtonContent: {
+    height: 52,
   },
 
-  // Profile rows inside card
+  // Profile rows inside analysis card
   profileRow: {
-    paddingVertical: 4,
-  },
-  profileTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginBottom: 4,
-  },
-  text: {
-    fontSize: 15,
-    color: '#1A1A1A',
-    lineHeight: 22,
+    paddingVertical: spacing.xs,
   },
   divider: {
-    height: 1,
-    backgroundColor: '#F0F0F0',
-    marginVertical: 10,
+    marginVertical: spacing.sm,
   },
   confidenceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 4,
-  },
-  confidenceBadge: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  confidenceBadgeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#8B7355',
+    paddingVertical: spacing.xs,
   },
 
-  // Option cards (preparation methods)
-  optionCard: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-  },
-  optionCardActive: {
-    backgroundColor: '#2C2C2C',
-  },
-  optionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginBottom: 4,
-  },
-  optionTitleActive: {
-    color: '#FFFFFF',
-  },
-  optionText: {
-    fontSize: 13,
-    color: '#6B6B6B',
-    lineHeight: 18,
-  },
-  optionTextActive: {
-    color: 'rgba(255,255,255,0.75)',
-  },
-
-  // Radio buttons
-  radioGroup: {
-    gap: 12,
-  },
-  radioRow: {
+  // Flavor chips
+  chipRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
   },
-  radioOuter: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: '#E8E8E8',
-    alignItems: 'center',
-    justifyContent: 'center',
+  flavorChip: {
+    // background via theme inline
   },
-  radioOuterActive: {
-    borderColor: '#2C2C2C',
-  },
-  radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#2C2C2C',
-  },
-  radioLabel: {
-    fontSize: 15,
-    color: '#1A1A1A',
-    lineHeight: 22,
+  confidenceChip: {
+    // background via theme inline
   },
 
-  // Info / error banners
-  infoBox: {
-    backgroundColor: '#FFF8F0',
-    borderRadius: 12,
-    padding: 14,
+  // Preparation option cards
+  optionCard: {
+    borderRadius: spacing.md,
+    marginBottom: spacing.sm,
   },
-  infoText: {
-    fontSize: 14,
-    color: '#C08B3E',
-    fontWeight: '500',
-    lineHeight: 20,
+  optionCardContent: {
+    paddingVertical: spacing.sm,
   },
-  errorBox: {
-    backgroundColor: '#FDF2F2',
-    borderRadius: 12,
-    padding: 14,
+
+  // Strength chips
+  strengthChip: {
+    // state via inline
   },
-  errorText: {
-    fontSize: 14,
-    color: '#D64545',
-    fontWeight: '500',
-    lineHeight: 20,
+
+  // Banners
+  bannerCard: {
+    borderRadius: spacing.md,
   },
 });
 

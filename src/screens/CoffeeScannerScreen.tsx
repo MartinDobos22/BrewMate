@@ -2,11 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,11 +14,21 @@ import {
   launchCamera,
   launchImageLibrary,
 } from 'react-native-image-picker';
-import { RootStackParamList } from '../navigation/types';
+import {
+  Text,
+  Card,
+  Button,
+  TextInput,
+  ProgressBar,
+  useTheme,
+} from 'react-native-paper';
+import type { MD3Theme } from 'react-native-paper';
+import { HomeStackParamList } from '../navigation/types';
 import { ensureCoffeeProfile } from '../utils/tasteVector';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import spacing, { radii } from '../styles/spacing';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'CoffeeScanner'>;
+type Props = NativeStackScreenProps<HomeStackParamList, 'CoffeeScanner'>;
 
 const PICKER_TIMEOUT_MS = 2000000;
 const MAX_IMAGE_DIMENSION = 1600;
@@ -32,6 +39,8 @@ const estimateBase64Bytes = (base64: string) =>
   Math.ceil((base64.length * 3) / 4);
 
 function CoffeeScannerScreen({ navigation }: Props) {
+  const theme = useTheme<MD3Theme>();
+
   const [imageBase64, setImageBase64] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [languageHints, setLanguageHints] = useState('sk, en');
@@ -358,19 +367,31 @@ function CoffeeScannerScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
+      edges={['bottom']}
+    >
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.container}
+          style={[styles.scroll, { backgroundColor: theme.colors.background }]}
+          contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Coffee Scanner</Text>
-            <Text style={styles.description}>
+            <Text
+              variant="headlineMedium"
+              style={{ color: theme.colors.onSurface }}
+            >
+              Coffee Scanner
+            </Text>
+            <Text
+              variant="bodyMedium"
+              style={[styles.description, { color: theme.colors.onSurfaceVariant }]}
+            >
               Vyberte alebo odfoťte obrázok etikety a odošlite ho na backend.
               Server použije Google Vision OCR a následne opraví text cez OpenAI
               API. Následne vráti odhad chuťového profilu bez hardcoded slovníkov.
@@ -378,89 +399,147 @@ function CoffeeScannerScreen({ navigation }: Props) {
           </View>
 
           {/* Image picker card */}
-          <View style={styles.card}>
-            <Text style={styles.label}>Obrázok etikety</Text>
-            <View style={styles.buttonRow}>
-              <Pressable
-                style={[styles.secondaryButton, isPicking && styles.buttonDisabled]}
-                onPress={handleSelectFromGallery}
-                disabled={isPicking}
+          <Card
+            mode="contained"
+            style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}
+          >
+            <Card.Content style={styles.cardContent}>
+              <Text
+                variant="labelLarge"
+                style={{ color: theme.colors.onSurfaceVariant, marginBottom: spacing.md }}
               >
-                <Text style={styles.secondaryButtonText}>Vybrať z galérie</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.secondaryButton, isPicking && styles.buttonDisabled]}
-                onPress={handleTakePhoto}
-                disabled={isPicking}
-              >
-                <Text style={styles.secondaryButtonText}>Odfotiť</Text>
-              </Pressable>
-            </View>
-            <View style={styles.imageStatusRow}>
-              <View
-                style={[
-                  styles.imageStatusDot,
-                  imageUri ? styles.imageStatusDotReady : styles.imageStatusDotEmpty,
-                ]}
-              />
-              <Text style={styles.helperText}>
-                {imageUri
-                  ? 'Obrázok pripravený na odoslanie.'
-                  : 'Zatiaľ nie je vybraný žiadny obrázok.'}
+                Obrázok etikety
               </Text>
-            </View>
-          </View>
+              <View style={styles.buttonRow}>
+                <Button
+                  mode="outlined"
+                  onPress={handleSelectFromGallery}
+                  disabled={isPicking}
+                  style={styles.halfButton}
+                  contentStyle={styles.buttonContent}
+                >
+                  Vybrať z galérie
+                </Button>
+                <Button
+                  mode="outlined"
+                  onPress={handleTakePhoto}
+                  disabled={isPicking}
+                  style={styles.halfButton}
+                  contentStyle={styles.buttonContent}
+                >
+                  Odfotiť
+                </Button>
+              </View>
+              <View style={styles.imageStatusRow}>
+                <View
+                  style={[
+                    styles.imageStatusDot,
+                    {
+                      backgroundColor: imageUri
+                        ? theme.colors.secondary
+                        : theme.colors.outlineVariant,
+                    },
+                  ]}
+                />
+                <Text
+                  variant="bodyMedium"
+                  style={{ color: theme.colors.onSurfaceVariant }}
+                >
+                  {imageUri
+                    ? 'Obrázok pripravený na odoslanie.'
+                    : 'Zatiaľ nie je vybraný žiadny obrázok.'}
+                </Text>
+              </View>
+            </Card.Content>
+          </Card>
 
           {/* Language hints card */}
-          <View style={styles.card}>
-            <Text style={styles.label}>Language hints (oddelené čiarkou)</Text>
-            <TextInput
-              style={styles.hintInput}
-              placeholder="sk, en"
-              placeholderTextColor="#999999"
-              value={languageHints}
-              onChangeText={setLanguageHints}
-              autoCapitalize="none"
-            />
-          </View>
+          <Card
+            mode="contained"
+            style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}
+          >
+            <Card.Content style={styles.cardContent}>
+              <Text
+                variant="labelLarge"
+                style={{ color: theme.colors.onSurfaceVariant, marginBottom: spacing.md }}
+              >
+                Language hints (oddelené čiarkou)
+              </Text>
+              <TextInput
+                mode="outlined"
+                placeholder="sk, en"
+                value={languageHints}
+                onChangeText={setLanguageHints}
+                autoCapitalize="none"
+                style={styles.textInput}
+              />
+            </Card.Content>
+          </Card>
 
           {/* Status / error messages */}
           {isPicking ? (
-            <Text style={styles.statusText}>Načítavam obrázok…</Text>
+            <Text
+              variant="labelLarge"
+              style={[styles.statusText, { color: theme.colors.primary }]}
+            >
+              Načítavam obrázok…
+            </Text>
           ) : null}
 
           {errorMessage ? (
-            <Text style={styles.errorText}>{errorMessage}</Text>
+            <Text
+              variant="bodyMedium"
+              style={[styles.errorText, { color: theme.colors.error }]}
+            >
+              {errorMessage}
+            </Text>
           ) : null}
 
           {/* Submit button */}
-          <Pressable
-            style={[styles.button, (isSubmitting || isPicking) && styles.buttonDisabled]}
-            onPress={handleSubmit}
-            disabled={isSubmitting || isPicking}
-          >
-            {isSubmitting ? (
-              <View style={styles.loadingContainer}>
-                <View style={styles.progressTrack}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { width: `${submitProgress}%` },
-                    ]}
-                  />
-                </View>
+          {isSubmitting ? (
+            <Card
+              mode="contained"
+              style={[styles.card, { backgroundColor: theme.colors.primary }]}
+            >
+              <Card.Content style={styles.cardContent}>
+                <ProgressBar
+                  progress={submitProgress / 100}
+                  color={theme.colors.onPrimary}
+                  style={[styles.progressBar, { backgroundColor: 'rgba(255,255,255,0.25)' }]}
+                />
                 <View style={styles.loadingMetaRow}>
-                  <Text style={styles.loadingText}>{submitProgress}%</Text>
-                  <Text style={styles.loadingText}>
+                  <Text
+                    variant="labelMedium"
+                    style={{ color: theme.colors.onPrimary }}
+                  >
+                    {submitProgress}%
+                  </Text>
+                  <Text
+                    variant="labelMedium"
+                    style={{ color: theme.colors.onPrimary }}
+                  >
                     Trvanie: {formatElapsed(submitElapsedMs)}
                   </Text>
                 </View>
-                <Text style={styles.loadingStageText}>{stageLabel}</Text>
-              </View>
-            ) : (
-              <Text style={styles.buttonText}>Odoslať na OCR</Text>
-            )}
-          </Pressable>
+                <Text
+                  variant="bodyMedium"
+                  style={{ color: 'rgba(255,255,255,0.8)', textAlign: 'center' }}
+                >
+                  {stageLabel}
+                </Text>
+              </Card.Content>
+            </Card>
+          ) : (
+            <Button
+              mode="contained"
+              onPress={handleSubmit}
+              disabled={isPicking}
+              style={styles.submitButton}
+              contentStyle={styles.submitButtonContent}
+            >
+              Odoslať na OCR
+            </Button>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -470,157 +549,79 @@ function CoffeeScannerScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
   },
   flex: {
     flex: 1,
   },
-  container: {
-    padding: 20,
-    paddingBottom: 40,
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
+    gap: spacing.md,
   },
   header: {
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    letterSpacing: -0.3,
-    marginBottom: 8,
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
   description: {
-    fontSize: 15,
     lineHeight: 22,
-    color: '#6B6B6B',
-    fontWeight: '400',
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: radii.lg,
   },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B6B6B',
-    marginBottom: 12,
+  cardContent: {
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
-  secondaryButton: {
+  halfButton: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
+    borderRadius: radii.md,
   },
-  secondaryButtonText: {
-    color: '#2C2C2C',
-    fontSize: 15,
-    fontWeight: '600',
+  buttonContent: {
+    paddingVertical: spacing.xs,
   },
   imageStatusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   imageStatusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 999,
+    width: 8,
+    height: 8,
+    borderRadius: radii.full,
   },
-  imageStatusDotReady: {
-    backgroundColor: '#4A9B6E',
-  },
-  imageStatusDotEmpty: {
-    backgroundColor: '#E8E8E8',
-  },
-  helperText: {
-    fontSize: 13,
-    color: '#6B6B6B',
-    fontWeight: '400',
-  },
-  hintInput: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: '#1A1A1A',
-  },
-  errorText: {
-    color: '#D64545',
-    fontSize: 13,
-    fontWeight: '500',
-    marginBottom: 12,
-    paddingHorizontal: 4,
+  textInput: {
+    borderRadius: radii.md,
   },
   statusText: {
-    color: '#8B7355',
-    marginBottom: 12,
-    fontSize: 13,
-    fontWeight: '600',
-    paddingHorizontal: 4,
+    paddingHorizontal: spacing.xs,
   },
-  button: {
-    backgroundColor: '#2C2C2C',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
+  errorText: {
+    paddingHorizontal: spacing.xs,
   },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  loadingContainer: {
-    alignItems: 'stretch',
-    alignSelf: 'stretch',
-    gap: 6,
-  },
-  progressTrack: {
+  progressBar: {
     height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 999,
+    borderRadius: radii.full,
+    marginBottom: spacing.sm,
   },
   loadingMetaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: spacing.xs,
   },
-  loadingText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+  submitButton: {
+    marginTop: spacing.sm,
+    borderRadius: radii.md,
   },
-  loadingStageText: {
-    color: 'rgba(255, 255, 255, 0.75)',
-    fontSize: 12,
-    fontWeight: '500',
+  submitButtonContent: {
+    paddingVertical: spacing.sm,
   },
 });
 
