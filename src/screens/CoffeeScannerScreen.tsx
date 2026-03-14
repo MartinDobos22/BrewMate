@@ -367,14 +367,18 @@ function CoffeeScannerScreen({ navigation }: Props) {
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.title}>Coffee Scanner</Text>
-          <Text style={styles.description}>
-            Vyberte alebo odfoťte obrázok etikety a odošlite ho na backend.
-            Server použije Google Vision OCR a následne opraví text cez OpenAI
-            API. Následne vráti odhad chuťového profilu bez hardcoded slovníkov.
-          </Text>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Coffee Scanner</Text>
+            <Text style={styles.description}>
+              Vyberte alebo odfoťte obrázok etikety a odošlite ho na backend.
+              Server použije Google Vision OCR a následne opraví text cez OpenAI
+              API. Následne vráti odhad chuťového profilu bez hardcoded slovníkov.
+            </Text>
+          </View>
 
-          <View style={styles.field}>
+          {/* Image picker card */}
+          <View style={styles.card}>
             <Text style={styles.label}>Obrázok etikety</Text>
             <View style={styles.buttonRow}>
               <Pressable
@@ -392,25 +396,35 @@ function CoffeeScannerScreen({ navigation }: Props) {
                 <Text style={styles.secondaryButtonText}>Odfotiť</Text>
               </Pressable>
             </View>
-            <Text style={styles.helperText}>
-              {imageUri
-                ? 'Obrázok pripravený na odoslanie.'
-                : 'Zatiaľ nie je vybraný žiadny obrázok.'}
-            </Text>
+            <View style={styles.imageStatusRow}>
+              <View
+                style={[
+                  styles.imageStatusDot,
+                  imageUri ? styles.imageStatusDotReady : styles.imageStatusDotEmpty,
+                ]}
+              />
+              <Text style={styles.helperText}>
+                {imageUri
+                  ? 'Obrázok pripravený na odoslanie.'
+                  : 'Zatiaľ nie je vybraný žiadny obrázok.'}
+              </Text>
+            </View>
           </View>
 
-          <View style={styles.field}>
+          {/* Language hints card */}
+          <View style={styles.card}>
             <Text style={styles.label}>Language hints (oddelené čiarkou)</Text>
             <TextInput
               style={styles.hintInput}
               placeholder="sk, en"
-              placeholderTextColor="#6B5C52"
+              placeholderTextColor="#999999"
               value={languageHints}
               onChangeText={setLanguageHints}
               autoCapitalize="none"
             />
           </View>
 
+          {/* Status / error messages */}
           {isPicking ? (
             <Text style={styles.statusText}>Načítavam obrázok…</Text>
           ) : null}
@@ -419,8 +433,9 @@ function CoffeeScannerScreen({ navigation }: Props) {
             <Text style={styles.errorText}>{errorMessage}</Text>
           ) : null}
 
+          {/* Submit button */}
           <Pressable
-            style={[styles.button, isSubmitting && styles.buttonDisabled]}
+            style={[styles.button, (isSubmitting || isPicking) && styles.buttonDisabled]}
             onPress={handleSubmit}
             disabled={isSubmitting || isPicking}
           >
@@ -455,86 +470,126 @@ function CoffeeScannerScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFAFA',
   },
   flex: {
     flex: 1,
   },
   container: {
-    flex: 1,
-    padding: 24,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  header: {
+    marginBottom: 20,
   },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '700',
-    marginBottom: 12,
+    color: '#1A1A1A',
+    letterSpacing: -0.3,
+    marginBottom: 8,
   },
   description: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#6B5C52',
-    marginBottom: 16,
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#6B6B6B',
+    fontWeight: '400',
   },
-  field: {
-    marginBottom: 16,
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    marginBottom: 8,
+    color: '#6B6B6B',
+    marginBottom: 12,
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
+    marginBottom: 12,
   },
   secondaryButton: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#6B4F3A',
-    paddingVertical: 10,
-    borderRadius: 16,
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
   },
   secondaryButtonText: {
-    color: '#6B4F3A',
-    fontSize: 14,
+    color: '#2C2C2C',
+    fontSize: 15,
     fontWeight: '600',
+  },
+  imageStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  imageStatusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 999,
+  },
+  imageStatusDotReady: {
+    backgroundColor: '#4A9B6E',
+  },
+  imageStatusDotEmpty: {
+    backgroundColor: '#E8E8E8',
   },
   helperText: {
-    marginTop: 8,
-    fontSize: 12,
-    color: '#6B5C52',
+    fontSize: 13,
+    color: '#6B6B6B',
+    fontWeight: '400',
   },
   hintInput: {
-    borderWidth: 1,
-    borderColor: '#C8BAB0',
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    fontSize: 14,
-    color: '#1C1917',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    color: '#1A1A1A',
   },
   errorText: {
-    color: '#BA1A1A',
+    color: '#D64545',
+    fontSize: 13,
+    fontWeight: '500',
     marginBottom: 12,
+    paddingHorizontal: 4,
   },
   statusText: {
-    color: '#6B4F3A',
+    color: '#8B7355',
     marginBottom: 12,
+    fontSize: 13,
     fontWeight: '600',
+    paddingHorizontal: 4,
   },
   button: {
-    backgroundColor: '#6B4F3A',
-    paddingVertical: 12,
-    borderRadius: 16,
+    backgroundColor: '#2C2C2C',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.5,
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   loadingContainer: {
@@ -543,8 +598,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   progressTrack: {
-    height: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     borderRadius: 999,
     overflow: 'hidden',
   },
@@ -563,7 +618,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   loadingStageText: {
-    color: '#FFFFFF',
+    color: 'rgba(255, 255, 255, 0.75)',
     fontSize: 12,
     fontWeight: '500',
   },

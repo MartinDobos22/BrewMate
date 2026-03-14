@@ -55,7 +55,7 @@ const QUESTIONNAIRE = [
   },
   {
     id: 'clarity',
-    title: 'Preferujete skôr “čistú” chuť alebo “divokejšiu” (výrazné arómy)?',
+    title: 'Preferujete skôr "čistú" chuť alebo "divokejšiu" (výrazné arómy)?',
     options: ['Čistú a jednoduchú', 'Niečo zaujímavejšie', 'Kľudne veľmi výraznú a netradičnú'],
   },
   {
@@ -166,41 +166,81 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Chuťový dotazník</Text>
-        <Text style={styles.subtitle}>
-          Vyplňte všetkých 10 otázok. Stav: {answeredCount} / {QUESTIONNAIRE.length}
-        </Text>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Chuťový dotazník</Text>
+          <Text style={styles.subtitle}>
+            {answeredCount} / {QUESTIONNAIRE.length} otázok zodpovedaných
+          </Text>
+          {/* Progress bar */}
+          <View style={styles.progressTrack}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${(answeredCount / QUESTIONNAIRE.length) * 100}%`,
+                },
+              ]}
+            />
+          </View>
+        </View>
 
-        {QUESTIONNAIRE.map((question) => (
+        {/* Question cards */}
+        {QUESTIONNAIRE.map((question, index) => (
           <View key={question.id} style={styles.card}>
+            <Text style={styles.questionNumber}>Otázka {index + 1}</Text>
             <Text style={styles.question}>{question.title}</Text>
-            {question.options.map((option) => {
-              const isSelected = answers[question.id] === option;
-              return (
-                <Pressable
-                  key={option}
-                  style={[styles.option, isSelected && styles.optionSelected]}
-                  onPress={() => handleSelect(question.id, option)}
-                >
-                  <View style={[styles.radio, isSelected && styles.radioSelected]} />
-                  <Text style={styles.optionLabel}>{option}</Text>
-                </Pressable>
-              );
-            })}
+            <View style={styles.optionsContainer}>
+              {question.options.map((option) => {
+                const isSelected = answers[question.id] === option;
+                return (
+                  <Pressable
+                    key={option}
+                    style={[styles.option, isSelected && styles.optionSelected]}
+                    onPress={() => handleSelect(question.id, option)}
+                  >
+                    <View style={[styles.radio, isSelected && styles.radioSelected]}>
+                      {isSelected && <View style={styles.radioDot} />}
+                    </View>
+                    <Text
+                      style={[
+                        styles.optionLabel,
+                        isSelected && styles.optionLabelSelected,
+                      ]}
+                    >
+                      {option}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
         ))}
 
-        {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
+        {/* Error message */}
+        {errorMessage ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.error}>{errorMessage}</Text>
+          </View>
+        ) : null}
 
+        {/* Submit button */}
         <Pressable
-          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+          style={({ pressed }) => [
+            styles.submitButton,
+            isSubmitting && styles.submitButtonDisabled,
+            pressed && !isSubmitting && styles.submitButtonPressed,
+          ]}
           onPress={handleSubmit}
           disabled={isSubmitting}
         >
           {isSubmitting ? (
             <View style={styles.submitRow}>
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color="#FFFFFF" size="small" />
               <Text style={styles.submitText}>Vyhodnocujem...</Text>
             </View>
           ) : (
@@ -215,84 +255,161 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    backgroundColor: '#FAFAFA',
   },
   container: {
-    padding: 20,
-    paddingBottom: 40,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 48,
+  },
+
+  // Header
+  header: {
+    marginBottom: 24,
+    paddingTop: 8,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
-    marginBottom: 8,
+    color: '#1A1A1A',
+    letterSpacing: -0.3,
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#6B5C52',
-    marginBottom: 16,
-  },
-  card: {
-    backgroundColor: '#F5F1EC',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#DDD3C9',
-  },
-  question: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    color: '#6B6B6B',
+    fontWeight: '400',
     marginBottom: 12,
   },
+  progressTrack: {
+    height: 6,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: 6,
+    backgroundColor: '#8B7355',
+    borderRadius: 999,
+  },
+
+  // Question card
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  questionNumber: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8B7355',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  question: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    lineHeight: 24,
+    marginBottom: 16,
+  },
+  optionsContainer: {
+    gap: 6,
+  },
+
+  // Option row
   option: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
   },
   optionSelected: {
-    backgroundColor: '#D8ECBA',
-    borderRadius: 16,
-    paddingHorizontal: 8,
+    backgroundColor: '#F5F5F5',
   },
   radio: {
-    width: 16,
-    height: 16,
-    borderRadius: 16,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#6B5C52',
-    marginRight: 10,
+    borderColor: '#E8E8E8',
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   radioSelected: {
-    borderColor: '#6B4F3A',
-    backgroundColor: '#6B4F3A',
+    borderColor: '#2C2C2C',
+    backgroundColor: '#2C2C2C',
+  },
+  radioDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
   },
   optionLabel: {
     flex: 1,
-    fontSize: 14,
-    color: '#271508',
+    fontSize: 15,
+    color: '#1A1A1A',
+    lineHeight: 22,
+  },
+  optionLabelSelected: {
+    fontWeight: '500',
+    color: '#1A1A1A',
+  },
+
+  // Error
+  errorContainer: {
+    backgroundColor: '#FDEAEA',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
   error: {
-    color: '#BA1A1A',
-    marginBottom: 16,
+    color: '#D64545',
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
   },
+
+  // Submit button
   submitButton: {
-    backgroundColor: '#6B4F3A',
-    paddingVertical: 14,
-    borderRadius: 10,
+    backgroundColor: '#2C2C2C',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
   submitButtonDisabled: {
-    opacity: 0.7,
+    opacity: 0.6,
+  },
+  submitButtonPressed: {
+    opacity: 0.85,
   },
   submitRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   submitText: {
     color: '#FFFFFF',
     fontWeight: '600',
-    fontSize: 16,
+    fontSize: 15,
+    letterSpacing: 0.1,
   },
 });
 

@@ -235,19 +235,23 @@ function OcrResultScreen({ route }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Výsledok OCR</Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Výsledok OCR</Text>
+        </View>
 
+        {/* Local save row */}
         <View style={styles.saveRow}>
           <Pressable
             style={({ pressed }) => [
-              styles.saveButton,
-              pressed && styles.saveButtonPressed,
-              saveState === 'saving' && styles.saveButtonDisabled,
+              styles.outlineButton,
+              pressed && styles.buttonPressed,
+              saveState === 'saving' && styles.buttonDisabled,
             ]}
             onPress={handleSave}
             disabled={saveState === 'saving'}
           >
-            <Text style={styles.saveButtonText}>
+            <Text style={styles.outlineButtonText}>
               {saveState === 'saving' ? 'Ukladám...' : 'Uložiť lokálne'}
             </Text>
           </Pressable>
@@ -259,39 +263,45 @@ function OcrResultScreen({ route }: Props) {
           ) : null}
         </View>
 
-        <View style={styles.inventoryBlock}>
-          <Text style={styles.label}>Inventár</Text>
-          <Text style={styles.text}>
+        {/* Inventory card */}
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>Inventár</Text>
+          <Text style={styles.bodyText}>
             Ak si túto kávu nekúpil, nič nemusíš vypĺňať. Inventár je len voliteľný.
           </Text>
+
           {!showInventoryDetails ? (
             <Pressable
-              style={({ pressed }) => [styles.inventoryButton, pressed && styles.saveButtonPressed]}
+              style={({ pressed }) => [
+                styles.inventoryButton,
+                pressed && styles.buttonPressed,
+              ]}
               onPress={() => {
                 setInventoryState('idle');
                 setInventoryError('');
                 setShowInventoryDetails(true);
               }}
             >
-              <Text style={styles.saveButtonText}>Kúpil som ju, pridať do inventára</Text>
+              <Text style={styles.inventoryButtonText}>Kúpil som ju, pridať do inventára</Text>
             </Pressable>
           ) : null}
+
           {showInventoryDetails ? (
             <>
-              <Text style={styles.profileTitle}>Veľkosť balíka (voliteľné)</Text>
-              <View style={styles.packageOptionsRow}>
+              <Text style={styles.fieldLabel}>Veľkosť balíka (voliteľné)</Text>
+              <View style={styles.pillsRow}>
                 {['', '250', '500', '1000'].map((value) => {
                   const isActive = packageSizeG === value;
                   return (
                     <Pressable
                       key={value || 'empty'}
-                      style={[styles.packageOption, isActive && styles.packageOptionActive]}
+                      style={[styles.pill, isActive && styles.pillActive]}
                       onPress={() => setPackageSizeG(value)}
                     >
                       <Text
                         style={[
-                          styles.packageOptionText,
-                          isActive && styles.packageOptionTextActive,
+                          styles.pillText,
+                          isActive && styles.pillTextActive,
                         ]}
                       >
                         {value ? `${value} g` : 'nechať prázdne'}
@@ -300,26 +310,27 @@ function OcrResultScreen({ route }: Props) {
                   );
                 })}
               </View>
-              <Text style={styles.profileTitle}>Zostáva teraz (voliteľné)</Text>
-              <View style={styles.remainingInputWrap}>
-                <Text style={styles.remainingPrefix}>g</Text>
+
+              <Text style={styles.fieldLabel}>Zostáva teraz (voliteľné)</Text>
+              <View style={styles.remainingDisplayRow}>
+                <Text style={styles.remainingUnit}>g</Text>
                 <Text style={styles.remainingValue}>
                   {remainingG.trim().length > 0 ? remainingG : 'nevyplnené'}
                 </Text>
               </View>
-              <View style={styles.packageOptionsRow}>
+              <View style={styles.pillsRow}>
                 {['', '50', '100', '150', '200'].map((value) => {
                   const isActive = remainingG === value;
                   return (
                     <Pressable
                       key={value || 'none'}
-                      style={[styles.packageOption, isActive && styles.packageOptionActive]}
+                      style={[styles.pill, isActive && styles.pillActive]}
                       onPress={() => setRemainingG(value)}
                     >
                       <Text
                         style={[
-                          styles.packageOptionText,
-                          isActive && styles.packageOptionTextActive,
+                          styles.pillText,
+                          isActive && styles.pillTextActive,
                         ]}
                       >
                         {value ? `${value} g` : 'nechať prázdne'}
@@ -330,21 +341,23 @@ function OcrResultScreen({ route }: Props) {
               </View>
             </>
           ) : null}
+
           {showInventoryDetails ? (
             <Pressable
               style={({ pressed }) => [
                 styles.inventoryButton,
-                pressed && styles.saveButtonPressed,
-                (inventoryState === 'saving' || !user) && styles.saveButtonDisabled,
+                pressed && styles.buttonPressed,
+                (inventoryState === 'saving' || !user) && styles.buttonDisabled,
               ]}
               onPress={handleInventorySave}
               disabled={inventoryState === 'saving' || !user}
             >
-              <Text style={styles.saveButtonText}>
+              <Text style={styles.inventoryButtonText}>
                 {inventoryState === 'saving' ? 'Ukladám...' : 'Uložiť do inventára'}
               </Text>
             </Pressable>
           ) : null}
+
           {!user ? (
             <Text style={styles.helperNote}>
               Pre uloženie do inventára sa musíš prihlásiť.
@@ -358,55 +371,67 @@ function OcrResultScreen({ route }: Props) {
           ) : null}
         </View>
 
-        <View style={styles.block}>
-          <Text style={styles.label}>Oskenovaný text</Text>
-          <Text style={styles.text}>{rawText}</Text>
+        {/* OCR text blocks */}
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>Oskenovaný text</Text>
+          <Text style={styles.bodyText}>{rawText}</Text>
         </View>
 
-        <View style={styles.block}>
-          <Text style={styles.label}>Opravený text</Text>
-          <Text style={styles.text}>{correctedText}</Text>
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>Opravený text</Text>
+          <Text style={styles.bodyText}>{correctedText}</Text>
         </View>
 
-        <View style={styles.block}>
-          <Text style={styles.label}>Chuťový profil</Text>
-          <Text style={styles.profileTitle}>Chuťové tóny</Text>
-          <Text style={styles.text}>
+        {/* Taste profile card */}
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>Chuťový profil</Text>
+
+          <Text style={styles.fieldLabel}>Chuťové tóny</Text>
+          <Text style={styles.bodyText}>
             {coffeeProfile.flavorNotes.length > 0
               ? coffeeProfile.flavorNotes.join(', ')
               : 'Neurčené'}
           </Text>
-          <Text style={styles.profileTitle}>Profil chuti</Text>
-          <Text style={styles.text}>{coffeeProfile.tasteProfile}</Text>
-          <Text style={styles.profileTitle}>Odborný popis</Text>
-          <Text style={styles.text}>{coffeeProfile.expertSummary}</Text>
-          <Text style={styles.profileTitle}>Popis pre laika</Text>
-          <Text style={styles.text}>{coffeeProfile.laymanSummary}</Text>
-          <Text style={styles.profileTitle}>Komu bude chutiť</Text>
-          <Text style={styles.text}>{coffeeProfile.preferenceHint}</Text>
-          <Text style={styles.profileTitle}>Prečo tieto tóny</Text>
-          <Text style={styles.text}>{coffeeProfile.reasoning}</Text>
-          <Text style={styles.profileTitle}>Istota</Text>
-          <Text style={styles.text}>
+
+          <Text style={styles.fieldLabel}>Profil chuti</Text>
+          <Text style={styles.bodyText}>{coffeeProfile.tasteProfile}</Text>
+
+          <Text style={styles.fieldLabel}>Odborný popis</Text>
+          <Text style={styles.bodyText}>{coffeeProfile.expertSummary}</Text>
+
+          <Text style={styles.fieldLabel}>Popis pre laika</Text>
+          <Text style={styles.bodyText}>{coffeeProfile.laymanSummary}</Text>
+
+          <Text style={styles.fieldLabel}>Komu bude chutiť</Text>
+          <Text style={styles.bodyText}>{coffeeProfile.preferenceHint}</Text>
+
+          <Text style={styles.fieldLabel}>Prečo tieto tóny</Text>
+          <Text style={styles.bodyText}>{coffeeProfile.reasoning}</Text>
+
+          <Text style={styles.fieldLabel}>Istota</Text>
+          <Text style={styles.bodyText}>
             {Math.round(coffeeProfile.confidence * 100)}%
           </Text>
+
           {coffeeProfile.missingInfo?.length ? (
             <>
-              <Text style={styles.profileTitle}>Chýbajúce informácie</Text>
-              <Text style={styles.text}>
+              <Text style={styles.fieldLabel}>Chýbajúce informácie</Text>
+              <Text style={styles.bodyText}>
                 {coffeeProfile.missingInfo.join(', ')}
               </Text>
             </>
           ) : null}
         </View>
 
-        <View style={styles.block}>
-          <Text style={styles.label}>Zhoda s dotazníkom</Text>
+        {/* Match card */}
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>Zhoda s dotazníkom</Text>
+
           {matchState === 'loading' ? (
-            <Text style={styles.text}>Porovnávam s dotazníkom…</Text>
+            <Text style={styles.bodyText}>Porovnávam s dotazníkom…</Text>
           ) : null}
           {matchState === 'missing' ? (
-            <Text style={styles.text}>
+            <Text style={styles.bodyText}>
               Zatiaľ nemám uložený výsledok dotazníka. Najprv ho vyplňte a uložte,
               aby som vedel porovnávať.
             </Text>
@@ -414,6 +439,7 @@ function OcrResultScreen({ route }: Props) {
           {matchState === 'error' ? (
             <Text style={styles.errorText}>{matchError}</Text>
           ) : null}
+
           {matchState === 'ready' && matchResult ? (
             <>
               <View
@@ -424,29 +450,51 @@ function OcrResultScreen({ route }: Props) {
                     : styles.verdictNegative,
                 ]}
               >
-                <Text style={styles.verdictText}>{verdictLabel}</Text>
-                <Text style={styles.verdictSubText}>
+                <Text
+                  style={[
+                    styles.verdictText,
+                    matchResult.willLike
+                      ? styles.verdictTextPositive
+                      : styles.verdictTextNegative,
+                  ]}
+                >
+                  {verdictLabel}
+                </Text>
+                <Text
+                  style={[
+                    styles.verdictSubText,
+                    matchResult.willLike
+                      ? styles.verdictSubTextPositive
+                      : styles.verdictSubTextNegative,
+                  ]}
+                >
                   Istota: {Math.round(matchResult.confidence * 100)}%
                 </Text>
               </View>
-              <Text style={styles.profileTitle}>Pre baristu</Text>
-              <Text style={styles.text}>{matchResult.baristaSummary}</Text>
-              <Text style={styles.profileTitle}>Pre laika</Text>
-              <Text style={styles.text}>{matchResult.laymanSummary}</Text>
-              <Text style={styles.profileTitle}>Kľúčové zhody</Text>
-              <Text style={styles.text}>
+
+              <Text style={styles.fieldLabel}>Pre baristu</Text>
+              <Text style={styles.bodyText}>{matchResult.baristaSummary}</Text>
+
+              <Text style={styles.fieldLabel}>Pre laika</Text>
+              <Text style={styles.bodyText}>{matchResult.laymanSummary}</Text>
+
+              <Text style={styles.fieldLabel}>Kľúčové zhody</Text>
+              <Text style={styles.bodyText}>
                 {matchResult.keyMatches.length
                   ? matchResult.keyMatches.join(', ')
                   : 'Žiadne výrazné zhody.'}
               </Text>
-              <Text style={styles.profileTitle}>Potenciálne konflikty</Text>
-              <Text style={styles.text}>
+
+              <Text style={styles.fieldLabel}>Potenciálne konflikty</Text>
+              <Text style={styles.bodyText}>
                 {matchResult.keyConflicts.length
                   ? matchResult.keyConflicts.join(', ')
                   : 'Žiadne výrazné konflikty.'}
               </Text>
-              <Text style={styles.profileTitle}>Ako si ju upraviť</Text>
-              <Text style={styles.text}>{matchResult.suggestedAdjustments}</Text>
+
+              <Text style={styles.fieldLabel}>Ako si ju upraviť</Text>
+              <Text style={styles.bodyText}>{matchResult.suggestedAdjustments}</Text>
+
               {questionnaireSnapshot ? (
                 <Text style={styles.helperNote}>
                   Porovnávané s posledným uloženým dotazníkom z{' '}
@@ -467,152 +515,185 @@ function OcrResultScreen({ route }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFAFA',
   },
   container: {
-    padding: 24,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  header: {
+    marginBottom: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
-    marginBottom: 16,
+    color: '#1A1A1A',
+    letterSpacing: -0.3,
   },
   saveRow: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  saveButton: {
-    backgroundColor: '#6B4F3A',
-    paddingVertical: 12,
+  outlineButton: {
+    borderWidth: 1.5,
+    borderColor: '#E8E8E8',
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
+    backgroundColor: 'transparent',
   },
-  saveButtonPressed: {
-    opacity: 0.8,
+  outlineButtonText: {
+    color: '#2C2C2C',
+    fontSize: 15,
+    fontWeight: '600',
   },
-  saveButtonDisabled: {
-    opacity: 0.6,
+  buttonPressed: {
+    opacity: 0.7,
   },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+  buttonDisabled: {
+    opacity: 0.45,
   },
   saveHint: {
-    marginTop: 8,
-    color: '#6B4F3A',
+    marginTop: 10,
+    fontSize: 13,
+    color: '#4A9B6E',
     fontWeight: '600',
   },
   saveError: {
-    marginTop: 8,
-    color: '#BA1A1A',
-    fontWeight: '600',
-  },
-  inventoryBlock: {
-    marginBottom: 20,
-  },
-  inventoryButton: {
-    marginTop: 12,
-    backgroundColor: '#7A9255',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  packageOptionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 8,
-  },
-  packageOption: {
-    borderWidth: 1,
-    borderColor: '#DDD3C9',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-  },
-  packageOptionActive: {
-    borderColor: '#7A9255',
-    backgroundColor: '#D8ECBA',
-  },
-  packageOptionText: {
-    fontSize: 12,
-    color: '#6B5C52',
-    fontWeight: '600',
-  },
-  packageOptionTextActive: {
-    color: '#6B4F3A',
-  },
-  remainingInputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
-  },
-  remainingPrefix: {
-    color: '#6B5C52',
-    fontSize: 12,
-  },
-  remainingValue: {
-    color: '#271508',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  block: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  profileTitle: {
-    fontSize: 13,
-    fontWeight: '700',
     marginTop: 10,
-    marginBottom: 4,
-    color: '#6B4F3A',
+    fontSize: 13,
+    color: '#D64545',
+    fontWeight: '600',
   },
-  text: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#1C1917',
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  sectionLabel: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 14,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B6B6B',
+    marginTop: 14,
+    marginBottom: 4,
+  },
+  bodyText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#1A1A1A',
+    fontWeight: '400',
   },
   errorText: {
     fontSize: 14,
-    color: '#BA1A1A',
+    color: '#D64545',
+    fontWeight: '500',
+  },
+  inventoryButton: {
+    marginTop: 14,
+    backgroundColor: '#4A9B6E',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  inventoryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  pillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  pill: {
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+  },
+  pillActive: {
+    backgroundColor: '#2C2C2C',
+  },
+  pillText: {
+    fontSize: 13,
+    color: '#6B6B6B',
+    fontWeight: '600',
+  },
+  pillTextActive: {
+    color: '#FFFFFF',
+  },
+  remainingDisplayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  remainingUnit: {
+    color: '#6B6B6B',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  remainingValue: {
+    color: '#1A1A1A',
+    fontSize: 15,
     fontWeight: '600',
   },
   verdictBadge: {
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
   },
   verdictPositive: {
-    backgroundColor: '#D8ECBA',
-    borderWidth: 1,
-    borderColor: '#7A9255',
+    backgroundColor: '#E8F5ED',
+    borderColor: '#4A9B6E',
   },
   verdictNegative: {
-    backgroundColor: '#FFDAD6',
-    borderWidth: 1,
-    borderColor: '#BA1A1A',
+    backgroundColor: '#FDEAEA',
+    borderColor: '#D64545',
   },
   verdictText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#271508',
+  },
+  verdictTextPositive: {
+    color: '#2D6A4A',
+  },
+  verdictTextNegative: {
+    color: '#D64545',
   },
   verdictSubText: {
     marginTop: 4,
     fontSize: 12,
-    color: '#6B5C52',
+    fontWeight: '500',
+  },
+  verdictSubTextPositive: {
+    color: '#4A9B6E',
+  },
+  verdictSubTextNegative: {
+    color: '#D64545',
   },
   helperNote: {
-    marginTop: 12,
+    marginTop: 14,
     fontSize: 12,
-    color: '#6B5C52',
+    color: '#999999',
+    lineHeight: 18,
   },
 });
 

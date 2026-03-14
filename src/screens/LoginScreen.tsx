@@ -138,41 +138,47 @@ function LoginScreen({ navigation, route }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Prihlásenie</Text>
-        <Text style={styles.subtitle}>Vitaj späť v BrewMate.</Text>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            placeholder="name@example.com"
-            value={email}
-            onChangeText={setEmail}
-          />
+        <View style={styles.header}>
+          <Text style={styles.title}>Prihlásenie</Text>
+          <Text style={styles.subtitle}>Vitaj späť v BrewMate.</Text>
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Heslo</Text>
-          <TextInput
-            style={styles.input}
-            secureTextEntry
-            placeholder="••••••••"
-            value={password}
-            onChangeText={setPassword}
-          />
+        <View style={styles.form}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              placeholder="name@example.com"
+              placeholderTextColor="#999999"
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Heslo</Text>
+            <TextInput
+              style={styles.input}
+              secureTextEntry
+              placeholder="••••••••"
+              placeholderTextColor="#999999"
+              value={password}
+              onChangeText={setPassword}
+            />
+          </View>
+
+          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
+          <Pressable
+            style={[styles.primaryButton, loading && styles.disabledButton]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>Prihlásiť</Text>}
+          </Pressable>
         </View>
-
-        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-
-        <Pressable
-          style={[styles.primaryButton, loading && styles.disabledButton]}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>Prihlásiť</Text>}
-        </Pressable>
 
         <View style={styles.dividerContainer}>
           <View style={styles.divider} />
@@ -180,21 +186,23 @@ function LoginScreen({ navigation, route }: Props) {
           <View style={styles.divider} />
         </View>
 
-        <Pressable
-          style={[styles.socialButton, loading && styles.disabledButton]}
-          onPress={handleGoogleLogin}
-          disabled={loading}
-        >
-          <Text style={styles.socialButtonText}>Pokračovať s Google</Text>
-        </Pressable>
+        <View style={styles.socialButtons}>
+          <Pressable
+            style={[styles.socialButton, loading && styles.disabledButton]}
+            onPress={handleGoogleLogin}
+            disabled={loading}
+          >
+            <Text style={styles.socialButtonText}>Pokračovať s Google</Text>
+          </Pressable>
 
-        <Pressable
-          style={[styles.socialButton, loading && styles.disabledButton]}
-          onPress={handleAppleLogin}
-          disabled={loading}
-        >
-          <Text style={styles.socialButtonText}>Pokračovať s Apple</Text>
-        </Pressable>
+          <Pressable
+            style={[styles.socialButton, loading && styles.disabledButton]}
+            onPress={handleAppleLogin}
+            disabled={loading}
+          >
+            <Text style={styles.socialButtonText}>Pokračovať s Apple</Text>
+          </Pressable>
+        </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Nemáš účet?</Text>
@@ -210,97 +218,119 @@ function LoginScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F1EC',
+    backgroundColor: '#FAFAFA',
   },
   container: {
     flexGrow: 1,
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 48,
     justifyContent: 'center',
   },
+  header: {
+    marginBottom: 32,
+  },
   title: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#1A1A1A',
+    letterSpacing: -0.5,
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#6B5C52',
-    marginBottom: 24,
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#6B6B6B',
+  },
+  form: {
+    marginBottom: 8,
   },
   inputGroup: {
     marginBottom: 16,
   },
   label: {
-    color: '#6B5C52',
-    marginBottom: 6,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 8,
   },
   input: {
-    backgroundColor: '#271508',
-    borderRadius: 16,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#C8BAB0',
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#1A1A1A',
   },
   errorText: {
-    color: '#BA1A1A',
+    fontSize: 13,
+    color: '#D64545',
     marginBottom: 12,
   },
   primaryButton: {
-    backgroundColor: '#6B4F3A',
-    paddingVertical: 14,
-    borderRadius: 16,
+    backgroundColor: '#2C2C2C',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
     marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
   primaryButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 24,
   },
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: '#271508',
+    backgroundColor: '#E8E8E8',
   },
   dividerText: {
-    color: '#6B5C52',
+    fontSize: 13,
+    color: '#999999',
     paddingHorizontal: 12,
   },
+  socialButtons: {
+    gap: 12,
+  },
   socialButton: {
-    backgroundColor: '#271508',
-    borderRadius: 16,
-    paddingVertical: 12,
+    backgroundColor: 'transparent',
+    borderRadius: 12,
+    paddingVertical: 14,
     alignItems: 'center',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#C8BAB0',
+    borderWidth: 1.5,
+    borderColor: '#E8E8E8',
   },
   socialButtonText: {
-    color: '#DDD3C9',
+    fontSize: 15,
     fontWeight: '600',
+    color: '#2C2C2C',
   },
   disabledButton: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 16,
+    marginTop: 32,
   },
   footerText: {
-    color: '#6B5C52',
-    marginRight: 6,
+    fontSize: 15,
+    color: '#6B6B6B',
+    marginRight: 4,
   },
   footerLink: {
-    color: '#6B4F3A',
+    fontSize: 15,
     fontWeight: '600',
+    color: '#8B7355',
   },
 });
 

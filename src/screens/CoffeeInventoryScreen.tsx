@@ -373,7 +373,9 @@ function CoffeeInventoryScreen() {
           </Pressable>
         </View>
 
-        {state === 'loading' ? <ActivityIndicator color="#6B4F3A" /> : null}
+        {state === 'loading' ? (
+          <ActivityIndicator color="#8B7355" style={styles.loader} />
+        ) : null}
         {state === 'error' ? <Text style={styles.error}>{errorMessage}</Text> : null}
 
         <Text style={styles.caption}>Zobrazená kategória: {filterLabel}</Text>
@@ -403,19 +405,38 @@ function CoffeeInventoryScreen() {
               <Text style={styles.date}>
                 Uložené: {new Date(item.createdAt).toLocaleDateString('sk-SK')}
               </Text>
-              <Text style={styles.label}>Stav: {statusLabel}</Text>
-              <Text style={styles.text}>Balík: {packageLabel}</Text>
-              <Text style={styles.text}>Zostáva: {remainingLabel}</Text>
-              <Text style={styles.text}>
-                Režim trackingu: {item.trackingMode === 'manual' ? 'Manual' : 'Estimated'}
-              </Text>
 
-              <Text style={styles.label}>Chuťový profil</Text>
-              <Text style={styles.text}>{item.coffeeProfile?.tasteProfile || 'Neuvedené'}</Text>
+              <View style={styles.cardMeta}>
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>Stav</Text>
+                  <Text style={styles.metaValue}>{statusLabel}</Text>
+                </View>
+                <View style={styles.metaDivider} />
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>Balík</Text>
+                  <Text style={styles.metaValue}>{packageLabel}</Text>
+                </View>
+                <View style={styles.metaDivider} />
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>Zostáva</Text>
+                  <Text style={styles.metaValue}>{remainingLabel}</Text>
+                </View>
+                <View style={styles.metaDivider} />
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>Tracking</Text>
+                  <Text style={styles.metaValue}>
+                    {item.trackingMode === 'manual' ? 'Manual' : 'Estimated'}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={styles.sectionLabel}>Chuťový profil</Text>
+              <Text style={styles.bodyText}>{item.coffeeProfile?.tasteProfile || 'Neuvedené'}</Text>
               {item.coffeeProfile?.flavorNotes?.length ? (
-                <Text style={styles.text}>Tóny: {item.coffeeProfile.flavorNotes.join(', ')}</Text>
+                <Text style={styles.bodyText}>Tóny: {item.coffeeProfile.flavorNotes.join(', ')}</Text>
               ) : null}
 
+              <Text style={styles.sectionLabel}>Rýchle dávky</Text>
               <View style={styles.quickActionsWrap}>
                 {[
                   item.preferredDoseG && !QUICK_DOSES.includes(item.preferredDoseG)
@@ -444,6 +465,7 @@ function CoffeeInventoryScreen() {
                     setCustomDoseById((current) => ({ ...current, [item.id]: value }))
                   }
                   placeholder="Custom minus g"
+                  placeholderTextColor="#999999"
                   keyboardType="number-pad"
                 />
                 <Pressable style={styles.inlineButton} onPress={() => handleCustomConsume(item)}>
@@ -459,6 +481,7 @@ function CoffeeInventoryScreen() {
                     setCustomRemainingById((current) => ({ ...current, [item.id]: value }))
                   }
                   placeholder="Nastaviť zostávajúce g"
+                  placeholderTextColor="#999999"
                   keyboardType="number-pad"
                 />
                 <Pressable style={styles.inlineButton} onPress={() => handleRemainingUpdate(item)}>
@@ -471,7 +494,7 @@ function CoffeeInventoryScreen() {
                   style={[styles.badge, item.loved ? styles.badgeActive : null]}
                   onPress={() => handleLovedChange(item.id, !item.loved)}
                 >
-                  <Text style={styles.badgeText}>
+                  <Text style={[styles.badgeText, item.loved ? styles.badgeTextActive : null]}>
                     {item.loved ? 'Fantastická ⭐' : 'Označiť ako fantastickú'}
                   </Text>
                 </Pressable>
@@ -512,110 +535,214 @@ function CoffeeInventoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
-  container: { padding: 20, paddingBottom: 40 },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 12 },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FAFAFA',
+  },
+  container: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 48,
+    gap: 12,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
   filterTabs: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 4,
   },
   filterButton: {
-    borderWidth: 1,
-    borderColor: '#6B4F3A',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
   },
   filterButtonActive: {
-    backgroundColor: '#6B4F3A',
+    backgroundColor: '#2C2C2C',
   },
-  filterButtonText: { color: '#6B4F3A', fontWeight: '700' },
-  filterButtonTextActive: { color: '#FFFFFF' },
-  caption: { color: '#6B5C52', marginBottom: 12 },
-  error: { color: '#BA1A1A', marginBottom: 12 },
-  empty: { color: '#6B5C52', fontSize: 14 },
+  filterButtonText: {
+    color: '#6B6B6B',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  filterButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  loader: {
+    marginVertical: 8,
+  },
+  caption: {
+    color: '#6B6B6B',
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  error: {
+    color: '#D64545',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  empty: {
+    color: '#6B6B6B',
+    fontSize: 14,
+    paddingVertical: 16,
+  },
   card: {
-    borderWidth: 1,
-    borderColor: '#DDD3C9',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
-    backgroundColor: '#F5F1EC',
+    padding: 20,
+    marginBottom: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  date: { color: '#6B5C52', fontSize: 12, marginBottom: 8 },
-  label: { fontSize: 13, fontWeight: '700', color: '#6B4F3A', marginTop: 8 },
-  text: { fontSize: 14, color: '#271508', marginTop: 4 },
+  date: {
+    color: '#6B6B6B',
+    fontSize: 12,
+    marginBottom: 12,
+  },
+  cardMeta: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingVertical: 4,
+    marginBottom: 16,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  metaDivider: {
+    height: 1,
+    backgroundColor: '#EBEBEB',
+    marginHorizontal: 14,
+  },
+  metaLabel: {
+    fontSize: 12,
+    color: '#6B6B6B',
+    fontWeight: '500',
+  },
+  metaValue: {
+    fontSize: 13,
+    color: '#1A1A1A',
+    fontWeight: '600',
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B6B6B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    marginTop: 4,
+  },
+  bodyText: {
+    fontSize: 14,
+    color: '#1A1A1A',
+    lineHeight: 20,
+    marginBottom: 4,
+  },
   quickActionsWrap: {
-    marginTop: 10,
+    marginTop: 4,
+    marginBottom: 12,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
   quickAction: {
-    backgroundColor: '#DDD3C9',
-    borderRadius: 16,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 999,
     paddingVertical: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 14,
   },
-  quickActionText: { color: '#271508', fontWeight: '600' },
+  quickActionText: {
+    color: '#2C2C2C',
+    fontWeight: '600',
+    fontSize: 13,
+  },
   inlineRow: {
-    marginTop: 10,
     flexDirection: 'row',
     gap: 8,
+    marginBottom: 8,
   },
   input: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#DDD3C9',
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: '#1A1A1A',
+    fontSize: 14,
   },
   inlineButton: {
-    backgroundColor: '#6B4F3A',
-    borderRadius: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    backgroundColor: '#2C2C2C',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     justifyContent: 'center',
   },
-  inlineButtonText: { color: '#FFFFFF', fontWeight: '700' },
-  actions: { marginTop: 12, gap: 8 },
+  inlineButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  actions: {
+    marginTop: 12,
+    gap: 8,
+  },
   badge: {
-    backgroundColor: '#DDD3C9',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 16,
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     alignItems: 'center',
   },
   badgeActive: {
-    backgroundColor: '#F2DEC4',
+    backgroundColor: '#FFF8F0',
+    borderWidth: 1,
+    borderColor: '#C08B3E',
   },
-  badgeText: { fontWeight: '600', color: '#271508' },
+  badgeText: {
+    fontWeight: '600',
+    fontSize: 14,
+    color: '#2C2C2C',
+  },
+  badgeTextActive: {
+    color: '#C08B3E',
+  },
   statusButton: {
-    backgroundColor: '#271508',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 16,
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     alignItems: 'center',
   },
   statusButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+    color: '#2C2C2C',
+    fontWeight: '600',
+    fontSize: 14,
   },
   deleteButton: {
-    backgroundColor: '#BA1A1A',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 16,
+    backgroundColor: '#D64545',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     alignItems: 'center',
   },
   deleteButtonText: {
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
 

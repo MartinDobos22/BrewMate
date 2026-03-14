@@ -227,12 +227,21 @@ function HomeScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.container}>
-        <Text style={styles.title}>BrewMate</Text>
 
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>BrewMate</Text>
+        </View>
+
+        {/* Quick Overview Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Rýchly prehľad</Text>
-          {dashboardState === 'loading' ? <ActivityIndicator color="#6B4F3A" /> : null}
-          {dashboardState === 'error' ? <Text style={styles.errorText}>{dashboardError}</Text> : null}
+          {dashboardState === 'loading' ? (
+            <ActivityIndicator color="#8B7355" style={styles.loader} />
+          ) : null}
+          {dashboardState === 'error' ? (
+            <Text style={styles.errorText}>{dashboardError}</Text>
+          ) : null}
 
           <View style={styles.metricsWrap}>
             <View style={styles.metricCard}>
@@ -259,6 +268,7 @@ function HomeScreen({ navigation }: Props) {
           </Text>
         </View>
 
+        {/* Active Coffees Section */}
         <View style={styles.section}>
           <View style={styles.inlineHeader}>
             <Text style={styles.sectionTitle}>Aktuálne kávy</Text>
@@ -282,6 +292,7 @@ function HomeScreen({ navigation }: Props) {
           )}
         </View>
 
+        {/* Recipes Section */}
         <View style={styles.section}>
           <View style={styles.inlineHeader}>
             <Text style={styles.sectionTitle}>Recepty na rýchly štart</Text>
@@ -301,6 +312,7 @@ function HomeScreen({ navigation }: Props) {
           )}
         </View>
 
+        {/* Taste Profile Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Tvoj chuťový profil</Text>
           {!userProfile ? (
@@ -314,24 +326,35 @@ function HomeScreen({ navigation }: Props) {
           ) : null}
         </View>
 
-        <Pressable style={styles.button} onPress={handleScanPress}>
-          <Text style={styles.buttonText}>Scan Coffee</Text>
-        </Pressable>
-        <Pressable style={styles.buttonSecondary} onPress={handlePhotoRecipePress}>
-          <Text style={styles.buttonText}>Foto recept</Text>
-        </Pressable>
-        <Pressable style={styles.buttonSecondary} onPress={handleQuestionnairePress}>
-          <Text style={styles.buttonText}>Chuťový dotazník</Text>
-        </Pressable>
-        <Pressable style={styles.buttonSecondary} onPress={handleInventoryPress}>
-          <Text style={styles.buttonText}>Coffee inventár</Text>
-        </Pressable>
-        <Pressable style={styles.buttonSecondary} onPress={handleSavedRecipesPress}>
-          <Text style={styles.buttonText}>Saved coffee recipes</Text>
-        </Pressable>
-        <Pressable style={styles.buttonOutline} onPress={handleLogout}>
-          <Text style={styles.buttonOutlineText}>Odhlásiť sa</Text>
-        </Pressable>
+        {/* Actions Section */}
+        <View style={styles.actionsSection}>
+          <Pressable style={styles.buttonPrimary} onPress={handleScanPress}>
+            <Text style={styles.buttonPrimaryText}>Scan Coffee</Text>
+          </Pressable>
+
+          <View style={styles.secondaryButtonsRow}>
+            <Pressable style={[styles.buttonSecondary, styles.buttonSecondaryFlex]} onPress={handlePhotoRecipePress}>
+              <Text style={styles.buttonSecondaryText}>Foto recept</Text>
+            </Pressable>
+            <Pressable style={[styles.buttonSecondary, styles.buttonSecondaryFlex]} onPress={handleQuestionnairePress}>
+              <Text style={styles.buttonSecondaryText}>Chuťový dotazník</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.secondaryButtonsRow}>
+            <Pressable style={[styles.buttonSecondary, styles.buttonSecondaryFlex]} onPress={handleInventoryPress}>
+              <Text style={styles.buttonSecondaryText}>Coffee inventár</Text>
+            </Pressable>
+            <Pressable style={[styles.buttonSecondary, styles.buttonSecondaryFlex]} onPress={handleSavedRecipesPress}>
+              <Text style={styles.buttonSecondaryText}>Saved coffee recipes</Text>
+            </Pressable>
+          </View>
+
+          <Pressable style={styles.buttonLogout} onPress={handleLogout}>
+            <Text style={styles.buttonLogoutText}>Odhlásiť sa</Text>
+          </Pressable>
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -340,140 +363,212 @@ function HomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    backgroundColor: '#FAFAFA',
   },
   scrollView: {
     flex: 1,
+    backgroundColor: '#FAFAFA',
   },
   container: {
     flexGrow: 1,
-    padding: 24,
+    paddingHorizontal: 20,
+    paddingTop: 24,
     paddingBottom: 48,
-    backgroundColor: '#F5F1EC',
+    backgroundColor: '#FAFAFA',
   },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
+
+  // Header
+  header: {
     marginBottom: 24,
   },
+  title: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    letterSpacing: -0.5,
+  },
+
+  // Section card
   section: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#DDD3C9',
-    marginBottom: 20,
+    padding: 20,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
+
+  // Inline header (title + link row)
   inlineHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
-    color: '#271508',
-  },
-  placeholder: {
-    fontSize: 14,
-    color: '#6B5C52',
     marginBottom: 12,
   },
-  matchScore: {
-    marginTop: 12,
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#6B4F3A',
+
+  // Section title — no bottom margin when inside inlineHeader
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 12,
   },
+
+  // Link text ("Celý inventár", "Všetky recepty")
+  link: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B7355',
+  },
+
+  // Loading indicator spacing
+  loader: {
+    marginVertical: 8,
+    alignSelf: 'flex-start',
+  },
+
+  // Error text
+  errorText: {
+    fontSize: 13,
+    color: '#D64545',
+    marginTop: 4,
+    marginBottom: 8,
+  },
+
+  // Metrics grid
   metricsWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 8,
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 16,
   },
   metricCard: {
+    flex: 1,
     minWidth: '47%',
-    backgroundColor: '#EDE7DF',
+    backgroundColor: '#F5F5F5',
     borderRadius: 16,
-    padding: 12,
+    padding: 16,
   },
   metricValue: {
-    color: '#271508',
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '700',
+    color: '#1A1A1A',
   },
   metricLabel: {
-    color: '#6B5C52',
-    marginTop: 3,
-    fontSize: 13,
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B6B6B',
+    marginTop: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
+
+  // Summary text below metrics
   summaryText: {
-    marginTop: 10,
-    color: '#6B5C52',
+    fontSize: 13,
+    color: '#6B6B6B',
+    lineHeight: 18,
   },
+
+  // Placeholder text (empty states)
+  placeholder: {
+    fontSize: 14,
+    color: '#999999',
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+
+  // Preview cards (inventory + recipes)
   previewCard: {
-    borderWidth: 1,
-    borderColor: '#DDD3C9',
-    borderRadius: 10,
-    padding: 10,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    padding: 14,
     marginBottom: 8,
-    backgroundColor: '#F5F1EC',
   },
   previewTitle: {
-    color: '#271508',
-    fontWeight: '700',
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1A1A1A',
   },
   previewMeta: {
-    color: '#6B5C52',
-    marginTop: 3,
     fontSize: 12,
+    color: '#6B6B6B',
+    marginTop: 3,
+    lineHeight: 16,
   },
-  link: {
-    color: '#6B4F3A',
-    fontWeight: '700',
+
+  // Match score
+  matchScore: {
+    marginTop: 12,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#8B7355',
   },
-  errorText: {
-    color: '#BA1A1A',
-    marginTop: 6,
+
+  // Actions section
+  actionsSection: {
+    marginTop: 4,
+    gap: 10,
   },
-  button: {
-    backgroundColor: '#6B4F3A',
-    paddingVertical: 12,
+
+  // Primary button (Scan Coffee)
+  buttonPrimary: {
+    backgroundColor: '#2C2C2C',
+    paddingVertical: 16,
     paddingHorizontal: 20,
-    borderRadius: 16,
-    marginBottom: 12,
-    minWidth: 200,
+    borderRadius: 12,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  buttonSecondary: {
-    backgroundColor: '#271508',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    minWidth: 200,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  buttonText: {
+  buttonPrimaryText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
-  buttonOutline: {
-    borderColor: '#6B4F3A',
-    borderWidth: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    minWidth: 200,
-    alignItems: 'center',
-    marginTop: 12,
+
+  // Secondary buttons row
+  secondaryButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
   },
-  buttonOutlineText: {
-    color: '#6B4F3A',
-    fontSize: 16,
+  buttonSecondaryFlex: {
+    flex: 1,
+  },
+
+  // Secondary button
+  buttonSecondary: {
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  buttonSecondaryText: {
+    color: '#2C2C2C',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+
+  // Logout button
+  buttonLogout: {
+    backgroundColor: 'transparent',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  buttonLogoutText: {
+    color: '#D64545',
+    fontSize: 15,
     fontWeight: '600',
   },
 });
