@@ -1,89 +1,94 @@
-import { MD3LightTheme, configureFonts } from 'react-native-paper';
-import type { MD3Theme } from 'react-native-paper';
+import { DefaultTheme, Theme } from '@react-navigation/native';
 
-const fontConfig = {
-  displayLarge: { fontFamily: 'System', fontSize: 57, lineHeight: 64, fontWeight: '400' as const, letterSpacing: -0.25 },
-  displayMedium: { fontFamily: 'System', fontSize: 45, lineHeight: 52, fontWeight: '400' as const, letterSpacing: 0 },
-  displaySmall: { fontFamily: 'System', fontSize: 36, lineHeight: 44, fontWeight: '400' as const, letterSpacing: 0 },
-  headlineLarge: { fontFamily: 'System', fontSize: 32, lineHeight: 40, fontWeight: '400' as const, letterSpacing: 0 },
-  headlineMedium: { fontFamily: 'System', fontSize: 28, lineHeight: 36, fontWeight: '400' as const, letterSpacing: 0 },
-  headlineSmall: { fontFamily: 'System', fontSize: 24, lineHeight: 32, fontWeight: '400' as const, letterSpacing: 0 },
-  titleLarge: { fontFamily: 'System', fontSize: 22, lineHeight: 28, fontWeight: '500' as const, letterSpacing: 0 },
-  titleMedium: { fontFamily: 'System', fontSize: 16, lineHeight: 24, fontWeight: '500' as const, letterSpacing: 0.15 },
-  titleSmall: { fontFamily: 'System', fontSize: 14, lineHeight: 20, fontWeight: '500' as const, letterSpacing: 0.1 },
-  bodyLarge: { fontFamily: 'System', fontSize: 16, lineHeight: 24, fontWeight: '400' as const, letterSpacing: 0.5 },
-  bodyMedium: { fontFamily: 'System', fontSize: 14, lineHeight: 20, fontWeight: '400' as const, letterSpacing: 0.25 },
-  bodySmall: { fontFamily: 'System', fontSize: 12, lineHeight: 16, fontWeight: '400' as const, letterSpacing: 0.4 },
-  labelLarge: { fontFamily: 'System', fontSize: 14, lineHeight: 20, fontWeight: '500' as const, letterSpacing: 0.1 },
-  labelMedium: { fontFamily: 'System', fontSize: 12, lineHeight: 16, fontWeight: '500' as const, letterSpacing: 0.5 },
-  labelSmall: { fontFamily: 'System', fontSize: 11, lineHeight: 16, fontWeight: '500' as const, letterSpacing: 0.5 },
+export const palette = {
+  background: '#FAFAFA',
+  primary: '#2C2C2C',
+  accent: '#8B7355',
+  surface: '#FFFFFF',
+  surfaceAlt: '#F5F5F5',
+  outline: '#E8E8E8',
+  outlineLight: '#F0F0F0',
+  error: '#D64545',
+  success: '#4A9B6E',
+  warning: '#C08B3E',
+  onPrimary: '#FFFFFF',
+  text: '#1A1A1A',
+  textSecondary: '#6B6B6B',
+  textTertiary: '#999999',
+  shadow: 'rgba(0, 0, 0, 0.04)',
+  shadowMedium: 'rgba(0, 0, 0, 0.08)',
 };
 
-export const brewMateTheme: MD3Theme = {
-  ...MD3LightTheme,
-  roundness: 16,
-  colors: {
-    ...MD3LightTheme.colors,
+export const spacing = {
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  xxl: 48,
+};
 
-    // Primary — soft coffee brown
-    primary: '#6B4F3A',
-    onPrimary: '#FFFFFF',
-    primaryContainer: '#D9C4B0',
-    onPrimaryContainer: '#2C1A0E',
+export const shape = {
+  radiusSm: 8,
+  radius: 12,
+  radiusMd: 16,
+  radiusLg: 24,
+  radiusFull: 999,
+};
 
-    // Secondary — muted sage green
-    secondary: '#8A9A5B',
-    onSecondary: '#FFFFFF',
-    secondaryContainer: '#D6E4A1',
-    onSecondaryContainer: '#2E3A10',
+export const typography = {
+  displayLg: { fontSize: 34, lineHeight: 42, fontWeight: '700' as const, letterSpacing: -0.5 },
+  display: { fontSize: 28, lineHeight: 36, fontWeight: '700' as const, letterSpacing: -0.3 },
+  headline: { fontSize: 22, lineHeight: 28, fontWeight: '600' as const, letterSpacing: -0.2 },
+  title: { fontSize: 17, lineHeight: 24, fontWeight: '600' as const },
+  body: { fontSize: 15, lineHeight: 22, fontWeight: '400' as const },
+  bodySmall: { fontSize: 13, lineHeight: 18, fontWeight: '400' as const },
+  label: { fontSize: 13, lineHeight: 18, fontWeight: '600' as const },
+  labelSmall: { fontSize: 11, lineHeight: 16, fontWeight: '600' as const, letterSpacing: 0.3, textTransform: 'uppercase' as const },
+  caption: { fontSize: 12, lineHeight: 16, fontWeight: '400' as const },
+};
 
-    // Tertiary
-    tertiary: '#7D5260',
-    onTertiary: '#FFFFFF',
-    tertiaryContainer: '#FFD8E4',
-    onTertiaryContainer: '#31111D',
-
-    // Error
-    error: '#B3261E',
-    onError: '#FFFFFF',
-    errorContainer: '#F9DEDC',
-    onErrorContainer: '#410E0B',
-
-    // Background & surface
-    background: '#F6F3EE',
-    onBackground: '#1C1B1F',
-    surface: '#FFFFFF',
-    onSurface: '#1C1B1F',
-    surfaceVariant: '#EDE8E1',
-    onSurfaceVariant: '#49454F',
-    surfaceDisabled: 'rgba(28, 27, 31, 0.12)',
-    onSurfaceDisabled: 'rgba(28, 27, 31, 0.38)',
-
-    // Outline
-    outline: '#C4BDB5',
-    outlineVariant: '#E0D9D1',
-
-    // Inverse
-    inverseSurface: '#313033',
-    inverseOnSurface: '#F4EFF4',
-    inversePrimary: '#D9C4B0',
-
-    // Elevation overlays
-    elevation: {
-      level0: 'transparent',
-      level1: '#F9F6F1',
-      level2: '#F4F0EA',
-      level3: '#EFEBE4',
-      level4: '#EDE8E1',
-      level5: '#EAE5DD',
-    },
-
-    // Other
-    shadow: 'transparent',
-    scrim: '#000000',
-    backdrop: 'rgba(50, 47, 55, 0.4)',
+export const shadows = {
+  card: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  fonts: configureFonts({ config: fontConfig }),
+  cardMedium: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  button: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
+  },
 };
 
-export type AppTheme = typeof brewMateTheme;
+export const appTheme = {
+  colors: palette,
+  spacing,
+  shape,
+  typography,
+  shadows,
+};
+
+export const navigationTheme: Theme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: palette.background,
+    card: palette.surface,
+    border: palette.outline,
+    primary: palette.primary,
+    text: palette.text,
+    notification: palette.error,
+  },
+};

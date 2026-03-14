@@ -1,10 +1,5 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useTheme } from 'react-native-paper';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import type { MD3Theme } from 'react-native-paper';
 
 import HomeScreen from '../screens/HomeScreen';
 import CoffeeScannerScreen from '../screens/CoffeeScannerScreen';
@@ -15,229 +10,116 @@ import CoffeeQuestionnaireScreen from '../screens/CoffeeQuestionnaireScreen';
 import CoffeeQuestionnaireResultScreen from '../screens/CoffeeQuestionnaireResultScreen';
 import CoffeeInventoryScreen from '../screens/CoffeeInventoryScreen';
 import CoffeeRecipesSavedScreen from '../screens/CoffeeRecipesSavedScreen';
-import CoffeeJournalScreen from '../screens/CoffeeJournalScreen';
-import ProfileHomeScreen from '../screens/ProfileHomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import AuthLoadingScreen from '../screens/AuthLoadingScreen';
-
+import { AuthStackParamList, RootStackParamList } from './types';
 import { useAuth } from '../context/AuthContext';
-import type {
-  AuthStackParamList,
-  BottomTabParamList,
-  HomeStackParamList,
-  InventoryStackParamList,
-  ProfileStackParamList,
-  RecipesStackParamList,
-} from './types';
-import spacing from '../styles/spacing';
 
-// Stack navigators
-const HomeStack = createNativeStackNavigator<HomeStackParamList>();
-const InventoryStack = createNativeStackNavigator<InventoryStackParamList>();
-const RecipesStack = createNativeStackNavigator<RecipesStackParamList>();
-const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
-const AuthStackNav = createNativeStackNavigator<AuthStackParamList>();
-
-// Bottom Tabs
-const BottomTab = createBottomTabNavigator<BottomTabParamList>();
-
-function useScreenOptions() {
-  const theme = useTheme<MD3Theme>();
-
-  return {
-    headerStyle: {
-      backgroundColor: theme.colors.surface,
-      elevation: 0,
-      shadowOpacity: 0,
-    },
-    headerTintColor: theme.colors.onSurface,
-    headerTitleStyle: {
-      fontSize: 22,
-      fontWeight: '400' as const,
-      color: theme.colors.onSurface,
-    },
-    headerShadowVisible: false,
-    contentStyle: { backgroundColor: theme.colors.background },
-  };
-}
-
-function HomeNavigator() {
-  const screenOptions = useScreenOptions();
-
-  return (
-    <HomeStack.Navigator screenOptions={screenOptions}>
-      <HomeStack.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{ title: 'BrewMate', headerShown: false }}
-      />
-      <HomeStack.Screen
-        name="CoffeeScanner"
-        component={CoffeeScannerScreen}
-        options={{ title: 'Coffee Scanner' }}
-      />
-      <HomeStack.Screen
-        name="CoffeePhotoRecipe"
-        component={CoffeePhotoRecipeScreen}
-        options={{ title: 'Foto recept' }}
-      />
-      <HomeStack.Screen
-        name="CoffeePhotoRecipeResult"
-        component={CoffeePhotoRecipeResultScreen}
-        options={{ title: 'Barista recept' }}
-      />
-      <HomeStack.Screen
-        name="OcrResult"
-        component={OcrResultScreen}
-        options={{ title: 'Výsledok skenu' }}
-      />
-    </HomeStack.Navigator>
-  );
-}
-
-function InventoryNavigator() {
-  const screenOptions = useScreenOptions();
-
-  return (
-    <InventoryStack.Navigator screenOptions={screenOptions}>
-      <InventoryStack.Screen
-        name="CoffeeInventory"
-        component={CoffeeInventoryScreen}
-        options={{ title: 'Inventár' }}
-      />
-    </InventoryStack.Navigator>
-  );
-}
-
-function RecipesNavigator() {
-  const screenOptions = useScreenOptions();
-
-  return (
-    <RecipesStack.Navigator screenOptions={screenOptions}>
-      <RecipesStack.Screen
-        name="CoffeeRecipesSaved"
-        component={CoffeeRecipesSavedScreen}
-        options={{ title: 'Recepty' }}
-      />
-    </RecipesStack.Navigator>
-  );
-}
-
-function ProfileNavigator() {
-  const screenOptions = useScreenOptions();
-
-  return (
-    <ProfileStack.Navigator screenOptions={screenOptions}>
-      <ProfileStack.Screen
-        name="ProfileHome"
-        component={ProfileHomeScreen}
-        options={{ title: 'Profil' }}
-      />
-      <ProfileStack.Screen
-        name="CoffeeQuestionnaire"
-        component={CoffeeQuestionnaireScreen}
-        options={{ title: 'Chuťový dotazník' }}
-      />
-      <ProfileStack.Screen
-        name="CoffeeQuestionnaireResult"
-        component={CoffeeQuestionnaireResultScreen}
-        options={{ title: 'Výsledok dotazníka' }}
-      />
-      <ProfileStack.Screen
-        name="CoffeeJournal"
-        component={CoffeeJournalScreen}
-        options={{ title: 'Denník' }}
-      />
-    </ProfileStack.Navigator>
-  );
-}
-
-function MainNavigator() {
-  const theme = useTheme<MD3Theme>();
-
-  return (
-    <BottomTab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: theme.colors.surface,
-          borderTopColor: theme.colors.outlineVariant,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          height: 80,
-          paddingBottom: spacing.sm,
-          paddingTop: spacing.xs,
-          elevation: 0,
-        },
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
-          marginTop: spacing.xs / 2,
-        },
-      }}
-    >
-      <BottomTab.Screen
-        name="HomeTab"
-        component={HomeNavigator}
-        options={{
-          tabBarLabel: 'Domov',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="home-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <BottomTab.Screen
-        name="InventoryTab"
-        component={InventoryNavigator}
-        options={{
-          tabBarLabel: 'Inventár',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="package-variant" size={size} color={color} />
-          ),
-        }}
-      />
-      <BottomTab.Screen
-        name="RecipesTab"
-        component={RecipesNavigator}
-        options={{
-          tabBarLabel: 'Recepty',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="coffee-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <BottomTab.Screen
-        name="ProfileTab"
-        component={ProfileNavigator}
-        options={{
-          tabBarLabel: 'Profil',
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="account-outline" size={size} color={color} />
-          ),
-        }}
-      />
-    </BottomTab.Navigator>
-  );
-}
+const AppStack = createNativeStackNavigator<RootStackParamList>();
+const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 
 function AuthNavigator() {
-  const screenOptions = useScreenOptions();
-
   return (
-    <AuthStackNav.Navigator screenOptions={screenOptions}>
-      <AuthStackNav.Screen
+    <AuthStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: '#FFFFFF' },
+        headerTintColor: '#2C2C2C',
+        headerTitleStyle: { fontSize: 17, fontWeight: '600', color: '#1A1A1A' },
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: '#FAFAFA' },
+      }}
+    >
+      <AuthStack.Screen
         name="Login"
         component={LoginScreen}
         options={{ headerShown: false }}
       />
-      <AuthStackNav.Screen
+      <AuthStack.Screen
         name="Register"
         component={RegisterScreen}
         options={{ headerShown: false }}
       />
-    </AuthStackNav.Navigator>
+    </AuthStack.Navigator>
+  );
+}
+
+function MainNavigator() {
+  return (
+    <AppStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: '#FFFFFF' },
+        headerTintColor: '#2C2C2C',
+        headerTitleStyle: { fontSize: 17, fontWeight: '600', color: '#1A1A1A' },
+        headerShadowVisible: true,
+        contentStyle: { backgroundColor: '#FAFAFA' },
+      }}
+    >
+      <AppStack.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          title: 'BrewMate',
+          headerBackVisible: false,
+        }}
+      />
+      <AppStack.Screen
+        name="CoffeeScanner"
+        component={CoffeeScannerScreen}
+        options={{
+          title: 'Coffee Scanner',
+        }}
+      />
+      <AppStack.Screen
+        name="CoffeePhotoRecipe"
+        component={CoffeePhotoRecipeScreen}
+        options={{
+          title: 'Coffee Recipe Generator',
+        }}
+      />
+      <AppStack.Screen
+        name="CoffeePhotoRecipeResult"
+        component={CoffeePhotoRecipeResultScreen}
+        options={{
+          title: 'Barista recept',
+        }}
+      />
+      <AppStack.Screen
+        name="CoffeeQuestionnaire"
+        component={CoffeeQuestionnaireScreen}
+        options={{
+          title: 'Chuťový dotazník',
+        }}
+      />
+      <AppStack.Screen
+        name="CoffeeQuestionnaireResult"
+        component={CoffeeQuestionnaireResultScreen}
+        options={{
+          title: 'Výsledok dotazníka',
+        }}
+      />
+      <AppStack.Screen
+        name="OcrResult"
+        component={OcrResultScreen}
+        options={{
+          title: 'OCR Result',
+        }}
+      />
+      <AppStack.Screen
+        name="CoffeeInventory"
+        component={CoffeeInventoryScreen}
+        options={{
+          title: 'Coffee inventár',
+        }}
+      />
+      <AppStack.Screen
+        name="CoffeeRecipesSaved"
+        component={CoffeeRecipesSavedScreen}
+        options={{
+          title: 'Coffee Recipes Saved',
+        }}
+      />
+    </AppStack.Navigator>
   );
 }
 
@@ -248,7 +130,9 @@ function AppNavigator() {
     return <AuthLoadingScreen />;
   }
 
-  return user ? <MainNavigator /> : <AuthNavigator />;
+  return (
+    user ? <MainNavigator /> : <AuthNavigator />
+  );
 }
 
 export default AppNavigator;

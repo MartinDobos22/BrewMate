@@ -1,27 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
-  View,
-} from 'react-native';
-import {
   Text,
   TextInput,
-  Button,
-  Divider,
-  useTheme,
-  HelperText,
-} from 'react-native-paper';
-import type { MD3Theme } from 'react-native-paper';
+  View,
+} from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AuthStackParamList } from '../navigation/types';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import { signInWithApple, signInWithGoogle } from '../utils/socialAuth';
 import { useAuth } from '../context/AuthContext';
-import spacing from '../styles/spacing';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
@@ -31,9 +25,7 @@ function LoginScreen({ navigation, route }: Props) {
   const [didPrefill, setDidPrefill] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [passwordVisible, setPasswordVisible] = useState(false);
   const { refreshSession } = useAuth();
-  const theme = useTheme<MD3Theme>();
 
   useEffect(() => {
     if (didPrefill) {
@@ -142,113 +134,81 @@ function LoginScreen({ navigation, route }: Props) {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.root, { backgroundColor: theme.colors.background }]}
+      style={styles.safeArea}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text variant="displaySmall" style={{ color: theme.colors.onSurface }}>
-            Prihlásenie
-          </Text>
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-            Vitaj späť v BrewMate.
-          </Text>
+          <Text style={styles.title}>Prihlásenie</Text>
+          <Text style={styles.subtitle}>Vitaj späť v BrewMate.</Text>
         </View>
 
         <View style={styles.form}>
-          <TextInput
-            mode="outlined"
-            label="Email"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            placeholder="name@example.com"
-            value={email}
-            onChangeText={setEmail}
-            style={styles.input}
-            outlineStyle={styles.inputOutline}
-          />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              placeholder="name@example.com"
+              placeholderTextColor="#999999"
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
 
-          <TextInput
-            mode="outlined"
-            label="Heslo"
-            secureTextEntry={!passwordVisible}
-            placeholder="••••••••"
-            value={password}
-            onChangeText={setPassword}
-            style={styles.input}
-            outlineStyle={styles.inputOutline}
-            right={
-              <TextInput.Icon
-                icon={passwordVisible ? 'eye-off' : 'eye'}
-                onPress={() => setPasswordVisible((v) => !v)}
-              />
-            }
-          />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Heslo</Text>
+            <TextInput
+              style={styles.input}
+              secureTextEntry
+              placeholder="••••••••"
+              placeholderTextColor="#999999"
+              value={password}
+              onChangeText={setPassword}
+            />
+          </View>
 
-          {errorMessage ? (
-            <HelperText type="error" visible>
-              {errorMessage}
-            </HelperText>
-          ) : null}
+          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
-          <Button
-            mode="contained"
+          <Pressable
+            style={[styles.primaryButton, loading && styles.disabledButton]}
             onPress={handleLogin}
-            loading={loading}
             disabled={loading}
-            style={styles.primaryButton}
-            contentStyle={styles.buttonContent}
           >
-            Prihlásiť
-          </Button>
+            {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>Prihlásiť</Text>}
+          </Pressable>
         </View>
 
-        <View style={styles.dividerRow}>
-          <Divider style={styles.dividerLine} />
-          <Text variant="bodySmall" style={[styles.dividerText, { color: theme.colors.onSurfaceVariant }]}>
-            alebo
-          </Text>
-          <Divider style={styles.dividerLine} />
+        <View style={styles.dividerContainer}>
+          <View style={styles.divider} />
+          <Text style={styles.dividerText}>alebo</Text>
+          <View style={styles.divider} />
         </View>
 
         <View style={styles.socialButtons}>
-          <Button
-            mode="outlined"
+          <Pressable
+            style={[styles.socialButton, loading && styles.disabledButton]}
             onPress={handleGoogleLogin}
             disabled={loading}
-            style={styles.socialButton}
-            contentStyle={styles.buttonContent}
-            icon="google"
           >
-            Pokračovať s Google
-          </Button>
+            <Text style={styles.socialButtonText}>Pokračovať s Google</Text>
+          </Pressable>
 
-          <Button
-            mode="outlined"
+          <Pressable
+            style={[styles.socialButton, loading && styles.disabledButton]}
             onPress={handleAppleLogin}
             disabled={loading}
-            style={styles.socialButton}
-            contentStyle={styles.buttonContent}
-            icon="apple"
           >
-            Pokračovať s Apple
-          </Button>
+            <Text style={styles.socialButtonText}>Pokračovať s Apple</Text>
+          </Pressable>
         </View>
 
         <View style={styles.footer}>
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-            Nemáš účet?
-          </Text>
-          <Button
-            mode="text"
-            onPress={() => navigation.navigate('Register')}
-            compact
-          >
-            Zaregistruj sa
-          </Button>
+          <Text style={styles.footerText}>Nemáš účet?</Text>
+          <Pressable onPress={() => navigation.navigate('Register')}>
+            <Text style={styles.footerLink}>Zaregistruj sa</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -256,59 +216,121 @@ function LoginScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  root: {
+  safeArea: {
     flex: 1,
+    backgroundColor: '#FAFAFA',
   },
   container: {
     flexGrow: 1,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xxxl,
+    paddingHorizontal: 24,
+    paddingVertical: 48,
     justifyContent: 'center',
   },
   header: {
-    marginBottom: spacing.xxl,
-    gap: spacing.sm,
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    letterSpacing: -0.5,
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#6B6B6B',
   },
   form: {
-    gap: spacing.md,
-    marginBottom: spacing.sm,
+    marginBottom: 8,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 8,
   },
   input: {
-    backgroundColor: 'transparent',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#1A1A1A',
   },
-  inputOutline: {
-    borderRadius: spacing.md,
+  errorText: {
+    fontSize: 13,
+    color: '#D64545',
+    marginBottom: 12,
   },
   primaryButton: {
-    borderRadius: spacing.md,
-    marginTop: spacing.sm,
+    backgroundColor: '#2C2C2C',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  buttonContent: {
-    paddingVertical: spacing.sm,
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
-  dividerRow: {
+  dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: spacing.xl,
-    gap: spacing.md,
+    marginVertical: 24,
   },
-  dividerLine: {
+  divider: {
     flex: 1,
+    height: 1,
+    backgroundColor: '#E8E8E8',
   },
   dividerText: {
-    flexShrink: 0,
+    fontSize: 13,
+    color: '#999999',
+    paddingHorizontal: 12,
   },
   socialButtons: {
-    gap: spacing.md,
+    gap: 12,
   },
   socialButton: {
-    borderRadius: spacing.md,
+    backgroundColor: 'transparent',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E8E8E8',
+  },
+  socialButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2C2C2C',
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: spacing.xxl,
+    marginTop: 32,
+  },
+  footerText: {
+    fontSize: 15,
+    color: '#6B6B6B',
+    marginRight: 4,
+  },
+  footerLink: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#8B7355',
   },
 });
 

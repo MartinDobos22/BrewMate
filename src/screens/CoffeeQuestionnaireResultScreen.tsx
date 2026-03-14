@@ -1,21 +1,10 @@
 import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  Button,
-  Card,
-  Divider,
-  Surface,
-  Text,
-  useTheme,
-} from 'react-native-paper';
-import type { MD3Theme } from 'react-native-paper';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ProfileStackParamList } from '../navigation/types';
+import { RootStackParamList } from '../navigation/types';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import { saveQuestionnaireResult } from '../utils/localSave';
-import TasteProfileBars from '../components/TasteProfileBars';
-import spacing from '../styles/spacing';
 
 const SECTION_LABELS = {
   profileSummary: 'Profil chutí',
@@ -24,10 +13,9 @@ const SECTION_LABELS = {
   brewingTips: 'Tipy na prípravu',
 };
 
-type Props = NativeStackScreenProps<ProfileStackParamList, 'CoffeeQuestionnaireResult'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'CoffeeQuestionnaireResult'>;
 
 function CoffeeQuestionnaireResultScreen({ route }: Props) {
-  const theme = useTheme<MD3Theme>();
   const { answers, profile } = route.params;
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
@@ -67,173 +55,63 @@ function CoffeeQuestionnaireResultScreen({ route }: Props) {
   }, [answers, profile]);
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
-      edges={['bottom']}
-    >
+    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
         {/* Page title */}
         <View style={styles.header}>
-          <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
-            Výsledok dotazníka
-          </Text>
-          <Text
-            variant="bodyMedium"
-            style={{ color: theme.colors.onSurfaceVariant }}
-          >
-            Váš chuťový profil a odporúčania
-          </Text>
+          <Text style={styles.title}>Výsledok dotazníka</Text>
+          <Text style={styles.subtitle}>Váš chuťový profil a odporúčania</Text>
         </View>
 
-        {/* Save action */}
+        {/* Save action row */}
         <View style={styles.saveRow}>
-          <Button
-            mode="contained"
+          <Pressable
+            style={({ pressed }) => [
+              styles.saveButton,
+              pressed && styles.saveButtonPressed,
+              saveState === 'saving' && styles.saveButtonDisabled,
+            ]}
             onPress={handleSave}
-            disabled={saveState === 'saving' || saveState === 'saved'}
-            loading={saveState === 'saving'}
-            style={styles.saveButton}
-            contentStyle={styles.saveButtonContent}
-            labelStyle={styles.saveButtonLabel}
-            icon={saveState === 'saved' ? 'check' : undefined}
+            disabled={saveState === 'saving'}
           >
-            {saveState === 'saving'
-              ? 'Ukladám...'
-              : saveState === 'saved'
-              ? 'Uložené'
-              : 'Uložiť do profilu'}
-          </Button>
-          {saveState === 'saved' ? (
-            <Text
-              variant="bodySmall"
-              style={[styles.saveHint, { color: theme.colors.secondary }]}
-            >
-              Uložené lokálne aj do profilu.
+            <Text style={styles.saveButtonText}>
+              {saveState === 'saving' ? 'Ukladám...' : 'Uložiť do profilu'}
             </Text>
+          </Pressable>
+          {saveState === 'saved' ? (
+            <Text style={styles.saveHint}>Uložené lokálne aj do profilu.</Text>
           ) : null}
           {saveState === 'error' ? (
-            <Text
-              variant="bodySmall"
-              style={[styles.saveError, { color: theme.colors.error }]}
-            >
-              Uloženie zlyhalo.
-            </Text>
+            <Text style={styles.saveError}>Uloženie zlyhalo.</Text>
           ) : null}
         </View>
 
-        {/* Taste profile bars */}
-        <Card
-          mode="elevated"
-          elevation={1}
-          style={[styles.card, { backgroundColor: theme.colors.surface }]}
-        >
-          <Card.Content style={styles.cardContent}>
-            <Text
-              variant="titleMedium"
-              style={[styles.sectionTitle, { color: theme.colors.onSurface }]}
-            >
-              Chuťový vektor
-            </Text>
-            <TasteProfileBars vector={profile.tasteVector} />
-          </Card.Content>
-        </Card>
-
         {/* AI recommendation section */}
-        <Card
-          mode="elevated"
-          elevation={1}
-          style={[styles.card, { backgroundColor: theme.colors.surface }]}
-        >
-          <Card.Content style={styles.cardContent}>
-            <Text
-              variant="titleMedium"
-              style={[styles.sectionTitle, { color: theme.colors.onSurface }]}
-            >
-              AI odporúčanie
-            </Text>
-            {(Object.keys(SECTION_LABELS) as Array<keyof typeof SECTION_LABELS>).map(
-              (key, index, arr) => (
-                <View key={key}>
-                  <Surface
-                    style={[
-                      styles.profileBlock,
-                      { backgroundColor: theme.colors.surfaceVariant },
-                    ]}
-                    elevation={0}
-                  >
-                    <Text
-                      variant="labelMedium"
-                      style={[
-                        styles.profileLabel,
-                        { color: theme.colors.primary },
-                      ]}
-                    >
-                      {SECTION_LABELS[key]}
-                    </Text>
-                    <Text
-                      variant="bodyMedium"
-                      style={{ color: theme.colors.onSurface }}
-                    >
-                      {profile[key]}
-                    </Text>
-                  </Surface>
-                  {index < arr.length - 1 ? (
-                    <View style={styles.dividerSpacer} />
-                  ) : null}
-                </View>
-              ),
-            )}
-          </Card.Content>
-        </Card>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>AI odporúčanie</Text>
+          {(Object.keys(SECTION_LABELS) as Array<keyof typeof SECTION_LABELS>).map(
+            (key) => (
+              <View key={key} style={styles.profileBlock}>
+                <Text style={styles.profileLabel}>{SECTION_LABELS[key]}</Text>
+                <Text style={styles.profileText}>{profile[key]}</Text>
+              </View>
+            ),
+          )}
+        </View>
 
         {/* Answers section */}
-        <Card
-          mode="elevated"
-          elevation={1}
-          style={[styles.card, { backgroundColor: theme.colors.surface }]}
-        >
-          <Card.Content style={styles.cardContent}>
-            <Text
-              variant="titleMedium"
-              style={[styles.sectionTitle, { color: theme.colors.onSurface }]}
-            >
-              Vaše odpovede
-            </Text>
-            {answers.map((item, index) => (
-              <View key={item.question}>
-                <View style={styles.answerRow}>
-                  <Text
-                    variant="labelMedium"
-                    style={[
-                      styles.answerQuestion,
-                      { color: theme.colors.onSurfaceVariant },
-                    ]}
-                  >
-                    {item.question}
-                  </Text>
-                  <Text
-                    variant="bodyMedium"
-                    style={{ color: theme.colors.onSurface }}
-                  >
-                    {item.answer}
-                  </Text>
-                </View>
-                {index < answers.length - 1 ? (
-                  <Divider
-                    style={[
-                      styles.answerDivider,
-                      { backgroundColor: theme.colors.outlineVariant },
-                    ]}
-                  />
-                ) : null}
-              </View>
-            ))}
-          </Card.Content>
-        </Card>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Vaše odpovede</Text>
+          {answers.map((item) => (
+            <View key={item.question} style={styles.answerRow}>
+              <Text style={styles.answerQuestion}>{item.question}</Text>
+              <Text style={styles.answerValue}>{item.answer}</Text>
+            </View>
+          ))}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -242,79 +120,130 @@ function CoffeeQuestionnaireResultScreen({ route }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    backgroundColor: '#FAFAFA',
   },
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
-    gap: spacing.lg,
+  container: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 48,
   },
 
   // Header
   header: {
-    gap: spacing.xs,
+    marginBottom: 20,
+    paddingTop: 8,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#6B6B6B',
+    fontWeight: '400',
   },
 
   // Save row
   saveRow: {
-    gap: spacing.sm,
+    marginBottom: 24,
   },
   saveButton: {
-    borderRadius: spacing.md,
+    backgroundColor: '#2C2C2C',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  saveButtonContent: {
-    paddingVertical: spacing.sm,
+  saveButtonPressed: {
+    opacity: 0.85,
   },
-  saveButtonLabel: {
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
     fontSize: 15,
     letterSpacing: 0.1,
   },
   saveHint: {
-    marginTop: spacing.xs,
+    marginTop: 10,
+    color: '#4A9B6E',
+    fontWeight: '600',
+    fontSize: 14,
   },
   saveError: {
-    marginTop: spacing.xs,
+    marginTop: 10,
+    color: '#D64545',
+    fontWeight: '600',
+    fontSize: 14,
   },
 
-  // Cards
-  card: {
-    borderRadius: spacing.lg,
-  },
-  cardContent: {
-    paddingVertical: spacing.lg,
-    gap: spacing.md,
+  // Sections
+  section: {
+    marginBottom: 28,
   },
   sectionTitle: {
-    marginBottom: spacing.xs,
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 12,
   },
 
-  // Profile blocks
+  // Profile blocks (AI recommendation)
   profileBlock: {
-    borderRadius: spacing.md,
-    padding: spacing.lg,
-    gap: spacing.xs,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 10,
   },
   profileLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B7355',
+    letterSpacing: 0.2,
+    marginBottom: 6,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: spacing.xs,
   },
-  dividerSpacer: {
-    height: spacing.sm,
+  profileText: {
+    fontSize: 15,
+    color: '#1A1A1A',
+    lineHeight: 22,
+    fontWeight: '400',
   },
 
   // Answer rows
   answerRow: {
-    paddingVertical: spacing.sm,
-    gap: spacing.xs,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   answerQuestion: {
-    marginBottom: spacing.xs,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B6B6B',
+    marginBottom: 4,
+    lineHeight: 18,
   },
-  answerDivider: {
-    marginVertical: spacing.xs,
+  answerValue: {
+    fontSize: 15,
+    color: '#1A1A1A',
+    fontWeight: '400',
+    lineHeight: 22,
   },
 });
 

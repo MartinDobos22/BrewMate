@@ -1,15 +1,6 @@
 import { CoffeeProfile, QuestionnaireProfile } from '../utils/tasteVector';
 
-// Bottom tab param lists
-export type BottomTabParamList = {
-  HomeTab: undefined;
-  InventoryTab: undefined;
-  RecipesTab: undefined;
-  ProfileTab: undefined;
-};
-
-// Home stack (scanner, photo recipe flows)
-export type HomeStackParamList = {
+export type RootStackParamList = {
   Home: undefined;
   CoffeeScanner: undefined;
   CoffeePhotoRecipe: undefined;
@@ -44,27 +35,6 @@ export type HomeStackParamList = {
       reason: string;
     };
   };
-  OcrResult: {
-    rawText: string;
-    correctedText: string;
-    coffeeProfile: CoffeeProfile;
-    labelImageBase64: string;
-  };
-};
-
-// Inventory stack
-export type InventoryStackParamList = {
-  CoffeeInventory: undefined;
-};
-
-// Recipes stack
-export type RecipesStackParamList = {
-  CoffeeRecipesSaved: undefined;
-};
-
-// Profile stack (questionnaire, journal, taste profile)
-export type ProfileStackParamList = {
-  ProfileHome: undefined;
   CoffeeQuestionnaire: undefined;
   CoffeeQuestionnaireResult: {
     answers: Array<{
@@ -73,10 +43,16 @@ export type ProfileStackParamList = {
     }>;
     profile: QuestionnaireProfile;
   };
-  CoffeeJournal: undefined;
+  OcrResult: {
+    rawText: string;
+    correctedText: string;
+    coffeeProfile: CoffeeProfile;
+    labelImageBase64: string;
+  };
+  CoffeeInventory: undefined;
+  CoffeeRecipesSaved: undefined;
 };
 
-// Auth stack
 export type AuthStackParamList = {
   Login:
     | {
@@ -86,9 +62,3 @@ export type AuthStackParamList = {
     | undefined;
   Register: undefined;
 };
-
-// Combined root param list for legacy compatibility
-export type RootStackParamList = HomeStackParamList &
-  InventoryStackParamList &
-  RecipesStackParamList &
-  ProfileStackParamList;
