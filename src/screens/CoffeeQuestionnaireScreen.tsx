@@ -1,17 +1,20 @@
 import React, { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  Button,
+  Card,
+  Chip,
+  ProgressBar,
+  Text,
+  useTheme,
+} from 'react-native-paper';
+import type { MD3Theme } from 'react-native-paper';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
+import { ProfileStackParamList } from '../navigation/types';
 import { ensureQuestionnaireProfile } from '../utils/tasteVector';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import spacing from '../styles/spacing';
 
 const QUESTIONNAIRE = [
   {
@@ -55,8 +58,12 @@ const QUESTIONNAIRE = [
   },
   {
     id: 'clarity',
-    title: 'Preferujete skôr "čistú" chuť alebo "divokejšiu" (výrazné arómy)?',
-    options: ['Čistú a jednoduchú', 'Niečo zaujímavejšie', 'Kľudne veľmi výraznú a netradičnú'],
+    title: 'Preferujete skôr „čistú" chuť alebo „divokejšiu" (výrazné arómy)?',
+    options: [
+      'Čistú a jednoduchú',
+      'Niečo zaujímavejšie',
+      'Kľudne veľmi výraznú a netradičnú',
+    ],
   },
   {
     id: 'dislike',
@@ -70,11 +77,12 @@ const QUESTIONNAIRE = [
   },
 ];
 
-type Props = NativeStackScreenProps<RootStackParamList, 'CoffeeQuestionnaire'>;
+type Props = NativeStackScreenProps<ProfileStackParamList, 'CoffeeQuestionnaire'>;
 
 type AnswerMap = Record<string, string>;
 
 function CoffeeQuestionnaireScreen({ navigation }: Props) {
+  const theme = useTheme<MD3Theme>();
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -165,88 +173,119 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
+      edges={['bottom']}
+    >
       <ScrollView
-        contentContainerStyle={styles.container}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Chuťový dotazník</Text>
-          <Text style={styles.subtitle}>
+          <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
+            Chuťový dotazník
+          </Text>
+          <Text
+            variant="bodyMedium"
+            style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}
+          >
             {answeredCount} / {QUESTIONNAIRE.length} otázok zodpovedaných
           </Text>
-          {/* Progress bar */}
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  width: `${(answeredCount / QUESTIONNAIRE.length) * 100}%`,
-                },
-              ]}
-            />
-          </View>
+          <ProgressBar
+            progress={answeredCount / QUESTIONNAIRE.length}
+            color={theme.colors.primary}
+            style={[
+              styles.progressBar,
+              { backgroundColor: theme.colors.surfaceVariant },
+            ]}
+          />
         </View>
 
         {/* Question cards */}
         {QUESTIONNAIRE.map((question, index) => (
-          <View key={question.id} style={styles.card}>
-            <Text style={styles.questionNumber}>Otázka {index + 1}</Text>
-            <Text style={styles.question}>{question.title}</Text>
-            <View style={styles.optionsContainer}>
-              {question.options.map((option) => {
-                const isSelected = answers[question.id] === option;
-                return (
-                  <Pressable
-                    key={option}
-                    style={[styles.option, isSelected && styles.optionSelected]}
-                    onPress={() => handleSelect(question.id, option)}
-                  >
-                    <View style={[styles.radio, isSelected && styles.radioSelected]}>
-                      {isSelected && <View style={styles.radioDot} />}
-                    </View>
-                    <Text
+          <Card
+            key={question.id}
+            mode="elevated"
+            elevation={1}
+            style={[styles.card, { backgroundColor: theme.colors.surface }]}
+          >
+            <Card.Content style={styles.cardContent}>
+              <Text
+                variant="labelMedium"
+                style={[styles.questionNumber, { color: theme.colors.primary }]}
+              >
+                Otázka {index + 1}
+              </Text>
+              <Text
+                variant="titleMedium"
+                style={[styles.questionTitle, { color: theme.colors.onSurface }]}
+              >
+                {question.title}
+              </Text>
+              <View style={styles.chipsContainer}>
+                {question.options.map((option) => {
+                  const isSelected = answers[question.id] === option;
+                  return (
+                    <Chip
+                      key={option}
+                      selected={isSelected}
+                      onPress={() => handleSelect(question.id, option)}
                       style={[
-                        styles.optionLabel,
-                        isSelected && styles.optionLabelSelected,
+                        styles.chip,
+                        isSelected
+                          ? { backgroundColor: theme.colors.primaryContainer }
+                          : { backgroundColor: theme.colors.surfaceVariant },
                       ]}
+                      textStyle={[
+                        isSelected
+                          ? { color: theme.colors.onPrimaryContainer }
+                          : { color: theme.colors.onSurfaceVariant },
+                      ]}
+                      showSelectedCheck={false}
                     >
                       {option}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
+                    </Chip>
+                  );
+                })}
+              </View>
+            </Card.Content>
+          </Card>
         ))}
 
         {/* Error message */}
         {errorMessage ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.error}>{errorMessage}</Text>
-          </View>
+          <Card
+            mode="contained"
+            style={[
+              styles.errorCard,
+              { backgroundColor: theme.colors.errorContainer },
+            ]}
+          >
+            <Card.Content>
+              <Text
+                variant="bodyMedium"
+                style={{ color: theme.colors.error }}
+              >
+                {errorMessage}
+              </Text>
+            </Card.Content>
+          </Card>
         ) : null}
 
         {/* Submit button */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.submitButton,
-            isSubmitting && styles.submitButtonDisabled,
-            pressed && !isSubmitting && styles.submitButtonPressed,
-          ]}
+        <Button
+          mode="contained"
           onPress={handleSubmit}
           disabled={isSubmitting}
+          loading={isSubmitting}
+          style={styles.submitButton}
+          contentStyle={styles.submitButtonContent}
+          labelStyle={styles.submitButtonLabel}
         >
-          {isSubmitting ? (
-            <View style={styles.submitRow}>
-              <ActivityIndicator color="#FFFFFF" size="small" />
-              <Text style={styles.submitText}>Vyhodnocujem...</Text>
-            </View>
-          ) : (
-            <Text style={styles.submitText}>Vyhodnotiť dotazník</Text>
-          )}
-        </Pressable>
+          {isSubmitting ? 'Vyhodnocujem...' : 'Vyhodnotiť dotazník'}
+        </Button>
       </ScrollView>
     </SafeAreaView>
   );
@@ -255,159 +294,69 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
   },
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 48,
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
+    gap: spacing.md,
   },
 
   // Header
   header: {
-    marginBottom: 24,
-    paddingTop: 8,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    letterSpacing: -0.3,
-    marginBottom: 6,
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 15,
-    color: '#6B6B6B',
-    fontWeight: '400',
-    marginBottom: 12,
+    marginTop: spacing.xs,
   },
-  progressTrack: {
+  progressBar: {
     height: 6,
-    backgroundColor: '#F0F0F0',
     borderRadius: 999,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: 6,
-    backgroundColor: '#8B7355',
-    borderRadius: 999,
+    marginTop: spacing.xs,
   },
 
   // Question card
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: spacing.lg,
+  },
+  cardContent: {
+    paddingVertical: spacing.lg,
+    gap: spacing.xs,
   },
   questionNumber: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#8B7355',
-    letterSpacing: 0.5,
     textTransform: 'uppercase',
-    marginBottom: 6,
+    letterSpacing: 0.5,
+    marginBottom: spacing.xs,
   },
-  question: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    lineHeight: 24,
-    marginBottom: 16,
+  questionTitle: {
+    marginBottom: spacing.md,
   },
-  optionsContainer: {
-    gap: 6,
-  },
-
-  // Option row
-  option: {
+  chipsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
-  optionSelected: {
-    backgroundColor: '#F5F5F5',
-  },
-  radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#E8E8E8',
-    marginRight: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioSelected: {
-    borderColor: '#2C2C2C',
-    backgroundColor: '#2C2C2C',
-  },
-  radioDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFFFFF',
-  },
-  optionLabel: {
-    flex: 1,
-    fontSize: 15,
-    color: '#1A1A1A',
-    lineHeight: 22,
-  },
-  optionLabelSelected: {
-    fontWeight: '500',
-    color: '#1A1A1A',
+  chip: {
+    borderRadius: spacing.sm,
   },
 
-  // Error
-  errorContainer: {
-    backgroundColor: '#FDEAEA',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  error: {
-    color: '#D64545',
-    fontSize: 14,
-    fontWeight: '600',
-    lineHeight: 20,
+  // Error card
+  errorCard: {
+    borderRadius: spacing.md,
   },
 
   // Submit button
   submitButton: {
-    backgroundColor: '#2C2C2C',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
+    borderRadius: spacing.md,
+    marginTop: spacing.xs,
   },
-  submitButtonDisabled: {
-    opacity: 0.6,
+  submitButtonContent: {
+    paddingVertical: spacing.sm,
   },
-  submitButtonPressed: {
-    opacity: 0.85,
-  },
-  submitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  submitText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
+  submitButtonLabel: {
     fontSize: 15,
     letterSpacing: 0.1,
   },

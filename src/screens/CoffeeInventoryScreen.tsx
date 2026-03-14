@@ -1,17 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
+  Button,
+  Card,
+  Chip,
+  Divider,
   Text,
   TextInput,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+  useTheme,
+} from 'react-native-paper';
+import type { MD3Theme } from 'react-native-paper';
 
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import spacing, { radii } from '../styles/spacing';
 
 type InventoryStatus = 'active' | 'empty' | 'archived';
 type TrackingMode = 'manual' | 'estimated';
@@ -46,6 +49,8 @@ type InventoryItem = {
 const QUICK_DOSES = [10, 15, 18, 20];
 
 function CoffeeInventoryScreen() {
+  const theme = useTheme<MD3Theme>();
+
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -327,63 +332,74 @@ function CoffeeInventoryScreen() {
   }, [activeFilter]);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Coffee inventár</Text>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
+      edges={['bottom']}
+    >
+      <ScrollView
+        style={[styles.scroll, { backgroundColor: theme.colors.background }]}
+        contentContainerStyle={styles.container}
+      >
+        <Text variant="headlineMedium" style={styles.title}>
+          Coffee inventár
+        </Text>
 
-        <View style={styles.filterTabs}>
-          <Pressable
-            style={[styles.filterButton, activeFilter === 'active' ? styles.filterButtonActive : null]}
+        {/* Filter Chips */}
+        <View style={styles.filterRow}>
+          <Chip
+            selected={activeFilter === 'active'}
             onPress={() => setActiveFilter('active')}
+            style={styles.filterChip}
+            showSelectedCheck={false}
           >
-            <Text
-              style={[
-                styles.filterButtonText,
-                activeFilter === 'active' ? styles.filterButtonTextActive : null,
-              ]}
-            >
-              Aktívne ({totalsByStatus.active})
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.filterButton, activeFilter === 'empty' ? styles.filterButtonActive : null]}
+            Aktívne ({totalsByStatus.active})
+          </Chip>
+          <Chip
+            selected={activeFilter === 'empty'}
             onPress={() => setActiveFilter('empty')}
+            style={styles.filterChip}
+            showSelectedCheck={false}
           >
-            <Text
-              style={[
-                styles.filterButtonText,
-                activeFilter === 'empty' ? styles.filterButtonTextActive : null,
-              ]}
-            >
-              Dopité ({totalsByStatus.empty})
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.filterButton, activeFilter === 'archived' ? styles.filterButtonActive : null]}
+            Dopité ({totalsByStatus.empty})
+          </Chip>
+          <Chip
+            selected={activeFilter === 'archived'}
             onPress={() => setActiveFilter('archived')}
+            style={styles.filterChip}
+            showSelectedCheck={false}
           >
-            <Text
-              style={[
-                styles.filterButtonText,
-                activeFilter === 'archived' ? styles.filterButtonTextActive : null,
-              ]}
-            >
-              Archivované ({totalsByStatus.archived})
-            </Text>
-          </Pressable>
+            Archivované ({totalsByStatus.archived})
+          </Chip>
         </View>
 
+        {/* Loading state */}
         {state === 'loading' ? (
-          <ActivityIndicator color="#8B7355" style={styles.loader} />
+          <ActivityIndicator
+            animating
+            color={theme.colors.primary}
+            style={styles.loader}
+          />
         ) : null}
-        {state === 'error' ? <Text style={styles.error}>{errorMessage}</Text> : null}
 
-        <Text style={styles.caption}>Zobrazená kategória: {filterLabel}</Text>
+        {/* Error state */}
+        {state === 'error' ? (
+          <Text variant="bodyMedium" style={{ color: theme.colors.error }}>
+            {errorMessage}
+          </Text>
+        ) : null}
 
+        <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+          Zobrazená kategória: {filterLabel}
+        </Text>
+
+        {/* Empty state */}
         {state === 'ready' && renderedItems.length === 0 ? (
-          <Text style={styles.empty}>V kategórii {filterLabel.toLowerCase()} zatiaľ nemáš žiadne kávy.</Text>
+          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+            V kategórii {filterLabel.toLowerCase()} zatiaľ nemáš žiadne kávy.
+          </Text>
         ) : null}
 
+        {/* Item cards */}
         {renderedItems.map((item) => {
           const remainingLabel =
             item.remainingG === null
@@ -401,132 +417,210 @@ function CoffeeInventoryScreen() {
                 : 'Archivovaná';
 
           return (
-            <View key={item.id} style={styles.card}>
-              <Text style={styles.date}>
-                Uložené: {new Date(item.createdAt).toLocaleDateString('sk-SK')}
-              </Text>
+            <Card
+              key={item.id}
+              mode="contained"
+              style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}
+            >
+              <Card.Content style={styles.cardContent}>
+                {/* Date */}
+                <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                  Uložené: {new Date(item.createdAt).toLocaleDateString('sk-SK')}
+                </Text>
 
-              <View style={styles.cardMeta}>
-                <View style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>Stav</Text>
-                  <Text style={styles.metaValue}>{statusLabel}</Text>
-                </View>
-                <View style={styles.metaDivider} />
-                <View style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>Balík</Text>
-                  <Text style={styles.metaValue}>{packageLabel}</Text>
-                </View>
-                <View style={styles.metaDivider} />
-                <View style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>Zostáva</Text>
-                  <Text style={styles.metaValue}>{remainingLabel}</Text>
-                </View>
-                <View style={styles.metaDivider} />
-                <View style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>Tracking</Text>
-                  <Text style={styles.metaValue}>
-                    {item.trackingMode === 'manual' ? 'Manual' : 'Estimated'}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.sectionLabel}>Chuťový profil</Text>
-              <Text style={styles.bodyText}>{item.coffeeProfile?.tasteProfile || 'Neuvedené'}</Text>
-              {item.coffeeProfile?.flavorNotes?.length ? (
-                <Text style={styles.bodyText}>Tóny: {item.coffeeProfile.flavorNotes.join(', ')}</Text>
-              ) : null}
-
-              <Text style={styles.sectionLabel}>Rýchle dávky</Text>
-              <View style={styles.quickActionsWrap}>
-                {[
-                  item.preferredDoseG && !QUICK_DOSES.includes(item.preferredDoseG)
-                    ? item.preferredDoseG
-                    : null,
-                  ...QUICK_DOSES,
-                ]
-                  .filter((dose): dose is number => Boolean(dose))
-                  .slice(0, 4)
-                  .map((dose) => (
-                    <Pressable
-                      key={`${item.id}-${dose}`}
-                      style={styles.quickAction}
-                      onPress={() => handleConsume(item, dose, 'quick_action')}
-                    >
-                      <Text style={styles.quickActionText}>-{dose} g</Text>
-                    </Pressable>
-                  ))}
-              </View>
-
-              <View style={styles.inlineRow}>
-                <TextInput
-                  style={styles.input}
-                  value={customDoseById[item.id] ?? ''}
-                  onChangeText={(value) =>
-                    setCustomDoseById((current) => ({ ...current, [item.id]: value }))
-                  }
-                  placeholder="Custom minus g"
-                  placeholderTextColor="#999999"
-                  keyboardType="number-pad"
-                />
-                <Pressable style={styles.inlineButton} onPress={() => handleCustomConsume(item)}>
-                  <Text style={styles.inlineButtonText}>Odpočítať</Text>
-                </Pressable>
-              </View>
-
-              <View style={styles.inlineRow}>
-                <TextInput
-                  style={styles.input}
-                  value={customRemainingById[item.id] ?? ''}
-                  onChangeText={(value) =>
-                    setCustomRemainingById((current) => ({ ...current, [item.id]: value }))
-                  }
-                  placeholder="Nastaviť zostávajúce g"
-                  placeholderTextColor="#999999"
-                  keyboardType="number-pad"
-                />
-                <Pressable style={styles.inlineButton} onPress={() => handleRemainingUpdate(item)}>
-                  <Text style={styles.inlineButtonText}>Uložiť</Text>
-                </Pressable>
-              </View>
-
-              <View style={styles.actions}>
-                <Pressable
-                  style={[styles.badge, item.loved ? styles.badgeActive : null]}
-                  onPress={() => handleLovedChange(item.id, !item.loved)}
+                {/* Meta info block */}
+                <View
+                  style={[
+                    styles.metaBlock,
+                    { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
+                  ]}
                 >
-                  <Text style={[styles.badgeText, item.loved ? styles.badgeTextActive : null]}>
+                  <View style={styles.metaRow}>
+                    <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                      Stav
+                    </Text>
+                    <Text variant="labelLarge" style={{ color: theme.colors.onSurface }}>
+                      {statusLabel}
+                    </Text>
+                  </View>
+                  <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
+                  <View style={styles.metaRow}>
+                    <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                      Balík
+                    </Text>
+                    <Text variant="labelLarge" style={{ color: theme.colors.onSurface }}>
+                      {packageLabel}
+                    </Text>
+                  </View>
+                  <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
+                  <View style={styles.metaRow}>
+                    <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                      Zostáva
+                    </Text>
+                    <Text variant="labelLarge" style={{ color: theme.colors.onSurface }}>
+                      {remainingLabel}
+                    </Text>
+                  </View>
+                  <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
+                  <View style={styles.metaRow}>
+                    <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                      Tracking
+                    </Text>
+                    <Text variant="labelLarge" style={{ color: theme.colors.onSurface }}>
+                      {item.trackingMode === 'manual' ? 'Manual' : 'Estimated'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Taste profile */}
+                <Text
+                  variant="labelMedium"
+                  style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant }]}
+                >
+                  CHUŤOVÝ PROFIL
+                </Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+                  {item.coffeeProfile?.tasteProfile || 'Neuvedené'}
+                </Text>
+                {item.coffeeProfile?.flavorNotes?.length ? (
+                  <Text
+                    variant="bodyMedium"
+                    style={[styles.flavorNotesText, { color: theme.colors.onSurface }]}
+                  >
+                    Tóny: {item.coffeeProfile.flavorNotes.join(', ')}
+                  </Text>
+                ) : null}
+
+                {/* Quick doses */}
+                <Text
+                  variant="labelMedium"
+                  style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant }]}
+                >
+                  RÝCHLE DÁVKY
+                </Text>
+                <View style={styles.quickDosesRow}>
+                  {[
+                    item.preferredDoseG && !QUICK_DOSES.includes(item.preferredDoseG)
+                      ? item.preferredDoseG
+                      : null,
+                    ...QUICK_DOSES,
+                  ]
+                    .filter((dose): dose is number => Boolean(dose))
+                    .slice(0, 4)
+                    .map((dose) => (
+                      <Chip
+                        key={`${item.id}-${dose}`}
+                        onPress={() => handleConsume(item, dose, 'quick_action')}
+                        style={styles.doseChip}
+                        compact
+                      >
+                        -{dose} g
+                      </Chip>
+                    ))}
+                </View>
+
+                {/* Custom dose input */}
+                <View style={styles.inlineRow}>
+                  <TextInput
+                    style={styles.inlineInput}
+                    mode="outlined"
+                    dense
+                    value={customDoseById[item.id] ?? ''}
+                    onChangeText={(value) =>
+                      setCustomDoseById((current) => ({ ...current, [item.id]: value }))
+                    }
+                    placeholder="Custom minus g"
+                    keyboardType="number-pad"
+                    outlineStyle={{ borderRadius: radii.md }}
+                  />
+                  <Button
+                    mode="contained-tonal"
+                    onPress={() => handleCustomConsume(item)}
+                    style={styles.inlineButton}
+                    contentStyle={styles.inlineButtonContent}
+                  >
+                    Odpočítať
+                  </Button>
+                </View>
+
+                {/* Custom remaining input */}
+                <View style={styles.inlineRow}>
+                  <TextInput
+                    style={styles.inlineInput}
+                    mode="outlined"
+                    dense
+                    value={customRemainingById[item.id] ?? ''}
+                    onChangeText={(value) =>
+                      setCustomRemainingById((current) => ({ ...current, [item.id]: value }))
+                    }
+                    placeholder="Nastaviť zostávajúce g"
+                    keyboardType="number-pad"
+                    outlineStyle={{ borderRadius: radii.md }}
+                  />
+                  <Button
+                    mode="contained-tonal"
+                    onPress={() => handleRemainingUpdate(item)}
+                    style={styles.inlineButton}
+                    contentStyle={styles.inlineButtonContent}
+                  >
+                    Uložiť
+                  </Button>
+                </View>
+
+                <Divider
+                  style={[styles.actionDivider, { backgroundColor: theme.colors.outlineVariant }]}
+                />
+
+                {/* Action buttons */}
+                <View style={styles.actionsBlock}>
+                  <Button
+                    mode={item.loved ? 'contained' : 'outlined'}
+                    onPress={() => handleLovedChange(item.id, !item.loved)}
+                    style={styles.actionButton}
+                    buttonColor={item.loved ? theme.colors.primaryContainer : undefined}
+                    textColor={item.loved ? theme.colors.onPrimaryContainer : theme.colors.primary}
+                  >
                     {item.loved ? 'Fantastická ⭐' : 'Označiť ako fantastickú'}
-                  </Text>
-                </Pressable>
+                  </Button>
 
-                <Pressable
-                  style={styles.statusButton}
-                  onPress={() => handleStatusChange(item, 'empty')}
-                >
-                  <Text style={styles.statusButtonText}>Balík je prázdny</Text>
-                </Pressable>
-
-                {item.status === 'archived' ? (
-                  <Pressable
-                    style={styles.statusButton}
-                    onPress={() => handleStatusChange(item, 'active')}
+                  <Button
+                    mode="contained-tonal"
+                    onPress={() => handleStatusChange(item, 'empty')}
+                    style={styles.actionButton}
                   >
-                    <Text style={styles.statusButtonText}>Vrátiť do aktívnych</Text>
-                  </Pressable>
-                ) : (
-                  <Pressable
-                    style={styles.statusButton}
-                    onPress={() => handleStatusChange(item, 'archived')}
-                  >
-                    <Text style={styles.statusButtonText}>Archivovať</Text>
-                  </Pressable>
-                )}
+                    Balík je prázdny
+                  </Button>
 
-                <Pressable style={styles.deleteButton} onPress={() => handleDelete(item.id)}>
-                  <Text style={styles.deleteButtonText}>Vymazať natrvalo</Text>
-                </Pressable>
-              </View>
-            </View>
+                  {item.status === 'archived' ? (
+                    <Button
+                      mode="contained-tonal"
+                      onPress={() => handleStatusChange(item, 'active')}
+                      style={styles.actionButton}
+                    >
+                      Vrátiť do aktívnych
+                    </Button>
+                  ) : (
+                    <Button
+                      mode="contained-tonal"
+                      onPress={() => handleStatusChange(item, 'archived')}
+                      style={styles.actionButton}
+                    >
+                      Archivovať
+                    </Button>
+                  )}
+
+                  <Button
+                    mode="contained"
+                    onPress={() => handleDelete(item.id)}
+                    style={styles.actionButton}
+                    buttonColor={theme.colors.error}
+                    textColor={theme.colors.onPrimary}
+                  >
+                    Vymazať natrvalo
+                  </Button>
+                </View>
+              </Card.Content>
+            </Card>
           );
         })}
       </ScrollView>
@@ -537,212 +631,88 @@ function CoffeeInventoryScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+  },
+  scroll: {
+    flex: 1,
   },
   container: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 48,
-    gap: 12,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
+    gap: spacing.md,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    letterSpacing: -0.3,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
-  filterTabs: {
+  filterRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 4,
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  filterButton: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  filterButtonActive: {
-    backgroundColor: '#2C2C2C',
-  },
-  filterButtonText: {
-    color: '#6B6B6B',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  filterButtonTextActive: {
-    color: '#FFFFFF',
+  filterChip: {
+    // Chip handles selected state styling via react-native-paper theme
   },
   loader: {
-    marginVertical: 8,
-  },
-  caption: {
-    color: '#6B6B6B',
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  error: {
-    color: '#D64545',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  empty: {
-    color: '#6B6B6B',
-    fontSize: 14,
-    paddingVertical: 16,
+    marginVertical: spacing.sm,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: radii.lg,
   },
-  date: {
-    color: '#6B6B6B',
-    fontSize: 12,
-    marginBottom: 12,
+  cardContent: {
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
   },
-  cardMeta: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    paddingVertical: 4,
-    marginBottom: 16,
+  metaBlock: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginVertical: spacing.xs,
   },
   metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  metaDivider: {
-    height: 1,
-    backgroundColor: '#EBEBEB',
-    marginHorizontal: 14,
-  },
-  metaLabel: {
-    fontSize: 12,
-    color: '#6B6B6B',
-    fontWeight: '500',
-  },
-  metaValue: {
-    fontSize: 13,
-    color: '#1A1A1A',
-    fontWeight: '600',
+    paddingVertical: spacing.sm + spacing.xs,
+    paddingHorizontal: spacing.md,
   },
   sectionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B6B6B',
-    textTransform: 'uppercase',
+    marginTop: spacing.xs,
     letterSpacing: 0.5,
-    marginBottom: 6,
-    marginTop: 4,
   },
-  bodyText: {
-    fontSize: 14,
-    color: '#1A1A1A',
-    lineHeight: 20,
-    marginBottom: 4,
+  flavorNotesText: {
+    marginTop: spacing.xs,
   },
-  quickActionsWrap: {
-    marginTop: 4,
-    marginBottom: 12,
+  quickDosesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  quickAction: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  quickActionText: {
-    color: '#2C2C2C',
-    fontWeight: '600',
-    fontSize: 13,
+  doseChip: {
+    // compact chip for quick dose actions
   },
   inlineRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
+    gap: spacing.sm,
+    alignItems: 'center',
   },
-  input: {
+  inlineInput: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: '#1A1A1A',
-    fontSize: 14,
   },
   inlineButton: {
-    backgroundColor: '#2C2C2C',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    justifyContent: 'center',
+    borderRadius: radii.md,
   },
-  inlineButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 13,
+  inlineButtonContent: {
+    paddingHorizontal: spacing.xs,
   },
-  actions: {
-    marginTop: 12,
-    gap: 8,
+  actionDivider: {
+    marginVertical: spacing.sm,
   },
-  badge: {
-    backgroundColor: '#F5F5F5',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    alignItems: 'center',
+  actionsBlock: {
+    gap: spacing.sm,
   },
-  badgeActive: {
-    backgroundColor: '#FFF8F0',
-    borderWidth: 1,
-    borderColor: '#C08B3E',
-  },
-  badgeText: {
-    fontWeight: '600',
-    fontSize: 14,
-    color: '#2C2C2C',
-  },
-  badgeTextActive: {
-    color: '#C08B3E',
-  },
-  statusButton: {
-    backgroundColor: '#F5F5F5',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  statusButtonText: {
-    color: '#2C2C2C',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  deleteButton: {
-    backgroundColor: '#D64545',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  deleteButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
+  actionButton: {
+    borderRadius: radii.md,
   },
 });
 
