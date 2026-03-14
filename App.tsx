@@ -10,7 +10,7 @@ import { AuthProvider } from './src/context/AuthContext';
 function App() {
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+      <StatusBar barStyle="dark-content" backgroundColor={navigationTheme.colors.background} />
       <AuthProvider>
         <NavigationContainer theme={navigationTheme}>
           <AppNavigator />

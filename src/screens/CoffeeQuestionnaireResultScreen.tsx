@@ -56,17 +56,9 @@ function CoffeeQuestionnaireResultScreen({ route }: Props) {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Page title */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Výsledok dotazníka</Text>
-          <Text style={styles.subtitle}>Váš chuťový profil a odporúčania</Text>
-        </View>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.title}>Výsledok dotazníka</Text>
 
-        {/* Save action row */}
         <View style={styles.saveRow}>
           <Pressable
             style={({ pressed }) => [
@@ -89,7 +81,6 @@ function CoffeeQuestionnaireResultScreen({ route }: Props) {
           ) : null}
         </View>
 
-        {/* AI recommendation section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>AI odporúčanie</Text>
           {(Object.keys(SECTION_LABELS) as Array<keyof typeof SECTION_LABELS>).map(
@@ -102,7 +93,6 @@ function CoffeeQuestionnaireResultScreen({ route }: Props) {
           )}
         </View>
 
-        {/* Answers section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Vaše odpovede</Text>
           {answers.map((item) => (
@@ -120,130 +110,87 @@ function CoffeeQuestionnaireResultScreen({ route }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
   },
   container: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 48,
-  },
-
-  // Header
-  header: {
-    marginBottom: 20,
-    paddingTop: 8,
+    padding: 20,
+    paddingBottom: 40,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#1A1A1A',
-    letterSpacing: -0.3,
-    marginBottom: 4,
+    marginBottom: 16,
   },
-  subtitle: {
-    fontSize: 15,
-    color: '#6B6B6B',
-    fontWeight: '400',
-  },
-
-  // Save row
   saveRow: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   saveButton: {
-    backgroundColor: '#2C2C2C',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+    backgroundColor: '#6B4F3A',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
   },
   saveButtonPressed: {
-    opacity: 0.85,
+    opacity: 0.8,
   },
   saveButtonDisabled: {
     opacity: 0.6,
   },
   saveButtonText: {
     color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 15,
-    letterSpacing: 0.1,
+    fontWeight: '700',
   },
   saveHint: {
-    marginTop: 10,
-    color: '#4A9B6E',
+    marginTop: 8,
+    color: '#6B4F3A',
     fontWeight: '600',
-    fontSize: 14,
   },
   saveError: {
-    marginTop: 10,
-    color: '#D64545',
+    marginTop: 8,
+    color: '#BA1A1A',
     fontWeight: '600',
-    fontSize: 14,
   },
-
-  // Sections
   section: {
-    marginBottom: 28,
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#1A1A1A',
+    fontSize: 18,
+    fontWeight: '700',
     marginBottom: 12,
   },
-
-  // Profile blocks (AI recommendation)
   profileBlock: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#F5F1EC',
     borderRadius: 16,
     padding: 16,
-    marginBottom: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#DDD3C9',
   },
   profileLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#8B7355',
-    letterSpacing: 0.2,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6B4F3A',
     marginBottom: 6,
-    textTransform: 'uppercase',
   },
   profileText: {
-    fontSize: 15,
-    color: '#1A1A1A',
-    lineHeight: 22,
-    fontWeight: '400',
+    fontSize: 14,
+    color: '#271508',
+    lineHeight: 20,
   },
-
-  // Answer rows
   answerRow: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#DDD3C9',
   },
   answerQuestion: {
-    fontSize: 13,
     fontWeight: '600',
-    color: '#6B6B6B',
     marginBottom: 4,
-    lineHeight: 18,
   },
   answerValue: {
-    fontSize: 15,
-    color: '#1A1A1A',
-    fontWeight: '400',
-    lineHeight: 22,
+    color: '#6B5C52',
   },
 });
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
@@ -72,187 +72,44 @@ function CoffeeRecipesSavedScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Coffee Recipes Saved</Text>
 
-        {loading ? (
-          <ActivityIndicator color="#8B7355" style={styles.loader} />
-        ) : null}
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
         <View style={styles.card}>
           <Text style={styles.cardTitle}>AI sumarizácia (30 dní)</Text>
-          {loading ? (
-            <Text style={styles.muted}>Načítavam...</Text>
-          ) : null}
-          {!loading && insights ? (
-            <Text style={styles.summaryText}>{insights.aiSummary}</Text>
-          ) : null}
-          {favorite ? (
-            <View style={styles.favoritePill}>
-              <Text style={styles.favoriteText}>Favorit: {favorite}</Text>
-            </View>
-          ) : null}
+          {loading ? <Text style={styles.muted}>Načítavam...</Text> : null}
+          {!loading && insights ? <Text style={styles.text}>{insights.aiSummary}</Text> : null}
+          {favorite ? <Text style={styles.favorite}>Aktuálny favorit: {favorite}</Text> : null}
         </View>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Uložené recepty</Text>
-          {items.map((item, index) => (
-            <View
-              key={item.id}
-              style={[
-                styles.item,
-                index === items.length - 1 ? styles.itemLast : null,
-              ]}
-            >
-              <View style={styles.itemHeader}>
-                <Text style={styles.itemTitle}>{item.title}</Text>
-                <View style={styles.scoreChip}>
-                  <Text style={styles.scoreText}>{item.likeScore}%</Text>
-                </View>
-              </View>
-              <Text style={styles.meta}>{item.method} · {item.strengthPreference}</Text>
-              <Text style={styles.meta}>{item.dose} · {item.water} · {item.totalTime}</Text>
-              {item.flavorNotes?.length ? (
-                <View style={styles.flavorRow}>
-                  {item.flavorNotes.slice(0, 3).map((note) => (
-                    <View key={note} style={styles.flavorChip}>
-                      <Text style={styles.flavorChipText}>{note}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
+          {items.map((item) => (
+            <View key={item.id} style={styles.item}>
+              <Text style={styles.itemTitle}>{item.title}</Text>
+              <Text style={styles.meta}>{item.method} • {item.strengthPreference} • {item.likeScore}%</Text>
+              <Text style={styles.meta}>{item.dose} • {item.water} • {item.totalTime}</Text>
             </View>
           ))}
-          {!loading && items.length === 0 ? (
-            <Text style={styles.muted}>Zatiaľ bez receptov.</Text>
-          ) : null}
+          {!loading && items.length === 0 ? <Text style={styles.muted}>Zatiaľ bez receptov.</Text> : null}
         </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#FAFAFA',
-  },
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 48,
-    gap: 12,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    letterSpacing: -0.3,
-    marginBottom: 4,
-  },
-  loader: {
-    marginVertical: 8,
-  },
-  error: {
-    color: '#D64545',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    marginBottom: 12,
-    color: '#1A1A1A',
-  },
-  summaryText: {
-    color: '#1A1A1A',
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  favoritePill: {
-    marginTop: 12,
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFF8F0',
-    borderWidth: 1,
-    borderColor: '#C08B3E',
-    borderRadius: 999,
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-  },
-  favoriteText: {
-    color: '#C08B3E',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  item: {
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  itemLast: {
-    borderBottomWidth: 0,
-    paddingBottom: 0,
-  },
-  itemHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  itemTitle: {
-    color: '#1A1A1A',
-    fontWeight: '600',
-    fontSize: 15,
-    flex: 1,
-    marginRight: 8,
-  },
-  scoreChip: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 999,
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-  },
-  scoreText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#2C2C2C',
-  },
-  meta: {
-    color: '#6B6B6B',
-    fontSize: 12,
-    marginTop: 2,
-    lineHeight: 17,
-  },
-  flavorRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 8,
-  },
-  flavorChip: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 999,
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-  },
-  flavorChipText: {
-    fontSize: 11,
-    color: '#6B6B6B',
-    fontWeight: '500',
-  },
-  muted: {
-    color: '#6B6B6B',
-    fontSize: 14,
-  },
+  safeArea: { flex: 1 },
+  container: { padding: 20, gap: 14 },
+  title: { fontSize: 28, fontWeight: '700', color: '#271508' },
+  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDD3C9', borderRadius: 16, padding: 14 },
+  cardTitle: { fontSize: 17, fontWeight: '700', marginBottom: 8, color: '#271508' },
+  text: { color: '#271508' },
+  favorite: { marginTop: 8, color: '#6B4F3A', fontWeight: '600' },
+  item: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#EDE7DF' },
+  itemTitle: { color: '#271508', fontWeight: '600' },
+  meta: { color: '#6B5C52', fontSize: 12, marginTop: 2 },
+  muted: { color: '#6B5C52' },
+  error: { color: '#BA1A1A', fontWeight: '600' },
 });
 
 export default CoffeeRecipesSavedScreen;
