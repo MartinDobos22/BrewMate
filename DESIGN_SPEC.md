@@ -1,96 +1,77 @@
-# BrewMate Redesign - Design Specification
+# BrewMate MD3 Design Specification
 
 ## Design Philosophy
-Modern minimalist. Clean, airy, sophisticated. Think Apple-level polish for a coffee app.
+Minimalist Material Design 3 with coffee-inspired, calm, neutral aesthetic.
+Tile/card-based layout system with spacious, breathable layouts.
 
-## Color Palette
-- **Background**: `#FAFAFA` (very light gray, not pure white)
-- **Primary**: `#2C2C2C` (near-black for buttons, text emphasis)  
-- **Accent**: `#8B7355` (warm brown, used sparingly for highlights, links, active states)
-- **Surface**: `#FFFFFF` (cards, inputs)
-- **Surface Alt**: `#F5F5F5` (secondary cards, pill backgrounds)
-- **Outline**: `#E8E8E8` (subtle borders)
-- **Text**: `#1A1A1A` (primary text)
-- **Text Secondary**: `#6B6B6B` (labels, descriptions)
-- **Text Tertiary**: `#999999` (placeholders, captions)
-- **Error**: `#D64545`
-- **Success**: `#4A9B6E`
-- **Warning**: `#C08B3E`
+## Tech Stack
+- react-native-paper v5+ (MD3 support)
+- React Navigation v6+ with Bottom Tabs
+- 8pt spacing system
+- Rounded corners: 16dp globally
 
-## Typography
-- Display: 28-34px, weight 700, slight negative letter-spacing
-- Headline: 22px, weight 600
-- Title: 17px, weight 600
-- Body: 15px, weight 400
-- Label: 13px, weight 600
-- Caption: 12px, weight 400
+## Color Palette (MD3 Tokens)
+| Token | Value | Usage |
+|-------|-------|-------|
+| background | `#F6F3EE` | Warm off-white screen bg |
+| surface | `#FFFFFF` | Cards, navigation bars |
+| surfaceVariant | `#EDE8E1` | Tiles, secondary cards |
+| primary | `#6B4F3A` | Soft coffee brown — CTAs |
+| onPrimary | `#FFFFFF` | Text on primary buttons |
+| primaryContainer | `#D9C4B0` | Highlight backgrounds |
+| onPrimaryContainer | `#2C1A0E` | Text on highlight bg |
+| secondary | `#8A9A5B` | Muted sage green |
+| onSecondary | `#FFFFFF` | Text on secondary |
+| secondaryContainer | `#D6E4A1` | Secondary highlight bg |
+| onSecondaryContainer | `#2E3A10` | Text on secondary bg |
+| outline | `#C4BDB5` | Soft neutral borders |
+| outlineVariant | `#E0D9D1` | Very subtle borders |
+| error | `#B3261E` | MD3 default error |
 
-## Components Design Rules
+## Typography Scale
+- `displayLarge/Medium` — Major screen titles
+- `headlineLarge/Medium` — Section headers
+- `titleLarge/Medium` — Card titles
+- `bodyLarge/Medium` — Main content text
+- `labelLarge/Medium` — Buttons, tags, chips
 
-### Cards
-- White background (#FFFFFF)
-- Border radius: 16px
-- NO borders — use subtle shadow instead (shadowOpacity: 0.04, shadowRadius: 8)
-- Padding: 20px
-- Margin between cards: 12px
+All typography uses Paper's `<Text variant="...">` component.
 
-### Buttons
-- **Primary**: background #2C2C2C, text white, borderRadius: 12, paddingVertical: 16, shadow
-- **Secondary**: background #F5F5F5, text #2C2C2C, borderRadius: 12, paddingVertical: 14, no border
-- **Outline**: background transparent, border 1.5px #E8E8E8, text #2C2C2C, borderRadius: 12
-- **Ghost/Link**: no background, accent color text (#8B7355)
-- **Destructive**: background #D64545, text white
-- All buttons: fontWeight 600, fontSize 15
+## Spacing (8pt Grid)
+```
+xs:   4dp   — micro spacing
+sm:   8dp   — small gaps
+md:   12dp  — tile gutters
+lg:   16dp  — standard padding
+xl:   24dp  — section spacing
+xxl:  32dp  — large spacing
+xxxl: 48dp  — major breaks
+```
 
-### Inputs
-- Background: #F5F5F5  
-- Border radius: 12px
-- Padding: 14px horizontal, 14px vertical
-- Text color: #1A1A1A
-- Placeholder color: #999999
-- No visible border (or very subtle #E8E8E8 if needed)
-- Focus state: subtle accent border
+## Layout System
 
-### Pills / Chips / Filter Tabs
-- Inactive: background #F5F5F5, text #6B6B6B, borderRadius: 999
-- Active: background #2C2C2C, text white, borderRadius: 999
-- Padding: 8px 16px
+### Tile Grid
+- 2-column responsive grid
+- Card tiles: surfaceVariant background, 16dp radius
+- No heavy elevation — color contrast only
+- 16dp inner padding, 12dp gutters
 
-### Progress Bars / Taste Bars
-- Track: #F0F0F0, height 6px, borderRadius: 999
-- Fill: #8B7355 (accent), borderRadius: 999
+### Bottom Navigation (4 tabs)
+| Tab | Icon | Screen |
+|-----|------|--------|
+| Domov | home-outline | HomeScreen (dashboard + scanner + foto recept) |
+| Inventár | package-variant | CoffeeInventoryScreen |
+| Recepty | coffee-outline | CoffeeRecipesSavedScreen |
+| Profil | account-outline | ProfileHome (taste profile, questionnaire, journal, logout) |
 
-### Metric Cards (Dashboard)
-- Background: #F5F5F5
-- Border radius: 16px
-- Value: fontSize 24, fontWeight 700, color #1A1A1A
-- Label: fontSize 12, fontWeight 500, color #6B6B6B, uppercase, letterSpacing 0.5
+### Navigation Headers
+- MD3 style AppBar
+- No heavy shadow
+- Surface background
+- headlineMedium typography
 
-### Section Headers
-- fontSize: 17, fontWeight 600, color #1A1A1A
-- "See all" links: fontSize 13, color #8B7355, fontWeight 600
-
-### Status Badges
-- Positive: background #E8F5ED, text #4A9B6E
-- Negative: background #FDEAEA, text #D64545
-- Neutral: background #F5F5F5, text #6B6B6B
-
-### Dividers
-- Use spacing/whitespace instead of lines wherever possible
-- If needed: 1px #F0F0F0
-
-### General Layout
-- Screen padding: 20-24px horizontal
-- Content gap: 12-16px between sections
-- Generous whitespace — let content breathe
-- No heavy borders anywhere
-
-### StatusBar
-- barStyle: "dark-content" (dark icons on light background)
-- backgroundColor: #FAFAFA
-
-### Navigation Header
-- Clean white background (#FFFFFF)
-- Subtle bottom shadow
-- Title: 17px, fontWeight 600, color #1A1A1A
-- Back button tint: #2C2C2C
+## Component Rules
+- NO inline styles — StyleSheet.create() only
+- NO hardcoded colors — theme.colors tokens only
+- Use MD3 components: Card, Surface, Appbar, Text, Button, Chip, ProgressBar
+- Typography via `<Text variant="...">` only
