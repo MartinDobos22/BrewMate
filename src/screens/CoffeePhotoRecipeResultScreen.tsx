@@ -1,16 +1,28 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-
-import { RootStackParamList } from '../navigation/types';
+import {
+  Text,
+  Card,
+  Surface,
+  Button,
+  Chip,
+  useTheme,
+  Divider,
+} from 'react-native-paper';
+import type { MD3Theme } from 'react-native-paper';
+import { HomeStackParamList } from '../navigation/types';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import spacing from '../styles/spacing';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'CoffeePhotoRecipeResult'>;
+type Props = NativeStackScreenProps<HomeStackParamList, 'CoffeePhotoRecipeResult'>;
 
 const APPROVAL_THRESHOLD = 70;
 
 function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
+  const theme = useTheme<MD3Theme>();
+
   const { analysis, selectedPreparation, strengthPreference, recipe, likePrediction } = route.params;
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -55,127 +67,407 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
     }
   };
 
-  const scoreColor = likePrediction.score >= APPROVAL_THRESHOLD ? '#4A9B6E' : '#C08B3E';
-  const scoreBgColor = likePrediction.score >= APPROVAL_THRESHOLD ? '#E8F5ED' : '#FFF8F0';
+  const isGoodScore = likePrediction.score >= APPROVAL_THRESHOLD;
+  const scoreContainerColor = isGoodScore
+    ? theme.colors.secondaryContainer
+    : theme.colors.primaryContainer;
+  const scoreTextColor = isGoodScore
+    ? theme.colors.onSecondaryContainer
+    : theme.colors.onPrimaryContainer;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.container}>
-
-        {/* Title */}
-        <Text style={styles.title}>{recipe.title}</Text>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
+      edges={['bottom']}
+    >
+      <ScrollView
+        style={[styles.scroll, { backgroundColor: theme.colors.background }]}
+        contentContainerStyle={styles.content}
+      >
+        {/* Screen Title */}
+        <Text
+          variant="headlineMedium"
+          style={[styles.title, { color: theme.colors.onSurface }]}
+        >
+          {recipe.title}
+        </Text>
 
         {/* AI Prediction Card */}
-        <View style={styles.card}>
-          <Text style={styles.sectionLabel}>AI predikcia chuti</Text>
+        <Card
+          mode="elevated"
+          elevation={1}
+          style={[styles.card, { backgroundColor: theme.colors.surface }]}
+        >
+          <Card.Content style={styles.cardContent}>
+            <Text
+              variant="labelLarge"
+              style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant }]}
+            >
+              AI predikcia chuti
+            </Text>
 
-          <View style={[styles.scoreRow, { backgroundColor: scoreBgColor }]}>
-            <Text style={styles.scoreLabel}>Pravdepodobnosť, že ti bude chutiť</Text>
-            <Text style={[styles.scoreValue, { color: scoreColor }]}>{likePrediction.score}%</Text>
-          </View>
-
-          <Text style={styles.predictionVerdict}>{likePrediction.verdict}</Text>
-          <Text style={styles.predictionReason}>{likePrediction.reason}</Text>
-
-          {!canSave ? (
-            <View style={styles.warningRow}>
-              <Text style={styles.warningText}>
-                Recept sa dá uložiť až od {APPROVAL_THRESHOLD}%.
+            {/* Score Surface */}
+            <Surface
+              style={[styles.scoreSurface, { backgroundColor: scoreContainerColor }]}
+              elevation={0}
+            >
+              <Text
+                variant="bodyMedium"
+                style={[styles.scoreLabel, { color: scoreTextColor }]}
+              >
+                Pravdepodobnosť, že ti bude chutiť
               </Text>
-            </View>
-          ) : null}
-        </View>
+              <Text
+                variant="headlineLarge"
+                style={[styles.scoreValue, { color: scoreTextColor }]}
+              >
+                {likePrediction.score}%
+              </Text>
+            </Surface>
+
+            <Text
+              variant="titleMedium"
+              style={[styles.predictionVerdict, { color: theme.colors.onSurface }]}
+            >
+              {likePrediction.verdict}
+            </Text>
+            <Text
+              variant="bodyMedium"
+              style={{ color: theme.colors.onSurfaceVariant }}
+            >
+              {likePrediction.reason}
+            </Text>
+
+            {!canSave ? (
+              <Card
+                mode="contained"
+                style={[styles.warningCard, { backgroundColor: theme.colors.primaryContainer }]}
+              >
+                <Card.Content style={styles.warningContent}>
+                  <Text
+                    variant="labelLarge"
+                    style={{ color: theme.colors.onPrimaryContainer }}
+                  >
+                    Recept sa dá uložiť až od {APPROVAL_THRESHOLD}%.
+                  </Text>
+                </Card.Content>
+              </Card>
+            ) : null}
+          </Card.Content>
+        </Card>
 
         {/* Parameters Card */}
-        <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Parametre</Text>
+        <Card
+          mode="elevated"
+          elevation={1}
+          style={[styles.card, { backgroundColor: theme.colors.surface }]}
+        >
+          <Card.Content style={styles.cardContent}>
+            <Text
+              variant="labelLarge"
+              style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant }]}
+            >
+              Parametre
+            </Text>
 
-          <View style={styles.paramGrid}>
-            <View style={styles.paramItem}>
-              <Text style={styles.paramLabel}>Metóda</Text>
-              <Text style={styles.paramValue}>{selectedPreparation}</Text>
+            <View style={styles.paramGrid}>
+              <Card
+                mode="contained"
+                style={[styles.paramItem, { backgroundColor: theme.colors.surfaceVariant }]}
+              >
+                <Card.Content style={styles.paramItemContent}>
+                  <Text
+                    variant="labelMedium"
+                    style={[styles.paramLabel, { color: theme.colors.onSurfaceVariant }]}
+                  >
+                    Metóda
+                  </Text>
+                  <Text
+                    variant="titleMedium"
+                    style={{ color: theme.colors.onSurface }}
+                  >
+                    {selectedPreparation}
+                  </Text>
+                </Card.Content>
+              </Card>
+
+              <Card
+                mode="contained"
+                style={[styles.paramItem, { backgroundColor: theme.colors.surfaceVariant }]}
+              >
+                <Card.Content style={styles.paramItemContent}>
+                  <Text
+                    variant="labelMedium"
+                    style={[styles.paramLabel, { color: theme.colors.onSurfaceVariant }]}
+                  >
+                    Sila
+                  </Text>
+                  <Text
+                    variant="titleMedium"
+                    style={{ color: theme.colors.onSurface }}
+                  >
+                    {strengthPreference}
+                  </Text>
+                </Card.Content>
+              </Card>
+
+              <Card
+                mode="contained"
+                style={[styles.paramItem, { backgroundColor: theme.colors.surfaceVariant }]}
+              >
+                <Card.Content style={styles.paramItemContent}>
+                  <Text
+                    variant="labelMedium"
+                    style={[styles.paramLabel, { color: theme.colors.onSurfaceVariant }]}
+                  >
+                    Dávka
+                  </Text>
+                  <Text
+                    variant="titleMedium"
+                    style={{ color: theme.colors.onSurface }}
+                  >
+                    {recipe.dose}
+                  </Text>
+                </Card.Content>
+              </Card>
+
+              <Card
+                mode="contained"
+                style={[styles.paramItem, { backgroundColor: theme.colors.surfaceVariant }]}
+              >
+                <Card.Content style={styles.paramItemContent}>
+                  <Text
+                    variant="labelMedium"
+                    style={[styles.paramLabel, { color: theme.colors.onSurfaceVariant }]}
+                  >
+                    Voda
+                  </Text>
+                  <Text
+                    variant="titleMedium"
+                    style={{ color: theme.colors.onSurface }}
+                  >
+                    {recipe.water}
+                  </Text>
+                </Card.Content>
+              </Card>
+
+              <Card
+                mode="contained"
+                style={[styles.paramItem, { backgroundColor: theme.colors.surfaceVariant }]}
+              >
+                <Card.Content style={styles.paramItemContent}>
+                  <Text
+                    variant="labelMedium"
+                    style={[styles.paramLabel, { color: theme.colors.onSurfaceVariant }]}
+                  >
+                    Mletie
+                  </Text>
+                  <Text
+                    variant="titleMedium"
+                    style={{ color: theme.colors.onSurface }}
+                  >
+                    {recipe.grind}
+                  </Text>
+                </Card.Content>
+              </Card>
+
+              <Card
+                mode="contained"
+                style={[styles.paramItem, { backgroundColor: theme.colors.surfaceVariant }]}
+              >
+                <Card.Content style={styles.paramItemContent}>
+                  <Text
+                    variant="labelMedium"
+                    style={[styles.paramLabel, { color: theme.colors.onSurfaceVariant }]}
+                  >
+                    Teplota
+                  </Text>
+                  <Text
+                    variant="titleMedium"
+                    style={{ color: theme.colors.onSurface }}
+                  >
+                    {recipe.waterTemp}
+                  </Text>
+                </Card.Content>
+              </Card>
+
+              <Card
+                mode="contained"
+                style={[styles.paramItem, styles.paramItemFull, { backgroundColor: theme.colors.surfaceVariant }]}
+              >
+                <Card.Content style={styles.paramItemContent}>
+                  <Text
+                    variant="labelMedium"
+                    style={[styles.paramLabel, { color: theme.colors.onSurfaceVariant }]}
+                  >
+                    Čas
+                  </Text>
+                  <Text
+                    variant="titleMedium"
+                    style={{ color: theme.colors.onSurface }}
+                  >
+                    {recipe.totalTime}
+                  </Text>
+                </Card.Content>
+              </Card>
             </View>
-            <View style={styles.paramItem}>
-              <Text style={styles.paramLabel}>Sila</Text>
-              <Text style={styles.paramValue}>{strengthPreference}</Text>
-            </View>
-            <View style={styles.paramItem}>
-              <Text style={styles.paramLabel}>Dávka</Text>
-              <Text style={styles.paramValue}>{recipe.dose}</Text>
-            </View>
-            <View style={styles.paramItem}>
-              <Text style={styles.paramLabel}>Voda</Text>
-              <Text style={styles.paramValue}>{recipe.water}</Text>
-            </View>
-            <View style={styles.paramItem}>
-              <Text style={styles.paramLabel}>Mletie</Text>
-              <Text style={styles.paramValue}>{recipe.grind}</Text>
-            </View>
-            <View style={styles.paramItem}>
-              <Text style={styles.paramLabel}>Teplota</Text>
-              <Text style={styles.paramValue}>{recipe.waterTemp}</Text>
-            </View>
-            <View style={[styles.paramItem, styles.paramItemFull]}>
-              <Text style={styles.paramLabel}>Čas</Text>
-              <Text style={styles.paramValue}>{recipe.totalTime}</Text>
-            </View>
-          </View>
-        </View>
+          </Card.Content>
+        </Card>
+
+        {/* Flavor Notes from Analysis */}
+        {analysis.flavorNotes && analysis.flavorNotes.length > 0 ? (
+          <Card
+            mode="elevated"
+            elevation={1}
+            style={[styles.card, { backgroundColor: theme.colors.surface }]}
+          >
+            <Card.Content style={styles.cardContent}>
+              <Text
+                variant="labelLarge"
+                style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant }]}
+              >
+                Chuťové tóny
+              </Text>
+              <View style={styles.chipRow}>
+                {analysis.flavorNotes.map((note) => (
+                  <Chip
+                    key={note}
+                    mode="flat"
+                    style={[styles.flavorChip, { backgroundColor: theme.colors.secondaryContainer }]}
+                    textStyle={{ color: theme.colors.onSecondaryContainer }}
+                  >
+                    {note}
+                  </Chip>
+                ))}
+              </View>
+            </Card.Content>
+          </Card>
+        ) : null}
 
         {/* Steps Card */}
-        <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Postup</Text>
-          {recipe.steps.map((step: string, index: number) => (
-            <View key={`${step}-${index}`} style={styles.stepRow}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>{index + 1}</Text>
+        <Card
+          mode="elevated"
+          elevation={1}
+          style={[styles.card, { backgroundColor: theme.colors.surface }]}
+        >
+          <Card.Content style={styles.cardContent}>
+            <Text
+              variant="labelLarge"
+              style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant }]}
+            >
+              Postup
+            </Text>
+            {recipe.steps.map((step: string, index: number) => (
+              <View key={`${step}-${index}`}>
+                <View style={styles.stepRow}>
+                  <Surface
+                    style={[styles.stepNumberSurface, { backgroundColor: theme.colors.primaryContainer }]}
+                    elevation={0}
+                  >
+                    <Text
+                      variant="labelLarge"
+                      style={{ color: theme.colors.onPrimaryContainer }}
+                    >
+                      {index + 1}
+                    </Text>
+                  </Surface>
+                  <Text
+                    variant="bodyLarge"
+                    style={[styles.stepText, { color: theme.colors.onSurface }]}
+                  >
+                    {step}
+                  </Text>
+                </View>
+                {index < recipe.steps.length - 1 ? (
+                  <Divider style={[styles.stepDivider, { backgroundColor: theme.colors.outlineVariant }]} />
+                ) : null}
               </View>
-              <Text style={styles.stepText}>{step}</Text>
-            </View>
-          ))}
-        </View>
+            ))}
+          </Card.Content>
+        </Card>
 
         {/* Barista Tips Card */}
-        <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Barista tipy</Text>
-          {recipe.baristaTips.map((tip: string, index: number) => (
-            <View key={`${tip}-${index}`} style={styles.tipRow}>
-              <View style={styles.tipDot} />
-              <Text style={styles.tipText}>{tip}</Text>
-            </View>
-          ))}
-        </View>
+        <Card
+          mode="elevated"
+          elevation={1}
+          style={[styles.card, { backgroundColor: theme.colors.surface }]}
+        >
+          <Card.Content style={styles.cardContent}>
+            <Text
+              variant="labelLarge"
+              style={[styles.sectionLabel, { color: theme.colors.onSurfaceVariant }]}
+            >
+              Barista tipy
+            </Text>
+            {recipe.baristaTips.map((tip: string, index: number) => (
+              <View key={`${tip}-${index}`} style={styles.tipRow}>
+                <View
+                  style={[styles.tipDot, { backgroundColor: theme.colors.primary }]}
+                />
+                <Text
+                  variant="bodyLarge"
+                  style={[styles.tipText, { color: theme.colors.onSurface }]}
+                >
+                  {tip}
+                </Text>
+              </View>
+            ))}
+          </Card.Content>
+        </Card>
 
         {/* Actions */}
-        <Pressable
-          style={[styles.primaryButton, (!canSave || saveState === 'saving') && styles.buttonDisabled]}
+        <Button
+          mode="contained"
           onPress={handleSaveRecipe}
           disabled={!canSave || saveState === 'saving'}
+          loading={saveState === 'saving'}
+          contentStyle={styles.primaryButtonContent}
+          style={styles.primaryButton}
         >
-          <Text style={styles.primaryButtonText}>
-            {saveState === 'saving' ? 'Ukladám…' : 'Uložiť recept'}
-          </Text>
-        </Pressable>
+          {saveState === 'saving' ? 'Ukladám…' : 'Uložiť recept'}
+        </Button>
 
-        <Pressable
-          style={styles.outlineButton}
+        <Button
+          mode="outlined"
           onPress={() => navigation.navigate('CoffeeRecipesSaved')}
+          contentStyle={styles.secondaryButtonContent}
+          style={styles.secondaryButton}
         >
-          <Text style={styles.outlineButtonText}>Prejsť na Saved Recipes</Text>
-        </Pressable>
+          Prejsť na Saved Recipes
+        </Button>
 
+        {/* Success / Error banners */}
         {saveState === 'saved' ? (
-          <View style={styles.successBox}>
-            <Text style={styles.successText}>Recept uložený.</Text>
-          </View>
+          <Card
+            mode="contained"
+            style={[styles.bannerCard, { backgroundColor: theme.colors.secondaryContainer }]}
+          >
+            <Card.Content>
+              <Text
+                variant="bodyMedium"
+                style={{ color: theme.colors.onSecondaryContainer }}
+              >
+                Recept uložený.
+              </Text>
+            </Card.Content>
+          </Card>
         ) : null}
 
         {saveState === 'error' ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{errorMessage}</Text>
-          </View>
+          <Card
+            mode="contained"
+            style={[styles.bannerCard, { backgroundColor: theme.colors.errorContainer }]}
+          >
+            <Card.Content>
+              <Text
+                variant="bodyMedium"
+                style={{ color: theme.colors.error }}
+              >
+                {errorMessage}
+              </Text>
+            </Card.Content>
+          </Card>
         ) : null}
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -184,229 +476,159 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
   },
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 32,
-    gap: 12,
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
+    gap: spacing.lg,
   },
 
   // Title
   title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    letterSpacing: -0.3,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
 
-  // Card
+  // Cards
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: spacing.lg,
   },
-
-  // Section label
+  cardContent: {
+    paddingVertical: spacing.lg,
+    gap: spacing.sm,
+  },
   sectionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B6B6B',
     textTransform: 'uppercase',
-    letterSpacing: 0.3,
-    marginBottom: 14,
+    letterSpacing: 0.5,
+    marginBottom: spacing.xs,
   },
 
-  // AI Prediction
-  scoreRow: {
+  // Score Surface
+  scoreSurface: {
+    borderRadius: spacing.md,
+    padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
+    marginBottom: spacing.sm,
   },
   scoreLabel: {
-    fontSize: 14,
-    color: '#6B6B6B',
-    fontWeight: '500',
     flex: 1,
-    marginRight: 8,
+    marginRight: spacing.sm,
   },
   scoreValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    letterSpacing: -0.3,
+    // color via theme inline
   },
   predictionVerdict: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginBottom: 6,
-    lineHeight: 22,
+    marginBottom: spacing.xs,
   },
-  predictionReason: {
-    fontSize: 14,
-    color: '#6B6B6B',
-    lineHeight: 20,
+
+  // Warning card
+  warningCard: {
+    borderRadius: spacing.md,
+    marginTop: spacing.sm,
   },
-  warningRow: {
-    marginTop: 12,
-    backgroundColor: '#FFF8F0',
-    borderRadius: 10,
-    padding: 12,
-  },
-  warningText: {
-    fontSize: 13,
-    color: '#C08B3E',
-    fontWeight: '600',
+  warningContent: {
+    paddingVertical: spacing.sm,
   },
 
   // Parameters grid
   paramGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
+    marginTop: spacing.xs,
   },
   paramItem: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: spacing.md,
     minWidth: '47%',
     flex: 1,
   },
   paramItemFull: {
     flexBasis: '100%',
+    flex: 0,
+    width: '100%',
+  },
+  paramItemContent: {
+    paddingVertical: spacing.sm,
+    gap: spacing.xs,
   },
   paramLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#6B6B6B',
     textTransform: 'uppercase',
     letterSpacing: 0.3,
-    marginBottom: 4,
   },
-  paramValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1A1A1A',
+
+  // Flavor chips
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  flavorChip: {
+    // background via inline
   },
 
   // Steps
   stepRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 12,
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
   },
-  stepNumber: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#F5F5F5',
+  stepNumberSurface: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-    marginTop: 1,
-  },
-  stepNumberText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#8B7355',
+    marginTop: 2,
   },
   stepText: {
     flex: 1,
-    fontSize: 15,
-    color: '#1A1A1A',
-    lineHeight: 22,
+  },
+  stepDivider: {
+    marginVertical: spacing.xs,
   },
 
   // Tips
   tipRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 10,
+    gap: spacing.md,
+    paddingVertical: spacing.xs,
   },
   tipDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#8B7355',
-    marginTop: 8,
+    marginTop: spacing.sm,
     flexShrink: 0,
   },
   tipText: {
     flex: 1,
-    fontSize: 15,
-    color: '#1A1A1A',
-    lineHeight: 22,
   },
 
-  // Primary button
+  // Buttons
   primaryButton: {
-    backgroundColor: '#2C2C2C',
     borderRadius: 12,
-    alignItems: 'center',
-    paddingVertical: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
   },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 15,
+  primaryButtonContent: {
+    height: 52,
+  },
+  secondaryButton: {
+    borderRadius: 12,
+  },
+  secondaryButtonContent: {
+    height: 52,
   },
 
-  // Outline button
-  outlineButton: {
-    borderWidth: 1.5,
-    borderColor: '#E8E8E8',
-    borderRadius: 12,
-    alignItems: 'center',
-    paddingVertical: 14,
-    backgroundColor: 'transparent',
-  },
-  outlineButtonText: {
-    color: '#2C2C2C',
-    fontWeight: '600',
-    fontSize: 15,
-  },
-
-  buttonDisabled: {
-    opacity: 0.45,
-  },
-
-  // Success / Error banners
-  successBox: {
-    backgroundColor: '#E8F5ED',
-    borderRadius: 12,
-    padding: 14,
-  },
-  successText: {
-    color: '#4A9B6E',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  errorBox: {
-    backgroundColor: '#FDF2F2',
-    borderRadius: 12,
-    padding: 14,
-  },
-  errorText: {
-    color: '#D64545',
-    fontWeight: '600',
-    fontSize: 14,
+  // Banners
+  bannerCard: {
+    borderRadius: spacing.md,
   },
 });
 
