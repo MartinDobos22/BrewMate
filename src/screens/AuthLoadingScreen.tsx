@@ -1,22 +1,11 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Text, useTheme } from 'react-native-paper';
-import type { MD3Theme } from 'react-native-paper';
-import spacing from '../styles/spacing';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 function AuthLoadingScreen() {
-  const theme = useTheme<MD3Theme>();
-
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <ActivityIndicator
-        animating
-        size="large"
-        color={theme.colors.primary}
-      />
-      <Text variant="bodyMedium" style={[styles.text, { color: theme.colors.onSurfaceVariant }]}>
-        Načítavam účet...
-      </Text>
+    <View style={styles.container}>
+      <ActivityIndicator size="large" color="#2C2C2C" />
+      <Text style={styles.text}>Načítavam účet...</Text>
     </View>
   );
 }
@@ -26,10 +15,13 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.lg,
+    backgroundColor: '#FAFAFA',
   },
   text: {
-    marginTop: spacing.sm,
+    marginTop: 16,
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#6B6B6B',
   },
 });
 

@@ -1,20 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import {
-  Text,
-  Card,
-  Surface,
-  Button,
-  Chip,
-  Divider,
-  ProgressBar,
-  useTheme,
-} from 'react-native-paper';
-import type { MD3Theme } from 'react-native-paper';
 
-import { HomeStackParamList } from '../navigation/types';
+import { RootStackParamList } from '../navigation/types';
 import {
   loadLatestQuestionnaireResult,
   QuestionnaireResultPayload,
@@ -23,9 +12,8 @@ import {
 } from '../utils/localSave';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import spacing, { radii } from '../styles/spacing';
 
-type Props = NativeStackScreenProps<HomeStackParamList, 'OcrResult'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'OcrResult'>;
 
 type MatchResult = {
   willLike: boolean;
@@ -38,7 +26,6 @@ type MatchResult = {
 };
 
 function OcrResultScreen({ route }: Props) {
-  const theme = useTheme<MD3Theme>();
   const { rawText, correctedText, coffeeProfile, labelImageBase64 } = route.params;
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [matchState, setMatchState] = useState<
@@ -246,572 +233,280 @@ function OcrResultScreen({ route }: Props) {
   }, [matchResult]);
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
-      edges={['bottom']}
-    >
-      <ScrollView
-        style={[styles.scroll, { backgroundColor: theme.colors.background }]}
-        contentContainerStyle={styles.content}
-      >
+    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <ScrollView contentContainerStyle={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
-            Výsledok OCR
-          </Text>
+          <Text style={styles.title}>Výsledok OCR</Text>
         </View>
 
         {/* Local save row */}
         <View style={styles.saveRow}>
-          <Button
-            mode="outlined"
+          <Pressable
+            style={({ pressed }) => [
+              styles.outlineButton,
+              pressed && styles.buttonPressed,
+              saveState === 'saving' && styles.buttonDisabled,
+            ]}
             onPress={handleSave}
             disabled={saveState === 'saving'}
-            style={styles.outlineButton}
-            contentStyle={styles.buttonContent}
           >
-            {saveState === 'saving' ? 'Ukladám...' : 'Uložiť lokálne'}
-          </Button>
-          {saveState === 'saved' ? (
-            <Text
-              variant="labelLarge"
-              style={[styles.saveHint, { color: theme.colors.secondary }]}
-            >
-              Uložené do zariadenia.
+            <Text style={styles.outlineButtonText}>
+              {saveState === 'saving' ? 'Ukladám...' : 'Uložiť lokálne'}
             </Text>
+          </Pressable>
+          {saveState === 'saved' ? (
+            <Text style={styles.saveHint}>Uložené do zariadenia.</Text>
           ) : null}
           {saveState === 'error' ? (
-            <Text
-              variant="labelLarge"
-              style={[styles.saveHint, { color: theme.colors.error }]}
-            >
-              Uloženie zlyhalo.
-            </Text>
+            <Text style={styles.saveError}>Uloženie zlyhalo.</Text>
           ) : null}
         </View>
 
         {/* Inventory card */}
-        <Card mode="elevated" elevation={1} style={styles.card}>
-          <Card.Content style={styles.cardContent}>
-            <Text
-              variant="titleMedium"
-              style={[styles.sectionLabel, { color: theme.colors.onSurface }]}
-            >
-              Inventár
-            </Text>
-            <Text
-              variant="bodyMedium"
-              style={{ color: theme.colors.onSurfaceVariant, lineHeight: 22 }}
-            >
-              Ak si túto kávu nekúpil, nič nemusíš vypĺňať. Inventár je len voliteľný.
-            </Text>
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>Inventár</Text>
+          <Text style={styles.bodyText}>
+            Ak si túto kávu nekúpil, nič nemusíš vypĺňať. Inventár je len voliteľný.
+          </Text>
 
-            {!showInventoryDetails ? (
-              <Button
-                mode="contained"
-                onPress={() => {
-                  setInventoryState('idle');
-                  setInventoryError('');
-                  setShowInventoryDetails(true);
-                }}
-                style={styles.inventoryButton}
-                contentStyle={styles.buttonContent}
-              >
-                Kúpil som ju, pridať do inventára
-              </Button>
-            ) : null}
+          {!showInventoryDetails ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.inventoryButton,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={() => {
+                setInventoryState('idle');
+                setInventoryError('');
+                setShowInventoryDetails(true);
+              }}
+            >
+              <Text style={styles.inventoryButtonText}>Kúpil som ju, pridať do inventára</Text>
+            </Pressable>
+          ) : null}
 
-            {showInventoryDetails ? (
-              <>
-                <Text
-                  variant="labelLarge"
-                  style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}
-                >
-                  Veľkosť balíka (voliteľné)
-                </Text>
-                <View style={styles.chipsRow}>
-                  {['', '250', '500', '1000'].map((value) => {
-                    const isActive = packageSizeG === value;
-                    return (
-                      <Chip
-                        key={value || 'empty'}
-                        selected={isActive}
-                        onPress={() => setPackageSizeG(value)}
-                        mode={isActive ? 'flat' : 'outlined'}
-                        style={
-                          isActive
-                            ? { backgroundColor: theme.colors.primary }
-                            : { backgroundColor: 'transparent' }
-                        }
-                        textStyle={
-                          isActive
-                            ? { color: theme.colors.onPrimary }
-                            : { color: theme.colors.onSurface }
-                        }
+          {showInventoryDetails ? (
+            <>
+              <Text style={styles.fieldLabel}>Veľkosť balíka (voliteľné)</Text>
+              <View style={styles.pillsRow}>
+                {['', '250', '500', '1000'].map((value) => {
+                  const isActive = packageSizeG === value;
+                  return (
+                    <Pressable
+                      key={value || 'empty'}
+                      style={[styles.pill, isActive && styles.pillActive]}
+                      onPress={() => setPackageSizeG(value)}
+                    >
+                      <Text
+                        style={[
+                          styles.pillText,
+                          isActive && styles.pillTextActive,
+                        ]}
                       >
                         {value ? `${value} g` : 'nechať prázdne'}
-                      </Chip>
-                    );
-                  })}
-                </View>
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
 
-                <Text
-                  variant="labelLarge"
-                  style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}
-                >
-                  Zostáva teraz (voliteľné)
+              <Text style={styles.fieldLabel}>Zostáva teraz (voliteľné)</Text>
+              <View style={styles.remainingDisplayRow}>
+                <Text style={styles.remainingUnit}>g</Text>
+                <Text style={styles.remainingValue}>
+                  {remainingG.trim().length > 0 ? remainingG : 'nevyplnené'}
                 </Text>
-                <View style={styles.remainingDisplayRow}>
-                  <Text
-                    variant="labelLarge"
-                    style={{ color: theme.colors.onSurfaceVariant }}
-                  >
-                    g
-                  </Text>
-                  <Text
-                    variant="titleMedium"
-                    style={{ color: theme.colors.onSurface }}
-                  >
-                    {remainingG.trim().length > 0 ? remainingG : 'nevyplnené'}
-                  </Text>
-                </View>
-                <View style={styles.chipsRow}>
-                  {['', '50', '100', '150', '200'].map((value) => {
-                    const isActive = remainingG === value;
-                    return (
-                      <Chip
-                        key={value || 'none'}
-                        selected={isActive}
-                        onPress={() => setRemainingG(value)}
-                        mode={isActive ? 'flat' : 'outlined'}
-                        style={
-                          isActive
-                            ? { backgroundColor: theme.colors.primary }
-                            : { backgroundColor: 'transparent' }
-                        }
-                        textStyle={
-                          isActive
-                            ? { color: theme.colors.onPrimary }
-                            : { color: theme.colors.onSurface }
-                        }
+              </View>
+              <View style={styles.pillsRow}>
+                {['', '50', '100', '150', '200'].map((value) => {
+                  const isActive = remainingG === value;
+                  return (
+                    <Pressable
+                      key={value || 'none'}
+                      style={[styles.pill, isActive && styles.pillActive]}
+                      onPress={() => setRemainingG(value)}
+                    >
+                      <Text
+                        style={[
+                          styles.pillText,
+                          isActive && styles.pillTextActive,
+                        ]}
                       >
                         {value ? `${value} g` : 'nechať prázdne'}
-                      </Chip>
-                    );
-                  })}
-                </View>
-              </>
-            ) : null}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          ) : null}
 
-            {showInventoryDetails ? (
-              <Button
-                mode="contained"
-                onPress={handleInventorySave}
-                disabled={inventoryState === 'saving' || !user}
-                style={styles.inventoryButton}
-                contentStyle={styles.buttonContent}
-              >
+          {showInventoryDetails ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.inventoryButton,
+                pressed && styles.buttonPressed,
+                (inventoryState === 'saving' || !user) && styles.buttonDisabled,
+              ]}
+              onPress={handleInventorySave}
+              disabled={inventoryState === 'saving' || !user}
+            >
+              <Text style={styles.inventoryButtonText}>
                 {inventoryState === 'saving' ? 'Ukladám...' : 'Uložiť do inventára'}
-              </Button>
-            ) : null}
+              </Text>
+            </Pressable>
+          ) : null}
 
-            {!user ? (
-              <Text
-                variant="bodyMedium"
-                style={[styles.helperNote, { color: theme.colors.onSurfaceVariant }]}
-              >
-                Pre uloženie do inventára sa musíš prihlásiť.
-              </Text>
-            ) : null}
-            {inventoryState === 'saved' ? (
-              <Text
-                variant="labelLarge"
-                style={[styles.saveHint, { color: theme.colors.secondary }]}
-              >
-                Káva uložená v inventári.
-              </Text>
-            ) : null}
-            {inventoryState === 'error' ? (
-              <Text
-                variant="bodyMedium"
-                style={{ color: theme.colors.error, marginTop: spacing.sm }}
-              >
-                {inventoryError}
-              </Text>
-            ) : null}
-          </Card.Content>
-        </Card>
+          {!user ? (
+            <Text style={styles.helperNote}>
+              Pre uloženie do inventára sa musíš prihlásiť.
+            </Text>
+          ) : null}
+          {inventoryState === 'saved' ? (
+            <Text style={styles.saveHint}>Káva uložená v inventári.</Text>
+          ) : null}
+          {inventoryState === 'error' ? (
+            <Text style={styles.saveError}>{inventoryError}</Text>
+          ) : null}
+        </View>
 
         {/* OCR text blocks */}
-        <Card mode="elevated" elevation={1} style={styles.card}>
-          <Card.Content style={styles.cardContent}>
-            <Text
-              variant="titleMedium"
-              style={[styles.sectionLabel, { color: theme.colors.onSurface }]}
-            >
-              Oskenovaný text
-            </Text>
-            <Text
-              variant="bodyMedium"
-              style={{ color: theme.colors.onSurface, lineHeight: 22 }}
-            >
-              {rawText}
-            </Text>
-          </Card.Content>
-        </Card>
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>Oskenovaný text</Text>
+          <Text style={styles.bodyText}>{rawText}</Text>
+        </View>
 
-        <Card mode="elevated" elevation={1} style={styles.card}>
-          <Card.Content style={styles.cardContent}>
-            <Text
-              variant="titleMedium"
-              style={[styles.sectionLabel, { color: theme.colors.onSurface }]}
-            >
-              Opravený text
-            </Text>
-            <Text
-              variant="bodyMedium"
-              style={{ color: theme.colors.onSurface, lineHeight: 22 }}
-            >
-              {correctedText}
-            </Text>
-          </Card.Content>
-        </Card>
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>Opravený text</Text>
+          <Text style={styles.bodyText}>{correctedText}</Text>
+        </View>
 
         {/* Taste profile card */}
-        <Card mode="elevated" elevation={1} style={styles.card}>
-          <Card.Content style={styles.cardContent}>
-            <Text
-              variant="titleMedium"
-              style={[styles.sectionLabel, { color: theme.colors.onSurface }]}
-            >
-              Chuťový profil
-            </Text>
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>Chuťový profil</Text>
 
-            <Text
-              variant="labelLarge"
-              style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}
-            >
-              Chuťové tóny
-            </Text>
-            {coffeeProfile.flavorNotes.length > 0 ? (
-              <View style={styles.chipsRow}>
-                {coffeeProfile.flavorNotes.map((note, index) => (
-                  <Chip
-                    key={index}
-                    mode="flat"
-                    style={{ backgroundColor: theme.colors.secondaryContainer }}
-                    textStyle={{ color: theme.colors.onSecondaryContainer }}
-                  >
-                    {note}
-                  </Chip>
-                ))}
-              </View>
-            ) : (
-              <Text
-                variant="bodyMedium"
-                style={{ color: theme.colors.onSurface }}
-              >
-                Neurčené
+          <Text style={styles.fieldLabel}>Chuťové tóny</Text>
+          <Text style={styles.bodyText}>
+            {coffeeProfile.flavorNotes.length > 0
+              ? coffeeProfile.flavorNotes.join(', ')
+              : 'Neurčené'}
+          </Text>
+
+          <Text style={styles.fieldLabel}>Profil chuti</Text>
+          <Text style={styles.bodyText}>{coffeeProfile.tasteProfile}</Text>
+
+          <Text style={styles.fieldLabel}>Odborný popis</Text>
+          <Text style={styles.bodyText}>{coffeeProfile.expertSummary}</Text>
+
+          <Text style={styles.fieldLabel}>Popis pre laika</Text>
+          <Text style={styles.bodyText}>{coffeeProfile.laymanSummary}</Text>
+
+          <Text style={styles.fieldLabel}>Komu bude chutiť</Text>
+          <Text style={styles.bodyText}>{coffeeProfile.preferenceHint}</Text>
+
+          <Text style={styles.fieldLabel}>Prečo tieto tóny</Text>
+          <Text style={styles.bodyText}>{coffeeProfile.reasoning}</Text>
+
+          <Text style={styles.fieldLabel}>Istota</Text>
+          <Text style={styles.bodyText}>
+            {Math.round(coffeeProfile.confidence * 100)}%
+          </Text>
+
+          {coffeeProfile.missingInfo?.length ? (
+            <>
+              <Text style={styles.fieldLabel}>Chýbajúce informácie</Text>
+              <Text style={styles.bodyText}>
+                {coffeeProfile.missingInfo.join(', ')}
               </Text>
-            )}
-
-            <Divider style={styles.divider} />
-
-            <Text
-              variant="labelLarge"
-              style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}
-            >
-              Profil chuti
-            </Text>
-            <Text
-              variant="bodyMedium"
-              style={{ color: theme.colors.onSurface, lineHeight: 22 }}
-            >
-              {coffeeProfile.tasteProfile}
-            </Text>
-
-            <Text
-              variant="labelLarge"
-              style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}
-            >
-              Odborný popis
-            </Text>
-            <Text
-              variant="bodyMedium"
-              style={{ color: theme.colors.onSurface, lineHeight: 22 }}
-            >
-              {coffeeProfile.expertSummary}
-            </Text>
-
-            <Text
-              variant="labelLarge"
-              style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}
-            >
-              Popis pre laika
-            </Text>
-            <Text
-              variant="bodyMedium"
-              style={{ color: theme.colors.onSurface, lineHeight: 22 }}
-            >
-              {coffeeProfile.laymanSummary}
-            </Text>
-
-            <Text
-              variant="labelLarge"
-              style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}
-            >
-              Komu bude chutiť
-            </Text>
-            <Text
-              variant="bodyMedium"
-              style={{ color: theme.colors.onSurface, lineHeight: 22 }}
-            >
-              {coffeeProfile.preferenceHint}
-            </Text>
-
-            <Text
-              variant="labelLarge"
-              style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}
-            >
-              Prečo tieto tóny
-            </Text>
-            <Text
-              variant="bodyMedium"
-              style={{ color: theme.colors.onSurface, lineHeight: 22 }}
-            >
-              {coffeeProfile.reasoning}
-            </Text>
-
-            <Text
-              variant="labelLarge"
-              style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}
-            >
-              Istota
-            </Text>
-            <ProgressBar
-              progress={coffeeProfile.confidence}
-              color={theme.colors.primary}
-              style={[styles.confidenceBar, { backgroundColor: theme.colors.outlineVariant }]}
-            />
-            <Text
-              variant="bodyMedium"
-              style={{ color: theme.colors.onSurfaceVariant, marginTop: spacing.xs }}
-            >
-              {Math.round(coffeeProfile.confidence * 100)}%
-            </Text>
-
-            {coffeeProfile.missingInfo?.length ? (
-              <>
-                <Text
-                  variant="labelLarge"
-                  style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}
-                >
-                  Chýbajúce informácie
-                </Text>
-                <Text
-                  variant="bodyMedium"
-                  style={{ color: theme.colors.onSurface, lineHeight: 22 }}
-                >
-                  {coffeeProfile.missingInfo.join(', ')}
-                </Text>
-              </>
-            ) : null}
-          </Card.Content>
-        </Card>
+            </>
+          ) : null}
+        </View>
 
         {/* Match card */}
-        <Card mode="elevated" elevation={1} style={styles.card}>
-          <Card.Content style={styles.cardContent}>
-            <Text
-              variant="titleMedium"
-              style={[styles.sectionLabel, { color: theme.colors.onSurface }]}
-            >
-              Zhoda s dotazníkom
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>Zhoda s dotazníkom</Text>
+
+          {matchState === 'loading' ? (
+            <Text style={styles.bodyText}>Porovnávam s dotazníkom…</Text>
+          ) : null}
+          {matchState === 'missing' ? (
+            <Text style={styles.bodyText}>
+              Zatiaľ nemám uložený výsledok dotazníka. Najprv ho vyplňte a uložte,
+              aby som vedel porovnávať.
             </Text>
+          ) : null}
+          {matchState === 'error' ? (
+            <Text style={styles.errorText}>{matchError}</Text>
+          ) : null}
 
-            {matchState === 'loading' ? (
-              <>
-                <ProgressBar
-                  indeterminate
-                  color={theme.colors.primary}
-                  style={[styles.confidenceBar, { backgroundColor: theme.colors.outlineVariant }]}
-                />
+          {matchState === 'ready' && matchResult ? (
+            <>
+              <View
+                style={[
+                  styles.verdictBadge,
+                  matchResult.willLike
+                    ? styles.verdictPositive
+                    : styles.verdictNegative,
+                ]}
+              >
                 <Text
-                  variant="bodyMedium"
-                  style={{ color: theme.colors.onSurfaceVariant, marginTop: spacing.sm }}
-                >
-                  Porovnávam s dotazníkom…
-                </Text>
-              </>
-            ) : null}
-            {matchState === 'missing' ? (
-              <Text
-                variant="bodyMedium"
-                style={{ color: theme.colors.onSurfaceVariant, lineHeight: 22 }}
-              >
-                Zatiaľ nemám uložený výsledok dotazníka. Najprv ho vyplňte a uložte,
-                aby som vedel porovnávať.
-              </Text>
-            ) : null}
-            {matchState === 'error' ? (
-              <Text
-                variant="bodyMedium"
-                style={{ color: theme.colors.error }}
-              >
-                {matchError}
-              </Text>
-            ) : null}
-
-            {matchState === 'ready' && matchResult ? (
-              <>
-                {/* Verdict badge using Surface */}
-                <Surface
                   style={[
-                    styles.verdictBadge,
-                    {
-                      backgroundColor: matchResult.willLike
-                        ? theme.colors.secondaryContainer
-                        : theme.colors.errorContainer,
-                    },
+                    styles.verdictText,
+                    matchResult.willLike
+                      ? styles.verdictTextPositive
+                      : styles.verdictTextNegative,
                   ]}
-                  elevation={0}
                 >
-                  <Text
-                    variant="titleMedium"
-                    style={{
-                      color: matchResult.willLike
-                        ? theme.colors.onSecondaryContainer
-                        : theme.colors.error,
-                      fontWeight: '700',
-                    }}
-                  >
-                    {verdictLabel}
-                  </Text>
-                  <Text
-                    variant="labelMedium"
-                    style={{
-                      color: matchResult.willLike
-                        ? theme.colors.onSecondaryContainer
-                        : theme.colors.error,
-                      marginTop: spacing.xs,
-                      opacity: 0.8,
-                    }}
-                  >
-                    Istota: {Math.round(matchResult.confidence * 100)}%
-                  </Text>
-                </Surface>
+                  {verdictLabel}
+                </Text>
+                <Text
+                  style={[
+                    styles.verdictSubText,
+                    matchResult.willLike
+                      ? styles.verdictSubTextPositive
+                      : styles.verdictSubTextNegative,
+                  ]}
+                >
+                  Istota: {Math.round(matchResult.confidence * 100)}%
+                </Text>
+              </View>
 
-                <Text
-                  variant="labelLarge"
-                  style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}
-                >
-                  Pre baristu
-                </Text>
-                <Text
-                  variant="bodyMedium"
-                  style={{ color: theme.colors.onSurface, lineHeight: 22 }}
-                >
-                  {matchResult.baristaSummary}
-                </Text>
+              <Text style={styles.fieldLabel}>Pre baristu</Text>
+              <Text style={styles.bodyText}>{matchResult.baristaSummary}</Text>
 
-                <Text
-                  variant="labelLarge"
-                  style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}
-                >
-                  Pre laika
-                </Text>
-                <Text
-                  variant="bodyMedium"
-                  style={{ color: theme.colors.onSurface, lineHeight: 22 }}
-                >
-                  {matchResult.laymanSummary}
-                </Text>
+              <Text style={styles.fieldLabel}>Pre laika</Text>
+              <Text style={styles.bodyText}>{matchResult.laymanSummary}</Text>
 
-                <Text
-                  variant="labelLarge"
-                  style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}
-                >
-                  Kľúčové zhody
-                </Text>
-                {matchResult.keyMatches.length > 0 ? (
-                  <View style={styles.chipsRow}>
-                    {matchResult.keyMatches.map((match, index) => (
-                      <Chip
-                        key={index}
-                        mode="flat"
-                        style={{ backgroundColor: theme.colors.secondaryContainer }}
-                        textStyle={{ color: theme.colors.onSecondaryContainer }}
-                      >
-                        {match}
-                      </Chip>
-                    ))}
-                  </View>
-                ) : (
-                  <Text
-                    variant="bodyMedium"
-                    style={{ color: theme.colors.onSurface }}
-                  >
-                    Žiadne výrazné zhody.
-                  </Text>
-                )}
+              <Text style={styles.fieldLabel}>Kľúčové zhody</Text>
+              <Text style={styles.bodyText}>
+                {matchResult.keyMatches.length
+                  ? matchResult.keyMatches.join(', ')
+                  : 'Žiadne výrazné zhody.'}
+              </Text>
 
-                <Text
-                  variant="labelLarge"
-                  style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}
-                >
-                  Potenciálne konflikty
-                </Text>
-                {matchResult.keyConflicts.length > 0 ? (
-                  <View style={styles.chipsRow}>
-                    {matchResult.keyConflicts.map((conflict, index) => (
-                      <Chip
-                        key={index}
-                        mode="flat"
-                        style={{ backgroundColor: theme.colors.errorContainer }}
-                        textStyle={{ color: theme.colors.error }}
-                      >
-                        {conflict}
-                      </Chip>
-                    ))}
-                  </View>
-                ) : (
-                  <Text
-                    variant="bodyMedium"
-                    style={{ color: theme.colors.onSurface }}
-                  >
-                    Žiadne výrazné konflikty.
-                  </Text>
-                )}
+              <Text style={styles.fieldLabel}>Potenciálne konflikty</Text>
+              <Text style={styles.bodyText}>
+                {matchResult.keyConflicts.length
+                  ? matchResult.keyConflicts.join(', ')
+                  : 'Žiadne výrazné konflikty.'}
+              </Text>
 
-                <Text
-                  variant="labelLarge"
-                  style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}
-                >
-                  Ako si ju upraviť
-                </Text>
-                <Text
-                  variant="bodyMedium"
-                  style={{ color: theme.colors.onSurface, lineHeight: 22 }}
-                >
-                  {matchResult.suggestedAdjustments}
-                </Text>
+              <Text style={styles.fieldLabel}>Ako si ju upraviť</Text>
+              <Text style={styles.bodyText}>{matchResult.suggestedAdjustments}</Text>
 
-                {questionnaireSnapshot ? (
-                  <Text
-                    variant="bodyMedium"
-                    style={[styles.helperNote, { color: theme.colors.onSurfaceVariant }]}
-                  >
-                    Porovnávané s posledným uloženým dotazníkom z{' '}
-                    {new Date(questionnaireSnapshot.savedAt).toLocaleDateString(
-                      'sk-SK',
-                    )}
-                    .
-                  </Text>
-                ) : null}
-              </>
-            ) : null}
-          </Card.Content>
-        </Card>
+              {questionnaireSnapshot ? (
+                <Text style={styles.helperNote}>
+                  Porovnávané s posledným uloženým dotazníkom z{' '}
+                  {new Date(questionnaireSnapshot.savedAt).toLocaleDateString(
+                    'sk-SK',
+                  )}
+                  .
+                </Text>
+              ) : null}
+            </>
+          ) : null}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -820,79 +515,185 @@ function OcrResultScreen({ route }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    backgroundColor: '#FAFAFA',
   },
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
-    gap: spacing.md,
+  container: {
+    padding: 20,
+    paddingBottom: 40,
   },
   header: {
-    marginBottom: spacing.sm,
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    letterSpacing: -0.3,
   },
   saveRow: {
-    gap: spacing.sm,
+    marginBottom: 12,
   },
   outlineButton: {
-    borderRadius: radii.md,
+    borderWidth: 1.5,
+    borderColor: '#E8E8E8',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
   },
-  buttonContent: {
-    paddingVertical: spacing.xs,
+  outlineButtonText: {
+    color: '#2C2C2C',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  buttonPressed: {
+    opacity: 0.7,
+  },
+  buttonDisabled: {
+    opacity: 0.45,
   },
   saveHint: {
-    paddingHorizontal: spacing.xs,
+    marginTop: 10,
+    fontSize: 13,
+    color: '#4A9B6E',
+    fontWeight: '600',
+  },
+  saveError: {
+    marginTop: 10,
+    fontSize: 13,
+    color: '#D64545',
+    fontWeight: '600',
   },
   card: {
-    borderRadius: radii.lg,
-  },
-  cardContent: {
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.lg,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   sectionLabel: {
-    marginBottom: spacing.md,
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 14,
   },
   fieldLabel: {
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B6B6B',
+    marginTop: 14,
+    marginBottom: 4,
   },
-  chipsRow: {
+  bodyText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#1A1A1A',
+    fontWeight: '400',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#D64545',
+    fontWeight: '500',
+  },
+  inventoryButton: {
+    marginTop: 14,
+    backgroundColor: '#4A9B6E',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  inventoryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  pillsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  pill: {
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+  },
+  pillActive: {
+    backgroundColor: '#2C2C2C',
+  },
+  pillText: {
+    fontSize: 13,
+    color: '#6B6B6B',
+    fontWeight: '600',
+  },
+  pillTextActive: {
+    color: '#FFFFFF',
   },
   remainingDisplayRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 4,
   },
-  inventoryButton: {
-    marginTop: spacing.md,
-    borderRadius: radii.md,
+  remainingUnit: {
+    color: '#6B6B6B',
+    fontSize: 13,
+    fontWeight: '600',
   },
-  helperNote: {
-    marginTop: spacing.md,
-    lineHeight: 18,
+  remainingValue: {
+    color: '#1A1A1A',
+    fontSize: 15,
+    fontWeight: '600',
   },
   verdictBadge: {
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
   },
-  confidenceBar: {
-    height: 6,
-    borderRadius: radii.full,
-    marginTop: spacing.xs,
+  verdictPositive: {
+    backgroundColor: '#E8F5ED',
+    borderColor: '#4A9B6E',
   },
-  divider: {
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
+  verdictNegative: {
+    backgroundColor: '#FDEAEA',
+    borderColor: '#D64545',
+  },
+  verdictText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  verdictTextPositive: {
+    color: '#2D6A4A',
+  },
+  verdictTextNegative: {
+    color: '#D64545',
+  },
+  verdictSubText: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  verdictSubTextPositive: {
+    color: '#4A9B6E',
+  },
+  verdictSubTextNegative: {
+    color: '#D64545',
+  },
+  helperNote: {
+    marginTop: 14,
+    fontSize: 12,
+    color: '#999999',
+    lineHeight: 18,
   },
 });
 

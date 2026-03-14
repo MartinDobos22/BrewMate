@@ -1,23 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  ActivityIndicator,
-  Button,
-  Card,
-  Chip,
-  Divider,
-  Surface,
-  Text,
-  TextInput,
-  useTheme,
-} from 'react-native-paper';
-import type { MD3Theme } from 'react-native-paper';
 
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
-import spacing, { radii } from '../styles/spacing';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 type JournalItem = {
   id: string;
@@ -48,8 +33,6 @@ type InsightsPayload = {
   };
 };
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const METHODS = [
   { label: 'Espresso', value: 'espresso' },
   { label: 'V60', value: 'v60' },
@@ -60,53 +43,7 @@ const METHODS = [
   { label: 'Other', value: 'other' },
 ];
 
-// ─── BarRow component ─────────────────────────────────────────────────────────
-
-function BarRow({
-  bucket,
-  max,
-  theme,
-}: {
-  bucket: InsightBucket;
-  max: number;
-  theme: MD3Theme;
-}) {
-  const fillPercent = max > 0 ? Math.max(12, (bucket.count / max) * 100) : 12;
-
-  return (
-    <View style={styles.barRow}>
-      <View style={styles.barTextWrap}>
-        <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
-          {bucket.label}
-        </Text>
-        <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-          ⭐ {bucket.avgRating.toFixed(1)} · {bucket.count}x
-        </Text>
-      </View>
-      <Surface
-        style={[styles.barTrack, { backgroundColor: theme.colors.surfaceVariant }]}
-        elevation={0}
-      >
-        <View
-          style={[
-            styles.barFill,
-            {
-              width: `${fillPercent}%`,
-              backgroundColor: theme.colors.primary,
-            },
-          ]}
-        />
-      </Surface>
-    </View>
-  );
-}
-
-// ─── Main Screen ──────────────────────────────────────────────────────────────
-
 function CoffeeJournalScreen() {
-  const theme = useTheme<MD3Theme>();
-
-  // ── State (preserved exactly) ──────────────────────────────────────────────
   const [items, setItems] = useState<JournalItem[]>([]);
   const [insights, setInsights] = useState<InsightsPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -118,8 +55,6 @@ function CoffeeJournalScreen() {
   const [brewTimeSeconds, setBrewTimeSeconds] = useState('150');
   const [tasteRating, setTasteRating] = useState('4');
   const [notes, setNotes] = useState('');
-
-  // ── Business logic (preserved exactly) ────────────────────────────────────
 
   const loadData = useCallback(async () => {
     try {
@@ -194,405 +129,370 @@ function CoffeeJournalScreen() {
     }
   }, [brewTimeSeconds, doseG, loadData, method, notes, tasteRating]);
 
-  const recentFavorite = useMemo(
-    () => insights?.totals.methods?.[0]?.label ?? null,
-    [insights],
-  );
-
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const recentFavorite = useMemo(() => insights?.totals.methods?.[0]?.label ?? null, [insights]);
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
-      edges={['bottom']}
-    >
-      <ScrollView
-        style={{ backgroundColor: theme.colors.background }}
-        contentContainerStyle={styles.container}
-      >
-        {/* Header */}
-        <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
-          Coffee Journal
-        </Text>
-        <Text
-          variant="bodyMedium"
-          style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}
-        >
-          Loguj si každú prípravu a sleduj čo ti chutí najviac.
-        </Text>
+    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.title}>Coffee Journal</Text>
+        <Text style={styles.subtitle}>Loguj si každú prípravu a sleduj čo ti chutí najviac.</Text>
 
-        {/* Loading indicator */}
         {loading ? (
-          <ActivityIndicator
-            animating
-            color={theme.colors.primary}
-            style={styles.loader}
-          />
+          <ActivityIndicator color="#8B7355" style={styles.loader} />
         ) : null}
 
-        {/* Error message */}
-        {error ? (
-          <Text
-            variant="bodyMedium"
-            style={{ color: theme.colors.error, fontWeight: '600' }}
-          >
-            {error}
-          </Text>
-        ) : null}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        {/* ── New brew log form ───────────────────────────────────────────── */}
-        <Card
-          mode="contained"
-          style={[styles.card, { backgroundColor: theme.colors.surface }]}
-        >
-          <Card.Content style={styles.cardContent}>
-            <Text
-              variant="titleMedium"
-              style={[styles.cardTitle, { color: theme.colors.onSurface }]}
-            >
-              Nový brew log
-            </Text>
+        {/* New brew log form */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Nový brew log</Text>
 
-            {/* Method chips */}
-            <View style={styles.methodRow}>
-              {METHODS.map((option) => {
-                const active = option.value === method;
-                return (
-                  <Chip
-                    key={option.value}
-                    selected={active}
-                    onPress={() => setMethod(option.value)}
-                    style={[
-                      styles.methodChip,
-                      active
-                        ? { backgroundColor: theme.colors.primaryContainer }
-                        : { backgroundColor: theme.colors.surfaceVariant },
-                    ]}
-                    textStyle={[
-                      active
-                        ? { color: theme.colors.onPrimaryContainer }
-                        : { color: theme.colors.onSurfaceVariant },
-                    ]}
-                    showSelectedCheck={false}
-                  >
+          <View style={styles.methodRow}>
+            {METHODS.map((option) => {
+              const active = option.value === method;
+              return (
+                <Pressable
+                  key={option.value}
+                  style={[styles.methodPill, active && styles.methodPillActive]}
+                  onPress={() => setMethod(option.value)}
+                >
+                  <Text style={[styles.methodPillText, active && styles.methodPillTextActive]}>
                     {option.label}
-                  </Chip>
-                );
-              })}
-            </View>
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
-            {/* Dose */}
+          <View style={styles.inputRow}>
+            <Text style={styles.inputLabel}>Dávka (g)</Text>
             <TextInput
-              label="Dávka (g)"
               value={doseG}
               onChangeText={setDoseG}
               keyboardType="number-pad"
-              mode="outlined"
-              style={styles.inputField}
-              outlineStyle={{ borderRadius: radii.md }}
+              style={styles.input}
+              placeholderTextColor="#999999"
             />
+          </View>
 
-            {/* Brew time */}
+          <View style={styles.inputRow}>
+            <Text style={styles.inputLabel}>Čas (s)</Text>
             <TextInput
-              label="Čas (s)"
               value={brewTimeSeconds}
               onChangeText={setBrewTimeSeconds}
               keyboardType="number-pad"
-              mode="outlined"
-              style={styles.inputField}
-              outlineStyle={{ borderRadius: radii.md }}
+              style={styles.input}
+              placeholderTextColor="#999999"
             />
+          </View>
 
-            {/* Rating */}
+          <View style={styles.inputRow}>
+            <Text style={styles.inputLabel}>Hodnotenie (1-5)</Text>
             <TextInput
-              label="Hodnotenie (1-5)"
               value={tasteRating}
               onChangeText={setTasteRating}
               keyboardType="number-pad"
-              mode="outlined"
-              style={styles.inputField}
-              outlineStyle={{ borderRadius: radii.md }}
+              style={styles.input}
+              placeholderTextColor="#999999"
             />
+          </View>
 
-            {/* Notes */}
+          <View style={styles.inputRow}>
+            <Text style={styles.inputLabel}>Poznámka</Text>
             <TextInput
-              label="Poznámka"
               value={notes}
               onChangeText={setNotes}
               placeholder="napr. viac sladké pri nižšej teplote"
-              mode="outlined"
+              placeholderTextColor="#999999"
+              style={[styles.input, styles.notesInput]}
               multiline
-              numberOfLines={3}
-              style={[styles.inputField, styles.notesInput]}
-              outlineStyle={{ borderRadius: radii.md }}
             />
+          </View>
 
-            {/* Submit button */}
-            <Button
-              mode="contained"
-              onPress={onSubmit}
-              disabled={submitting}
-              loading={submitting}
-              style={styles.submitButton}
-              contentStyle={styles.submitButtonContent}
-            >
+          <Pressable style={styles.primaryButton} onPress={onSubmit} disabled={submitting}>
+            <Text style={styles.primaryButtonText}>
               {submitting ? 'Ukladám...' : 'Uložiť brew log'}
-            </Button>
-          </Card.Content>
-        </Card>
-
-        {/* ── AI Summary ──────────────────────────────────────────────────── */}
-        <Card
-          mode="contained"
-          style={[styles.card, { backgroundColor: theme.colors.surface }]}
-        >
-          <Card.Content style={styles.cardContent}>
-            <Text
-              variant="titleMedium"
-              style={[styles.cardTitle, { color: theme.colors.onSurface }]}
-            >
-              AI sumarizácia (30 dní)
             </Text>
+          </Pressable>
+        </View>
 
-            {loading ? (
-              <Text
-                variant="bodyMedium"
-                style={{ color: theme.colors.onSurfaceVariant }}
-              >
-                Načítavam...
-              </Text>
-            ) : null}
+        {/* AI Summary */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>AI sumarizácia (30 dní)</Text>
+          {loading ? (
+            <Text style={styles.muted}>Načítavam...</Text>
+          ) : null}
+          {!loading && insights ? (
+            <Text style={styles.summaryText}>{insights.aiSummary}</Text>
+          ) : null}
+          {recentFavorite ? (
+            <View style={styles.favoritePill}>
+              <Text style={styles.favoriteText}>Favorit: {recentFavorite}</Text>
+            </View>
+          ) : null}
+        </View>
 
-            {!loading && insights ? (
-              <Text
-                variant="bodyMedium"
-                style={{ color: theme.colors.onSurface, lineHeight: 22 }}
-              >
-                {insights.aiSummary}
-              </Text>
-            ) : null}
-
-            {recentFavorite ? (
-              <Chip
-                style={[
-                  styles.favoritePill,
-                  { backgroundColor: theme.colors.secondaryContainer },
-                ]}
-                textStyle={{ color: theme.colors.onSecondaryContainer, fontWeight: '600' }}
-                icon="star"
-              >
-                Favorit: {recentFavorite}
-              </Chip>
-            ) : null}
-          </Card.Content>
-        </Card>
-
-        {/* ── Insights breakdown ───────────────────────────────────────────── */}
+        {/* Insights breakdown */}
         {insights ? (
-          <Card
-            mode="contained"
-            style={[styles.card, { backgroundColor: theme.colors.surface }]}
-          >
-            <Card.Content style={styles.cardContent}>
-              <Text
-                variant="titleMedium"
-                style={[styles.cardTitle, { color: theme.colors.onSurface }]}
-              >
-                Čo ti chutí najviac
-              </Text>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Čo ti chutí najviac</Text>
 
-              <Text
-                variant="labelMedium"
-                style={[styles.groupTitle, { color: theme.colors.onSurfaceVariant }]}
-              >
-                Podľa metódy
-              </Text>
-              {insights.totals.methods.map((bucket) => (
-                <BarRow
-                  key={`method-${bucket.label}`}
-                  bucket={bucket}
-                  max={insights.totals.logsCount}
-                  theme={theme}
-                />
-              ))}
-
-              <Text
-                variant="labelMedium"
-                style={[styles.groupTitle, { color: theme.colors.onSurfaceVariant }]}
-              >
-                Podľa pôvodu
-              </Text>
-              {insights.totals.origins.map((bucket) => (
-                <BarRow
-                  key={`origin-${bucket.label}`}
-                  bucket={bucket}
-                  max={insights.totals.logsCount}
-                  theme={theme}
-                />
-              ))}
-
-              <Text
-                variant="labelMedium"
-                style={[styles.groupTitle, { color: theme.colors.onSurfaceVariant }]}
-              >
-                Podľa praženia
-              </Text>
-              {insights.totals.roasts.map((bucket) => (
-                <BarRow
-                  key={`roast-${bucket.label}`}
-                  bucket={bucket}
-                  max={insights.totals.logsCount}
-                  theme={theme}
-                />
-              ))}
-            </Card.Content>
-          </Card>
-        ) : null}
-
-        {/* ── Recent log entries ───────────────────────────────────────────── */}
-        <Card
-          mode="contained"
-          style={[styles.card, { backgroundColor: theme.colors.surface }]}
-        >
-          <Card.Content style={styles.cardContent}>
-            <Text
-              variant="titleMedium"
-              style={[styles.cardTitle, { color: theme.colors.onSurface }]}
-            >
-              Posledné záznamy
-            </Text>
-
-            {items.slice(0, 10).map((item, index) => (
-              <View key={item.id}>
-                <View style={styles.logRow}>
-                  <Text
-                    variant="bodyLarge"
-                    style={{ color: theme.colors.onSurface, fontWeight: '600' }}
-                  >
-                    {item.coffeeName}
-                  </Text>
-                  <Text
-                    variant="bodySmall"
-                    style={[styles.logMeta, { color: theme.colors.onSurfaceVariant }]}
-                  >
-                    {item.method} · {item.doseG}g · {item.brewTimeSeconds}s · ⭐ {item.tasteRating}/5
-                  </Text>
-                  {item.notes ? (
-                    <Text
-                      variant="bodySmall"
-                      style={[styles.logNote, { color: theme.colors.onSurfaceVariant }]}
-                    >
-                      {item.notes}
-                    </Text>
-                  ) : null}
-                </View>
-                {index < Math.min(items.length, 10) - 1 ? (
-                  <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
-                ) : null}
-              </View>
+            <Text style={styles.groupTitle}>Podľa metódy</Text>
+            {insights.totals.methods.map((bucket) => (
+              <BarRow key={`method-${bucket.label}`} bucket={bucket} max={insights.totals.logsCount} />
             ))}
 
-            {!loading && items.length === 0 ? (
-              <Text
-                variant="bodyMedium"
-                style={{ color: theme.colors.onSurfaceVariant }}
-              >
-                Zatiaľ bez záznamov.
+            <Text style={styles.groupTitle}>Podľa pôvodu</Text>
+            {insights.totals.origins.map((bucket) => (
+              <BarRow key={`origin-${bucket.label}`} bucket={bucket} max={insights.totals.logsCount} />
+            ))}
+
+            <Text style={styles.groupTitle}>Podľa praženia</Text>
+            {insights.totals.roasts.map((bucket) => (
+              <BarRow key={`roast-${bucket.label}`} bucket={bucket} max={insights.totals.logsCount} />
+            ))}
+          </View>
+        ) : null}
+
+        {/* Recent log entries */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Posledné záznamy</Text>
+          {items.slice(0, 10).map((item, index) => (
+            <View
+              key={item.id}
+              style={[
+                styles.logRow,
+                index === Math.min(items.length, 10) - 1 ? styles.logRowLast : null,
+              ]}
+            >
+              <Text style={styles.logTitle}>{item.coffeeName}</Text>
+              <Text style={styles.logMeta}>
+                {item.method} · {item.doseG}g · {item.brewTimeSeconds}s · ⭐ {item.tasteRating}/5
               </Text>
-            ) : null}
-          </Card.Content>
-        </Card>
+              {item.notes ? <Text style={styles.logNote}>{item.notes}</Text> : null}
+            </View>
+          ))}
+          {!loading && items.length === 0 ? (
+            <Text style={styles.muted}>Zatiaľ bez záznamov.</Text>
+          ) : null}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+function BarRow({ bucket, max }: { bucket: InsightBucket; max: number }) {
+  const width = max > 0 ? `${Math.max(12, (bucket.count / max) * 100)}%` : '12%';
+
+  return (
+    <View style={styles.barRow}>
+      <View style={styles.barTextWrap}>
+        <Text style={styles.barLabel}>{bucket.label}</Text>
+        <Text style={styles.barMeta}>⭐ {bucket.avgRating.toFixed(1)} · {bucket.count}x</Text>
+      </View>
+      <View style={styles.barTrack}>
+        <View style={[styles.barFill, { width }]} />
+      </View>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    backgroundColor: '#FAFAFA',
   },
   container: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
-    gap: spacing.lg,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 48,
+    gap: 12,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    letterSpacing: -0.3,
   },
   subtitle: {
-    marginBottom: spacing.xs,
+    fontSize: 14,
+    color: '#6B6B6B',
+    lineHeight: 20,
+    marginBottom: 4,
   },
   loader: {
-    marginVertical: spacing.xs,
+    marginVertical: 4,
+  },
+  error: {
+    color: '#D64545',
+    fontWeight: '600',
+    fontSize: 13,
   },
   card: {
-    borderRadius: spacing.lg,
-  },
-  cardContent: {
-    paddingVertical: spacing.lg,
-    gap: spacing.sm,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardTitle: {
-    marginBottom: spacing.sm,
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 14,
+    color: '#1A1A1A',
   },
   methodRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
+    gap: 8,
+    marginBottom: 16,
   },
-  methodChip: {
-    borderRadius: radii.full,
+  methodPill: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
   },
-  inputField: {
-    backgroundColor: 'transparent',
+  methodPillActive: {
+    backgroundColor: '#2C2C2C',
+  },
+  methodPillText: {
+    color: '#6B6B6B',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  methodPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  inputRow: {
+    marginBottom: 12,
+  },
+  inputLabel: {
+    color: '#6B6B6B',
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 6,
+  },
+  input: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: '#1A1A1A',
+    fontSize: 14,
   },
   notesInput: {
-    minHeight: 80,
+    minHeight: 72,
+    textAlignVertical: 'top',
   },
-  submitButton: {
-    marginTop: spacing.xs,
-    borderRadius: radii.md,
+  primaryButton: {
+    backgroundColor: '#2C2C2C',
+    marginTop: 4,
+    borderRadius: 12,
+    paddingVertical: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  submitButtonContent: {
-    paddingVertical: spacing.xs,
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  summaryText: {
+    color: '#1A1A1A',
+    fontSize: 14,
+    lineHeight: 21,
   },
   favoritePill: {
+    marginTop: 12,
     alignSelf: 'flex-start',
-    marginTop: spacing.sm,
-    borderRadius: radii.full,
+    backgroundColor: '#FFF8F0',
+    borderWidth: 1,
+    borderColor: '#C08B3E',
+    borderRadius: 999,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+  },
+  favoriteText: {
+    color: '#C08B3E',
+    fontWeight: '600',
+    fontSize: 13,
   },
   groupTitle: {
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
+    marginTop: 12,
+    marginBottom: 8,
+    fontWeight: '600',
+    fontSize: 12,
+    color: '#6B6B6B',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   barRow: {
-    marginBottom: spacing.sm,
+    marginBottom: 10,
   },
   barTextWrap: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: spacing.xs,
+    marginBottom: 5,
+  },
+  barLabel: {
+    color: '#1A1A1A',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  barMeta: {
+    color: '#6B6B6B',
+    fontSize: 12,
   },
   barTrack: {
-    height: 8,
-    borderRadius: radii.full,
+    height: 6,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 999,
     overflow: 'hidden',
   },
   barFill: {
-    height: 8,
-    borderRadius: radii.full,
+    height: 6,
+    backgroundColor: '#8B7355',
+    borderRadius: 999,
   },
   logRow: {
-    paddingVertical: spacing.md,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  logRowLast: {
+    borderBottomWidth: 0,
+    paddingBottom: 0,
+  },
+  logTitle: {
+    color: '#1A1A1A',
+    fontWeight: '600',
+    fontSize: 14,
   },
   logMeta: {
-    marginTop: spacing.xs,
+    color: '#6B6B6B',
+    fontSize: 12,
+    marginTop: 3,
   },
   logNote: {
-    marginTop: spacing.xs,
-    lineHeight: 18,
+    color: '#6B6B6B',
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  muted: {
+    color: '#6B6B6B',
+    fontSize: 14,
   },
 });
 

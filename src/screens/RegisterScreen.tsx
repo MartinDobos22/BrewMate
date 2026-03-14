@@ -1,24 +1,19 @@
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
-  View,
-} from 'react-native';
-import {
   Text,
   TextInput,
-  Button,
-  useTheme,
-  HelperText,
-} from 'react-native-paper';
-import type { MD3Theme } from 'react-native-paper';
+  View,
+} from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AuthStackParamList } from '../navigation/types';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
-import spacing from '../styles/spacing';
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -30,10 +25,6 @@ function RegisterScreen({ navigation }: Props) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
-  const theme = useTheme<MD3Theme>();
-
   const getBackendErrorMessage = async (response: Response) => {
     try {
       const data = await response.json();
@@ -117,98 +108,73 @@ function RegisterScreen({ navigation }: Props) {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.root, { backgroundColor: theme.colors.background }]}
+      style={styles.safeArea}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text variant="displaySmall" style={{ color: theme.colors.onSurface }}>
-            Registrácia
-          </Text>
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-            Začni s BrewMate ešte dnes.
-          </Text>
+          <Text style={styles.title}>Registrácia</Text>
+          <Text style={styles.subtitle}>Začni s BrewMate ešte dnes.</Text>
         </View>
 
         <View style={styles.form}>
-          <TextInput
-            mode="outlined"
-            label="Email"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            placeholder="name@example.com"
-            value={email}
-            onChangeText={setEmail}
-            style={styles.input}
-            outlineStyle={styles.inputOutline}
-          />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              placeholder="name@example.com"
+              placeholderTextColor="#999999"
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
 
-          <TextInput
-            mode="outlined"
-            label="Heslo"
-            secureTextEntry={!passwordVisible}
-            placeholder="••••••••"
-            value={password}
-            onChangeText={setPassword}
-            style={styles.input}
-            outlineStyle={styles.inputOutline}
-            right={
-              <TextInput.Icon
-                icon={passwordVisible ? 'eye-off' : 'eye'}
-                onPress={() => setPasswordVisible((v) => !v)}
-              />
-            }
-          />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Heslo</Text>
+            <TextInput
+              style={styles.input}
+              secureTextEntry
+              placeholder="••••••••"
+              placeholderTextColor="#999999"
+              value={password}
+              onChangeText={setPassword}
+            />
+          </View>
 
-          <TextInput
-            mode="outlined"
-            label="Potvrď heslo"
-            secureTextEntry={!confirmPasswordVisible}
-            placeholder="••••••••"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            style={styles.input}
-            outlineStyle={styles.inputOutline}
-            right={
-              <TextInput.Icon
-                icon={confirmPasswordVisible ? 'eye-off' : 'eye'}
-                onPress={() => setConfirmPasswordVisible((v) => !v)}
-              />
-            }
-          />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Potvrď heslo</Text>
+            <TextInput
+              style={styles.input}
+              secureTextEntry
+              placeholder="••••••••"
+              placeholderTextColor="#999999"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+            />
+          </View>
 
-          {errorMessage ? (
-            <HelperText type="error" visible>
-              {errorMessage}
-            </HelperText>
-          ) : null}
+          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
-          <Button
-            mode="contained"
+          <Pressable
+            style={[styles.primaryButton, loading && styles.disabledButton]}
             onPress={handleRegister}
-            loading={loading}
             disabled={loading}
-            style={styles.primaryButton}
-            contentStyle={styles.buttonContent}
           >
-            Vytvoriť účet
-          </Button>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.primaryButtonText}>Vytvoriť účet</Text>
+            )}
+          </Pressable>
         </View>
 
         <View style={styles.footer}>
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-            Už máš účet?
-          </Text>
-          <Button
-            mode="text"
-            onPress={() => navigation.navigate('Login')}
-            compact
-          >
-            Prihlásiť sa
-          </Button>
+          <Text style={styles.footerText}>Už máš účet?</Text>
+          <Pressable onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.footerLink}>Prihlásiť sa</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -216,41 +182,90 @@ function RegisterScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  root: {
+  safeArea: {
     flex: 1,
+    backgroundColor: '#FAFAFA',
   },
   container: {
     flexGrow: 1,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xxxl,
+    paddingHorizontal: 24,
+    paddingVertical: 48,
     justifyContent: 'center',
   },
   header: {
-    marginBottom: spacing.xxl,
-    gap: spacing.sm,
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    letterSpacing: -0.5,
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#6B6B6B',
   },
   form: {
-    gap: spacing.md,
-    marginBottom: spacing.sm,
+    marginBottom: 8,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 8,
   },
   input: {
-    backgroundColor: 'transparent',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#1A1A1A',
   },
-  inputOutline: {
-    borderRadius: spacing.md,
+  errorText: {
+    fontSize: 13,
+    color: '#D64545',
+    marginBottom: 12,
   },
   primaryButton: {
-    borderRadius: spacing.md,
-    marginTop: spacing.sm,
+    backgroundColor: '#2C2C2C',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  buttonContent: {
-    paddingVertical: spacing.sm,
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: spacing.xxl,
+    marginTop: 32,
+  },
+  footerText: {
+    fontSize: 15,
+    color: '#6B6B6B',
+    marginRight: 4,
+  },
+  footerLink: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#8B7355',
   },
 });
 

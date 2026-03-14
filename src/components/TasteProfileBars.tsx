@@ -1,9 +1,6 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { ProgressBar, Text, useTheme } from 'react-native-paper';
-import type { MD3Theme } from 'react-native-paper';
+import { StyleSheet, Text, View } from 'react-native';
 import { TasteVector } from '../utils/tasteVector';
-import spacing from '../styles/spacing';
 
 const AXES: Array<{ key: keyof TasteVector; label: string }> = [
   { key: 'acidity', label: 'Kyslosť' },
@@ -19,38 +16,19 @@ type Props = {
 };
 
 function TasteProfileBars({ vector }: Props) {
-  const theme = useTheme<MD3Theme>();
-
   return (
     <View style={styles.wrapper}>
       {AXES.map(({ key, label }) => {
         const value = vector[key] ?? 50;
-        const progress = value / 100;
-
         return (
           <View key={key} style={styles.item}>
             <View style={styles.row}>
-              <Text
-                variant="labelMedium"
-                style={{ color: theme.colors.onSurface }}
-              >
-                {label}
-              </Text>
-              <Text
-                variant="labelMedium"
-                style={{ color: theme.colors.primary }}
-              >
-                {value}
-              </Text>
+              <Text style={styles.label}>{label}</Text>
+              <Text style={styles.value}>{value}</Text>
             </View>
-            <ProgressBar
-              progress={progress}
-              color={theme.colors.primary}
-              style={[
-                styles.bar,
-                { backgroundColor: theme.colors.surfaceVariant },
-              ]}
-            />
+            <View style={styles.bar}>
+              <View style={[styles.barFill, { width: `${value}%` }]} />
+            </View>
           </View>
         );
       })}
@@ -60,18 +38,35 @@ function TasteProfileBars({ vector }: Props) {
 
 const styles = StyleSheet.create({
   wrapper: {
-    gap: spacing.md,
+    gap: 14,
   },
   item: {
-    gap: spacing.xs,
+    gap: 6,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  value: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#8B7355',
+  },
   bar: {
     height: 6,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: '100%',
+    backgroundColor: '#8B7355',
     borderRadius: 999,
   },
 });
