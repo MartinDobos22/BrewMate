@@ -112,63 +112,56 @@ function RegisterScreen({ navigation }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <Text style={styles.title}>Registrácia</Text>
-          <Text style={styles.subtitle}>Začni s BrewMate ešte dnes.</Text>
+        <Text style={styles.title}>Registrácia</Text>
+        <Text style={styles.subtitle}>Začni s BrewMate ešte dnes.</Text>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Email</Text>
+          <TextInput
+            style={styles.input}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            placeholder="name@example.com"
+            value={email}
+            onChangeText={setEmail}
+          />
         </View>
 
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              placeholder="name@example.com"
-              placeholderTextColor="#999999"
-              value={email}
-              onChangeText={setEmail}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Heslo</Text>
-            <TextInput
-              style={styles.input}
-              secureTextEntry
-              placeholder="••••••••"
-              placeholderTextColor="#999999"
-              value={password}
-              onChangeText={setPassword}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Potvrď heslo</Text>
-            <TextInput
-              style={styles.input}
-              secureTextEntry
-              placeholder="••••••••"
-              placeholderTextColor="#999999"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-            />
-          </View>
-
-          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-
-          <Pressable
-            style={[styles.primaryButton, loading && styles.disabledButton]}
-            onPress={handleRegister}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.primaryButtonText}>Vytvoriť účet</Text>
-            )}
-          </Pressable>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Heslo</Text>
+          <TextInput
+            style={styles.input}
+            secureTextEntry
+            placeholder="••••••••"
+            value={password}
+            onChangeText={setPassword}
+          />
         </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Potvrď heslo</Text>
+          <TextInput
+            style={styles.input}
+            secureTextEntry
+            placeholder="••••••••"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+          />
+        </View>
+
+        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
+        <Pressable
+          style={[styles.primaryButton, loading && styles.disabledButton]}
+          onPress={handleRegister}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.primaryButtonText}>Vytvoriť účet</Text>
+          )}
+        </Pressable>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Už máš účet?</Text>
@@ -184,88 +177,70 @@ function RegisterScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F5F1EC',
   },
   container: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 48,
+    padding: 24,
     justifyContent: 'center',
   },
-  header: {
-    marginBottom: 32,
-  },
   title: {
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: '700',
-    color: '#1A1A1A',
-    letterSpacing: -0.5,
-    marginBottom: 6,
+    color: '#FFFFFF',
   },
   subtitle: {
-    fontSize: 15,
-    fontWeight: '400',
-    color: '#6B6B6B',
-  },
-  form: {
-    marginBottom: 8,
+    fontSize: 16,
+    color: '#6B5C52',
+    marginBottom: 24,
   },
   inputGroup: {
     marginBottom: 16,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginBottom: 8,
+    color: '#6B5C52',
+    marginBottom: 6,
   },
   input: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
+    backgroundColor: '#271508',
+    borderRadius: 16,
     paddingHorizontal: 14,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: '#1A1A1A',
+    paddingVertical: 12,
+    color: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#C8BAB0',
   },
   errorText: {
-    fontSize: 13,
-    color: '#D64545',
+    color: '#BA1A1A',
     marginBottom: 12,
   },
   primaryButton: {
-    backgroundColor: '#2C2C2C',
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: '#6B4F3A',
+    paddingVertical: 14,
+    borderRadius: 16,
     alignItems: 'center',
     marginTop: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
   },
   primaryButtonText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
   disabledButton: {
-    opacity: 0.5,
+    opacity: 0.6,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 32,
+    marginTop: 16,
   },
   footerText: {
-    fontSize: 15,
-    color: '#6B6B6B',
-    marginRight: 4,
+    color: '#6B5C52',
+    marginRight: 6,
   },
   footerLink: {
-    fontSize: 15,
+    color: '#6B4F3A',
     fontWeight: '600',
-    color: '#8B7355',
   },
 });
 

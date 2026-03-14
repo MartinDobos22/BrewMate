@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
@@ -134,19 +134,11 @@ function CoffeeJournalScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Coffee Journal</Text>
+        <Text style={styles.title}>Coffee Journal & Insights</Text>
         <Text style={styles.subtitle}>Loguj si každú prípravu a sleduj čo ti chutí najviac.</Text>
 
-        {loading ? (
-          <ActivityIndicator color="#8B7355" style={styles.loader} />
-        ) : null}
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        {/* New brew log form */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Nový brew log</Text>
-
           <View style={styles.methodRow}>
             {METHODS.map((option) => {
               const active = option.value === method;
@@ -171,7 +163,6 @@ function CoffeeJournalScreen() {
               onChangeText={setDoseG}
               keyboardType="number-pad"
               style={styles.input}
-              placeholderTextColor="#999999"
             />
           </View>
 
@@ -182,7 +173,6 @@ function CoffeeJournalScreen() {
               onChangeText={setBrewTimeSeconds}
               keyboardType="number-pad"
               style={styles.input}
-              placeholderTextColor="#999999"
             />
           </View>
 
@@ -193,7 +183,6 @@ function CoffeeJournalScreen() {
               onChangeText={setTasteRating}
               keyboardType="number-pad"
               style={styles.input}
-              placeholderTextColor="#999999"
             />
           </View>
 
@@ -203,50 +192,34 @@ function CoffeeJournalScreen() {
               value={notes}
               onChangeText={setNotes}
               placeholder="napr. viac sladké pri nižšej teplote"
-              placeholderTextColor="#999999"
               style={[styles.input, styles.notesInput]}
               multiline
             />
           </View>
 
           <Pressable style={styles.primaryButton} onPress={onSubmit} disabled={submitting}>
-            <Text style={styles.primaryButtonText}>
-              {submitting ? 'Ukladám...' : 'Uložiť brew log'}
-            </Text>
+            <Text style={styles.primaryButtonText}>{submitting ? 'Ukladám...' : 'Uložiť brew log'}</Text>
           </Pressable>
         </View>
 
-        {/* AI Summary */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>AI sumarizácia (30 dní)</Text>
-          {loading ? (
-            <Text style={styles.muted}>Načítavam...</Text>
-          ) : null}
-          {!loading && insights ? (
-            <Text style={styles.summaryText}>{insights.aiSummary}</Text>
-          ) : null}
-          {recentFavorite ? (
-            <View style={styles.favoritePill}>
-              <Text style={styles.favoriteText}>Favorit: {recentFavorite}</Text>
-            </View>
-          ) : null}
+          {loading ? <Text style={styles.muted}>Načítavam...</Text> : null}
+          {!loading && insights ? <Text style={styles.summary}>{insights.aiSummary}</Text> : null}
+          {recentFavorite ? <Text style={styles.favorite}>Aktuálny favorit: {recentFavorite}</Text> : null}
         </View>
 
-        {/* Insights breakdown */}
         {insights ? (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Čo ti chutí najviac</Text>
-
             <Text style={styles.groupTitle}>Podľa metódy</Text>
             {insights.totals.methods.map((bucket) => (
               <BarRow key={`method-${bucket.label}`} bucket={bucket} max={insights.totals.logsCount} />
             ))}
-
             <Text style={styles.groupTitle}>Podľa pôvodu</Text>
             {insights.totals.origins.map((bucket) => (
               <BarRow key={`origin-${bucket.label}`} bucket={bucket} max={insights.totals.logsCount} />
             ))}
-
             <Text style={styles.groupTitle}>Podľa praženia</Text>
             {insights.totals.roasts.map((bucket) => (
               <BarRow key={`roast-${bucket.label}`} bucket={bucket} max={insights.totals.logsCount} />
@@ -254,28 +227,21 @@ function CoffeeJournalScreen() {
           </View>
         ) : null}
 
-        {/* Recent log entries */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Posledné záznamy</Text>
-          {items.slice(0, 10).map((item, index) => (
-            <View
-              key={item.id}
-              style={[
-                styles.logRow,
-                index === Math.min(items.length, 10) - 1 ? styles.logRowLast : null,
-              ]}
-            >
+          {items.slice(0, 10).map((item) => (
+            <View key={item.id} style={styles.logRow}>
               <Text style={styles.logTitle}>{item.coffeeName}</Text>
               <Text style={styles.logMeta}>
-                {item.method} · {item.doseG}g · {item.brewTimeSeconds}s · ⭐ {item.tasteRating}/5
+                {item.method} • {item.doseG}g • {item.brewTimeSeconds}s • ⭐ {item.tasteRating}/5
               </Text>
               {item.notes ? <Text style={styles.logNote}>{item.notes}</Text> : null}
             </View>
           ))}
-          {!loading && items.length === 0 ? (
-            <Text style={styles.muted}>Zatiaľ bez záznamov.</Text>
-          ) : null}
+          {!loading && items.length === 0 ? <Text style={styles.muted}>Zatiaľ bez záznamov.</Text> : null}
         </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -288,7 +254,7 @@ function BarRow({ bucket, max }: { bucket: InsightBucket; max: number }) {
     <View style={styles.barRow}>
       <View style={styles.barTextWrap}>
         <Text style={styles.barLabel}>{bucket.label}</Text>
-        <Text style={styles.barMeta}>⭐ {bucket.avgRating.toFixed(1)} · {bucket.count}x</Text>
+        <Text style={styles.barMeta}>⭐ {bucket.avgRating.toFixed(1)} • {bucket.count}x</Text>
       </View>
       <View style={styles.barTrack}>
         <View style={[styles.barFill, { width }]} />
@@ -298,202 +264,63 @@ function BarRow({ bucket, max }: { bucket: InsightBucket; max: number }) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#FAFAFA',
-  },
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 48,
-    gap: 12,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    letterSpacing: -0.3,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6B6B6B',
-    lineHeight: 20,
-    marginBottom: 4,
-  },
-  loader: {
-    marginVertical: 4,
-  },
-  error: {
-    color: '#D64545',
-    fontWeight: '600',
-    fontSize: 13,
-  },
+  safeArea: { flex: 1 },
+  container: { padding: 20, gap: 14 },
+  title: { fontSize: 28, fontWeight: '700', color: '#271508' },
+  subtitle: { fontSize: 14, color: '#6B5C52' },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    marginBottom: 14,
-    color: '#1A1A1A',
-  },
-  methodRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
-  },
-  methodPill: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  methodPillActive: {
-    backgroundColor: '#2C2C2C',
-  },
-  methodPillText: {
-    color: '#6B6B6B',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  methodPillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  inputRow: {
-    marginBottom: 12,
-  },
-  inputLabel: {
-    color: '#6B6B6B',
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: '#1A1A1A',
-    fontSize: 14,
-  },
-  notesInput: {
-    minHeight: 72,
-    textAlignVertical: 'top',
-  },
-  primaryButton: {
-    backgroundColor: '#2C2C2C',
-    marginTop: 4,
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  summaryText: {
-    color: '#1A1A1A',
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  favoritePill: {
-    marginTop: 12,
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFF8F0',
     borderWidth: 1,
-    borderColor: '#C08B3E',
+    borderColor: '#DDD3C9',
+    borderRadius: 16,
+    padding: 14,
+  },
+  cardTitle: { fontSize: 17, fontWeight: '700', marginBottom: 8, color: '#271508' },
+  methodRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  methodPill: {
+    borderWidth: 1,
+    borderColor: '#DDD3C9',
     borderRadius: 999,
-    paddingVertical: 5,
-    paddingHorizontal: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
   },
-  favoriteText: {
-    color: '#C08B3E',
-    fontWeight: '600',
-    fontSize: 13,
+  methodPillActive: { backgroundColor: '#6B4F3A', borderColor: '#6B4F3A' },
+  methodPillText: { color: '#6B5C52', fontSize: 12 },
+  methodPillTextActive: { color: '#FFFFFF' },
+  inputRow: { marginBottom: 8 },
+  inputLabel: { color: '#6B5C52', fontSize: 13, marginBottom: 4 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#DDD3C9',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    color: '#271508',
   },
-  groupTitle: {
-    marginTop: 12,
-    marginBottom: 8,
-    fontWeight: '600',
-    fontSize: 12,
-    color: '#6B6B6B',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  barRow: {
-    marginBottom: 10,
-  },
-  barTextWrap: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 5,
-  },
-  barLabel: {
-    color: '#1A1A1A',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  barMeta: {
-    color: '#6B6B6B',
-    fontSize: 12,
-  },
-  barTrack: {
-    height: 6,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: 6,
-    backgroundColor: '#8B7355',
-    borderRadius: 999,
-  },
-  logRow: {
+  notesInput: { minHeight: 56, textAlignVertical: 'top' },
+  primaryButton: {
+    backgroundColor: '#6B4F3A',
+    marginTop: 8,
+    borderRadius: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    alignItems: 'center',
   },
-  logRowLast: {
-    borderBottomWidth: 0,
-    paddingBottom: 0,
-  },
-  logTitle: {
-    color: '#1A1A1A',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  logMeta: {
-    color: '#6B6B6B',
-    fontSize: 12,
-    marginTop: 3,
-  },
-  logNote: {
-    color: '#6B6B6B',
-    marginTop: 4,
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  muted: {
-    color: '#6B6B6B',
-    fontSize: 14,
-  },
+  primaryButtonText: { color: '#FFFFFF', fontWeight: '600' },
+  summary: { color: '#271508', lineHeight: 20 },
+  favorite: { marginTop: 8, color: '#6B4F3A', fontWeight: '600' },
+  groupTitle: { marginTop: 10, marginBottom: 4, fontWeight: '600', color: '#6B5C52' },
+  barRow: { marginBottom: 8 },
+  barTextWrap: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  barLabel: { color: '#271508', fontSize: 13 },
+  barMeta: { color: '#6B5C52', fontSize: 12 },
+  barTrack: { height: 8, backgroundColor: '#DDD3C9', borderRadius: 6 },
+  barFill: { height: 8, backgroundColor: '#6B4F3A', borderRadius: 6 },
+  logRow: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#EDE7DF' },
+  logTitle: { color: '#271508', fontWeight: '600' },
+  logMeta: { color: '#6B5C52', fontSize: 12, marginTop: 2 },
+  logNote: { color: '#6B5C52', marginTop: 4, fontSize: 12 },
+  muted: { color: '#6B5C52' },
+  error: { color: '#BA1A1A', fontWeight: '600' },
 });
 
 export default CoffeeJournalScreen;

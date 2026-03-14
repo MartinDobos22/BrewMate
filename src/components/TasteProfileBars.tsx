@@ -38,7 +38,7 @@ function TasteProfileBars({ vector }: Props) {
 
 const styles = StyleSheet.create({
   wrapper: {
-    gap: 14,
+    gap: 12,
   },
   item: {
     gap: 6,
@@ -46,27 +46,26 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
   },
   label: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: '#3E2F25',
   },
   value: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#8B7355',
+    color: '#6B4F3A',
   },
   bar: {
-    height: 6,
-    backgroundColor: '#F0F0F0',
+    height: 8,
+    backgroundColor: '#E3DED6',
     borderRadius: 999,
     overflow: 'hidden',
   },
   barFill: {
     height: '100%',
-    backgroundColor: '#8B7355',
+    backgroundColor: '#6B4F3A',
     borderRadius: 999,
   },
 });
