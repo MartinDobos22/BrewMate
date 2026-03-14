@@ -8,11 +8,11 @@ const BASE = 8;
 export const spacing = {
   /** 4dp — micro spacing */
   xs: BASE / 2,
-  /** 8dp — small gaps */
+  /** 8dp — small gaps, bento grid gap */
   sm: BASE,
   /** 12dp — tile gutters */
   md: BASE * 1.5,
-  /** 16dp — standard padding */
+  /** 16dp — standard padding, bento padding */
   lg: BASE * 2,
   /** 24dp — section spacing */
   xl: BASE * 3,
@@ -22,17 +22,19 @@ export const spacing = {
   xxxl: BASE * 6,
 } as const;
 
-/** Card/tile border radius — 16dp globally */
+/** Shape tokens matching MD3 design spec */
 export const radii = {
-  /** 8dp — small elements like chips */
+  /** 4dp — extra small (badges) */
+  xs: 4,
+  /** 8dp — small elements like chips, badge */
   sm: BASE,
-  /** 12dp — buttons, inputs */
+  /** 12dp — buttons, inputs, icons */
   md: BASE * 1.5,
-  /** 16dp — cards, tiles (default) */
+  /** 16dp — medium containers */
   lg: BASE * 2,
-  /** 24dp — large containers */
-  xl: BASE * 3,
-  /** Full round */
+  /** 28dp — cards, tiles (default) */
+  xl: 28,
+  /** Full round (pills, avatars) */
   full: 999,
 } as const;
 

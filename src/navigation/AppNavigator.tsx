@@ -26,6 +26,7 @@ import type {
   AuthStackParamList,
   BottomTabParamList,
   HomeStackParamList,
+  TestStackParamList,
   InventoryStackParamList,
   ProfileStackParamList,
   RecipesStackParamList,
@@ -34,6 +35,7 @@ import spacing from '../styles/spacing';
 
 // Stack navigators
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
+const TestStack = createNativeStackNavigator<TestStackParamList>();
 const InventoryStack = createNativeStackNavigator<InventoryStackParamList>();
 const RecipesStack = createNativeStackNavigator<RecipesStackParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
@@ -47,7 +49,7 @@ function useScreenOptions() {
 
   return {
     headerStyle: {
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.colors.background,
       elevation: 0,
       shadowOpacity: 0,
     },
@@ -96,6 +98,25 @@ function HomeNavigator() {
   );
 }
 
+function TestNavigator() {
+  const screenOptions = useScreenOptions();
+
+  return (
+    <TestStack.Navigator screenOptions={screenOptions}>
+      <TestStack.Screen
+        name="CoffeeQuestionnaire"
+        component={CoffeeQuestionnaireScreen}
+        options={{ title: 'Chuťový test' }}
+      />
+      <TestStack.Screen
+        name="CoffeeQuestionnaireResult"
+        component={CoffeeQuestionnaireResultScreen}
+        options={{ title: 'Výsledok testu' }}
+      />
+    </TestStack.Navigator>
+  );
+}
+
 function InventoryNavigator() {
   const screenOptions = useScreenOptions();
 
@@ -104,7 +125,7 @@ function InventoryNavigator() {
       <InventoryStack.Screen
         name="CoffeeInventory"
         component={CoffeeInventoryScreen}
-        options={{ title: 'Inventár' }}
+        options={{ title: 'Zásobník' }}
       />
     </InventoryStack.Navigator>
   );
@@ -161,20 +182,24 @@ function MainNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: theme.colors.surface,
+          backgroundColor: 'rgba(255,248,245,0.94)',
           borderTopColor: theme.colors.outlineVariant,
           borderTopWidth: StyleSheet.hairlineWidth,
           height: 80,
           paddingBottom: spacing.sm,
-          paddingTop: spacing.xs,
+          paddingTop: 10,
           elevation: 0,
         },
-        tabBarActiveTintColor: theme.colors.primary,
+        tabBarActiveTintColor: theme.colors.onSurface,
         tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '500',
-          marginTop: spacing.xs / 2,
+          marginTop: 4,
+          letterSpacing: 0.3,
+        },
+        tabBarItemStyle: {
+          gap: 4,
         },
       }}
     >
@@ -182,9 +207,19 @@ function MainNavigator() {
         name="HomeTab"
         component={HomeNavigator}
         options={{
-          tabBarLabel: 'Domov',
+          tabBarLabel: 'Prehľad',
           tabBarIcon: ({ color, size }) => (
             <Icon name="home-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <BottomTab.Screen
+        name="TestTab"
+        component={TestNavigator}
+        options={{
+          tabBarLabel: 'Test',
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="star-outline" size={size} color={color} />
           ),
         }}
       />
@@ -192,7 +227,7 @@ function MainNavigator() {
         name="InventoryTab"
         component={InventoryNavigator}
         options={{
-          tabBarLabel: 'Inventár',
+          tabBarLabel: 'Zásobník',
           tabBarIcon: ({ color, size }) => (
             <Icon name="package-variant" size={size} color={color} />
           ),
@@ -204,7 +239,7 @@ function MainNavigator() {
         options={{
           tabBarLabel: 'Recepty',
           tabBarIcon: ({ color, size }) => (
-            <Icon name="coffee-outline" size={size} color={color} />
+            <Icon name="file-document-outline" size={size} color={color} />
           ),
         }}
       />
