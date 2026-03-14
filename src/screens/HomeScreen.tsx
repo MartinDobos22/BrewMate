@@ -1,20 +1,36 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {RootStackParamList} from '../navigation/types';
-import {apiFetch, DEFAULT_API_HOST} from '../utils/api';
-import {useAuth} from '../context/AuthContext';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { StyleSheet, View, ScrollView, FlatList } from 'react-native';
+import {
+  Text,
+  Card,
+  Surface,
+  Button,
+  ActivityIndicator,
+  useTheme,
+  Appbar,
+  Divider,
+} from 'react-native-paper';
+import type { MD3Theme } from 'react-native-paper';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { HomeStackParamList } from '../navigation/types';
+import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 import TasteProfileBars from '../components/TasteProfileBars';
-import {DEFAULT_TASTE_VECTOR, normalizeTasteVector, TasteVector,} from '../utils/tasteVector';
+import TileCard from '../components/TileCard';
+import {
+  DEFAULT_TASTE_VECTOR,
+  normalizeTasteVector,
+  TasteVector,
+} from '../utils/tasteVector';
 import {
   CoffeeProfilePayload,
   loadLatestCoffeeProfile,
   loadLatestQuestionnaireResult,
   QuestionnaireResultPayload,
 } from '../utils/localSave';
+import spacing from '../styles/spacing';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+type Props = NativeStackScreenProps<HomeStackParamList, 'Home'>;
 
 type InventoryStatus = 'active' | 'empty' | 'archived';
 
@@ -41,8 +57,16 @@ type RecipeItem = {
   createdAt: string;
 };
 
+type MetricTile = {
+  key: string;
+  value: string;
+  label: string;
+};
+
 function HomeScreen({ navigation }: Props) {
   const { clearSession } = useAuth();
+  const theme = useTheme<MD3Theme>();
+
   const [userProfile, setUserProfile] = useState<QuestionnaireResultPayload['profile'] | null>(
     null,
   );
@@ -57,6 +81,7 @@ function HomeScreen({ navigation }: Props) {
     setUserProfile(latestQuestionnaire?.payload?.profile ?? null);
     setCoffeeProfile(latestCoffee?.payload?.coffeeProfile ?? null);
   }, []);
+
   const [inventoryItems, setInventoryItems] = useState<HomeInventoryItem[]>([]);
   const [recipes, setRecipes] = useState<RecipeItem[]>([]);
   const [dashboardState, setDashboardState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -66,45 +91,8 @@ function HomeScreen({ navigation }: Props) {
     navigation.navigate('CoffeeScanner');
   };
 
-  const handleQuestionnairePress = () => {
-    navigation.navigate('CoffeeQuestionnaire');
-  };
-
   const handlePhotoRecipePress = () => {
     navigation.navigate('CoffeePhotoRecipe');
-  };
-
-  const handleInventoryPress = () => {
-    navigation.navigate('CoffeeInventory');
-  };
-
-  const handleSavedRecipesPress = () => {
-    navigation.navigate('CoffeeRecipesSaved');
-  };
-
-  const handleLogout = async () => {
-    try {
-      const response = await apiFetch(
-        `${DEFAULT_API_HOST}/auth/logout`,
-        {
-          method: 'POST',
-          credentials: 'include',
-        },
-        {
-          feature: 'Auth',
-          action: 'logout',
-        },
-      );
-
-      if (!response.ok) {
-        console.warn('[Auth] Logout failed.', response.status);
-        return;
-      }
-
-      await clearSession();
-    } catch (error) {
-      console.warn('[Auth] Logout failed.', error);
-    }
   };
 
   useEffect(() => {
@@ -224,352 +212,259 @@ function HomeScreen({ navigation }: Props) {
     return sorted.slice(0, 3);
   }, [recipes]);
 
+  const metricTiles: MetricTile[] = useMemo(() => [
+    { key: 'active', value: String(inventoryTotals.active.length), label: 'Aktívne kávy' },
+    { key: 'grams', value: `${inventoryTotals.gramsAvailable} g`, label: 'Aktuálne gramy' },
+    { key: 'recipes', value: String(recipes.length), label: 'Uložené recepty' },
+    { key: 'lowstock', value: String(inventoryTotals.lowStock.length), label: 'Takmer minuté' },
+  ], [inventoryTotals, recipes]);
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.container}>
+    <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
+      <Appbar.Header
+        style={{ backgroundColor: theme.colors.background }}
+        elevated={false}
+      >
+        <Appbar.Content title="BrewMate" titleStyle={{ color: theme.colors.onSurface }} />
+      </Appbar.Header>
 
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>BrewMate</Text>
-        </View>
-
+      <ScrollView
+        style={[styles.scroll, { backgroundColor: theme.colors.background }]}
+        contentContainerStyle={styles.content}
+      >
         {/* Quick Overview Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Rýchly prehľad</Text>
-          {dashboardState === 'loading' ? (
-            <ActivityIndicator color="#8B7355" style={styles.loader} />
-          ) : null}
-          {dashboardState === 'error' ? (
-            <Text style={styles.errorText}>{dashboardError}</Text>
-          ) : null}
+        <Card mode="elevated" elevation={1} style={[styles.sectionCard, { backgroundColor: theme.colors.surface }]}>
+          <Card.Content style={styles.cardContent}>
+            <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+              Rýchly prehľad
+            </Text>
 
-          <View style={styles.metricsWrap}>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricValue}>{inventoryTotals.active.length}</Text>
-              <Text style={styles.metricLabel}>Aktívne kávy</Text>
-            </View>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricValue}>{inventoryTotals.gramsAvailable} g</Text>
-              <Text style={styles.metricLabel}>Aktuálne gramy</Text>
-            </View>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricValue}>{recipes.length}</Text>
-              <Text style={styles.metricLabel}>Uložené recepty</Text>
-            </View>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricValue}>{inventoryTotals.lowStock.length}</Text>
-              <Text style={styles.metricLabel}>Takmer minuté</Text>
-            </View>
-          </View>
+            {dashboardState === 'loading' ? (
+              <ActivityIndicator
+                animating
+                color={theme.colors.primary}
+                style={styles.loader}
+              />
+            ) : null}
 
-          <Text style={styles.summaryText}>
-            Inventár: {inventoryTotals.active.length} aktívnych • {inventoryTotals.empty.length} dopitých
-            {' '}• {inventoryTotals.archived.length} archivovaných.
-          </Text>
-        </View>
+            {dashboardState === 'error' ? (
+              <Text variant="bodySmall" style={[styles.errorText, { color: theme.colors.error }]}>
+                {dashboardError}
+              </Text>
+            ) : null}
+
+            <FlatList
+              data={metricTiles}
+              keyExtractor={(item) => item.key}
+              numColumns={2}
+              scrollEnabled={false}
+              columnWrapperStyle={styles.tileRow}
+              contentContainerStyle={styles.tileGrid}
+              renderItem={({ item }) => (
+                <View style={styles.tileWrapper}>
+                  <Card
+                    mode="contained"
+                    style={[styles.metricTile, { backgroundColor: theme.colors.surfaceVariant }]}
+                  >
+                    <Card.Content style={styles.metricContent}>
+                      <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
+                        {item.value}
+                      </Text>
+                      <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                        {item.label}
+                      </Text>
+                    </Card.Content>
+                  </Card>
+                </View>
+              )}
+            />
+
+            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+              Inventár: {inventoryTotals.active.length} aktívnych • {inventoryTotals.empty.length} dopitých
+              {' '}• {inventoryTotals.archived.length} archivovaných.
+            </Text>
+          </Card.Content>
+        </Card>
 
         {/* Active Coffees Section */}
-        <View style={styles.section}>
-          <View style={styles.inlineHeader}>
-            <Text style={styles.sectionTitle}>Aktuálne kávy</Text>
-            <Pressable onPress={handleInventoryPress}>
-              <Text style={styles.link}>Celý inventár</Text>
-            </Pressable>
-          </View>
-          {activeCoffeePreview.length === 0 ? (
-            <Text style={styles.placeholder}>Zatiaľ nemáš aktívne kávy. Pridaj prvý balík do inventára.</Text>
-          ) : (
-            activeCoffeePreview.map((item) => {
-              const name = item.correctedText || item.rawText || 'Neznáma káva';
-              const remaining = item.remainingG === null ? 'Neznáme' : `${item.remainingG} g`;
-              return (
-                <View key={item.id} style={styles.previewCard}>
-                  <Text style={styles.previewTitle}>{name}</Text>
-                  <Text style={styles.previewMeta}>Zostáva: {remaining}</Text>
-                </View>
-              );
-            })
-          )}
-        </View>
+        <Card mode="elevated" elevation={1} style={[styles.sectionCard, { backgroundColor: theme.colors.surface }]}>
+          <Card.Content style={styles.cardContent}>
+            <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+              Aktuálne kávy
+            </Text>
+
+            {activeCoffeePreview.length === 0 ? (
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                Zatiaľ nemáš aktívne kávy. Pridaj prvý balík do inventára.
+              </Text>
+            ) : (
+              activeCoffeePreview.map((item) => {
+                const name = item.correctedText || item.rawText || 'Neznáma káva';
+                const remaining = item.remainingG === null ? 'Neznáme' : `${item.remainingG} g`;
+                return (
+                  <Card
+                    key={item.id}
+                    mode="contained"
+                    style={[styles.previewCard, { backgroundColor: theme.colors.surfaceVariant }]}
+                  >
+                    <Card.Content style={styles.previewContent}>
+                      <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
+                        {name}
+                      </Text>
+                      <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                        Zostáva: {remaining}
+                      </Text>
+                    </Card.Content>
+                  </Card>
+                );
+              })
+            )}
+          </Card.Content>
+        </Card>
 
         {/* Recipes Section */}
-        <View style={styles.section}>
-          <View style={styles.inlineHeader}>
-            <Text style={styles.sectionTitle}>Recepty na rýchly štart</Text>
-            <Pressable onPress={handleSavedRecipesPress}>
-              <Text style={styles.link}>Všetky recepty</Text>
-            </Pressable>
-          </View>
-          {recipeHighlights.length === 0 ? (
-            <Text style={styles.placeholder}>Zatiaľ nemáš uložené recepty. Vytvor ich cez Foto recept.</Text>
-          ) : (
-            recipeHighlights.map((recipe) => (
-              <View key={recipe.id} style={styles.previewCard}>
-                <Text style={styles.previewTitle}>{recipe.title || 'Recipe'}</Text>
-                <Text style={styles.previewMeta}>{recipe.method} • Predikcia chuti {recipe.likeScore}%</Text>
-              </View>
-            ))
-          )}
-        </View>
+        <Card mode="elevated" elevation={1} style={[styles.sectionCard, { backgroundColor: theme.colors.surface }]}>
+          <Card.Content style={styles.cardContent}>
+            <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+              Recepty na rýchly štart
+            </Text>
+
+            {recipeHighlights.length === 0 ? (
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                Zatiaľ nemáš uložené recepty. Vytvor ich cez Foto recept.
+              </Text>
+            ) : (
+              recipeHighlights.map((recipe) => (
+                <Card
+                  key={recipe.id}
+                  mode="contained"
+                  style={[styles.previewCard, { backgroundColor: theme.colors.surfaceVariant }]}
+                >
+                  <Card.Content style={styles.previewContent}>
+                    <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
+                      {recipe.title || 'Recipe'}
+                    </Text>
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                      {recipe.method} • Predikcia chuti {recipe.likeScore}%
+                    </Text>
+                  </Card.Content>
+                </Card>
+              ))
+            )}
+          </Card.Content>
+        </Card>
 
         {/* Taste Profile Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tvoj chuťový profil</Text>
-          {!userProfile ? (
-            <Text style={styles.placeholder}>
-              Vyplňte dotazník, aby sme nastavili váš chuťový profil.
+        <Card mode="elevated" elevation={1} style={[styles.sectionCard, { backgroundColor: theme.colors.surface }]}>
+          <Card.Content style={styles.cardContent}>
+            <Text variant="titleMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+              Tvoj chuťový profil
             </Text>
-          ) : null}
-          <TasteProfileBars vector={userVector} />
-          {matchScore !== null ? (
-            <Text style={styles.matchScore}>Zhoda: {matchScore}%</Text>
-          ) : null}
-        </View>
+
+            {!userProfile ? (
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                Vyplňte dotazník, aby sme nastavili váš chuťový profil.
+              </Text>
+            ) : null}
+
+            <TasteProfileBars vector={userVector} />
+
+            {matchScore !== null ? (
+              <Text variant="titleSmall" style={[styles.matchScore, { color: theme.colors.primary }]}>
+                Zhoda: {matchScore}%
+              </Text>
+            ) : null}
+          </Card.Content>
+        </Card>
 
         {/* Actions Section */}
         <View style={styles.actionsSection}>
-          <Pressable style={styles.buttonPrimary} onPress={handleScanPress}>
-            <Text style={styles.buttonPrimaryText}>Scan Coffee</Text>
-          </Pressable>
+          <Button
+            mode="contained"
+            onPress={handleScanPress}
+            style={styles.actionButton}
+            contentStyle={styles.actionButtonContent}
+          >
+            Scan Coffee
+          </Button>
 
-          <View style={styles.secondaryButtonsRow}>
-            <Pressable style={[styles.buttonSecondary, styles.buttonSecondaryFlex]} onPress={handlePhotoRecipePress}>
-              <Text style={styles.buttonSecondaryText}>Foto recept</Text>
-            </Pressable>
-            <Pressable style={[styles.buttonSecondary, styles.buttonSecondaryFlex]} onPress={handleQuestionnairePress}>
-              <Text style={styles.buttonSecondaryText}>Chuťový dotazník</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.secondaryButtonsRow}>
-            <Pressable style={[styles.buttonSecondary, styles.buttonSecondaryFlex]} onPress={handleInventoryPress}>
-              <Text style={styles.buttonSecondaryText}>Coffee inventár</Text>
-            </Pressable>
-            <Pressable style={[styles.buttonSecondary, styles.buttonSecondaryFlex]} onPress={handleSavedRecipesPress}>
-              <Text style={styles.buttonSecondaryText}>Saved coffee recipes</Text>
-            </Pressable>
-          </View>
-
-          <Pressable style={styles.buttonLogout} onPress={handleLogout}>
-            <Text style={styles.buttonLogoutText}>Odhlásiť sa</Text>
-          </Pressable>
+          <Button
+            mode="contained-tonal"
+            onPress={handlePhotoRecipePress}
+            style={styles.actionButton}
+            contentStyle={styles.actionButtonContent}
+          >
+            Foto recept
+          </Button>
         </View>
-
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  root: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
   },
-  scrollView: {
+  scroll: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
   },
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 48,
-    backgroundColor: '#FAFAFA',
+  content: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
+    gap: spacing.md,
   },
-
-  // Header
-  header: {
-    marginBottom: 24,
+  sectionCard: {
+    borderRadius: spacing.lg,
   },
-  title: {
-    fontSize: 34,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    letterSpacing: -0.5,
+  cardContent: {
+    gap: spacing.md,
+    paddingVertical: spacing.lg,
   },
-
-  // Section card
-  section: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-
-  // Inline header (title + link row)
-  inlineHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-
-  // Section title — no bottom margin when inside inlineHeader
   sectionTitle: {
-    fontSize: 17,
     fontWeight: '600',
-    color: '#1A1A1A',
-    marginBottom: 12,
   },
-
-  // Link text ("Celý inventár", "Všetky recepty")
-  link: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#8B7355',
-  },
-
-  // Loading indicator spacing
   loader: {
-    marginVertical: 8,
     alignSelf: 'flex-start',
   },
-
-  // Error text
   errorText: {
-    fontSize: 13,
-    color: '#D64545',
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: spacing.xs,
   },
-
-  // Metrics grid
-  metricsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 4,
-    marginBottom: 16,
+  tileGrid: {
+    gap: spacing.sm,
   },
-  metricCard: {
+  tileRow: {
+    gap: spacing.sm,
+  },
+  tileWrapper: {
     flex: 1,
-    minWidth: '47%',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 16,
-    padding: 16,
   },
-  metricValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1A1A1A',
+  metricTile: {
+    borderRadius: spacing.lg,
   },
-  metricLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#6B6B6B',
-    marginTop: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  metricContent: {
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
   },
-
-  // Summary text below metrics
-  summaryText: {
-    fontSize: 13,
-    color: '#6B6B6B',
-    lineHeight: 18,
-  },
-
-  // Placeholder text (empty states)
-  placeholder: {
-    fontSize: 14,
-    color: '#999999',
-    lineHeight: 20,
-    marginBottom: 4,
-  },
-
-  // Preview cards (inventory + recipes)
   previewCard: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
+    borderRadius: spacing.md,
   },
-  previewTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1A1A1A',
+  previewContent: {
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
   },
-  previewMeta: {
-    fontSize: 12,
-    color: '#6B6B6B',
-    marginTop: 3,
-    lineHeight: 16,
-  },
-
-  // Match score
   matchScore: {
-    marginTop: 12,
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#8B7355',
+    marginTop: spacing.sm,
   },
-
-  // Actions section
   actionsSection: {
-    marginTop: 4,
-    gap: 10,
+    gap: spacing.sm,
+    marginTop: spacing.xs,
   },
-
-  // Primary button (Scan Coffee)
-  buttonPrimary: {
-    backgroundColor: '#2C2C2C',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
+  actionButton: {
+    borderRadius: spacing.md,
   },
-  buttonPrimaryText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-
-  // Secondary buttons row
-  secondaryButtonsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  buttonSecondaryFlex: {
-    flex: 1,
-  },
-
-  // Secondary button
-  buttonSecondary: {
-    backgroundColor: '#F5F5F5',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  buttonSecondaryText: {
-    color: '#2C2C2C',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-
-  // Logout button
-  buttonLogout: {
-    backgroundColor: 'transparent',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  buttonLogoutText: {
-    color: '#D64545',
-    fontSize: 15,
-    fontWeight: '600',
+  actionButtonContent: {
+    paddingVertical: spacing.sm,
   },
 });
 
