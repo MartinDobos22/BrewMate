@@ -1,9 +1,8 @@
 import { CoffeeProfile, QuestionnaireProfile } from '../utils/tasteVector';
 
-// Bottom tab param lists — 5 tabs
+// Bottom tab param lists
 export type BottomTabParamList = {
   HomeTab: undefined;
-  TestTab: undefined;
   InventoryTab: undefined;
   RecipesTab: undefined;
   ProfileTab: undefined;
@@ -53,18 +52,6 @@ export type HomeStackParamList = {
   };
 };
 
-// Test (Questionnaire) stack
-export type TestStackParamList = {
-  CoffeeQuestionnaire: undefined;
-  CoffeeQuestionnaireResult: {
-    answers: Array<{
-      question: string;
-      answer: string;
-    }>;
-    profile: QuestionnaireProfile;
-  };
-};
-
 // Inventory stack
 export type InventoryStackParamList = {
   CoffeeInventory: undefined;
@@ -75,7 +62,7 @@ export type RecipesStackParamList = {
   CoffeeRecipesSaved: undefined;
 };
 
-// Profile stack (journal, settings)
+// Profile stack (questionnaire, journal, taste profile)
 export type ProfileStackParamList = {
   ProfileHome: undefined;
   CoffeeQuestionnaire: undefined;
