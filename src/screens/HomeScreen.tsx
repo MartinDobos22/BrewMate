@@ -52,6 +52,14 @@ type RecipeItem = {
   createdAt: string;
 };
 
+function IconBadge({icon}: {icon: string}) {
+  return (
+    <View style={styles.iconBadge}>
+      <Text style={styles.iconEmoji}>{icon}</Text>
+    </View>
+  );
+}
+
 function HomeScreen({navigation}: Props) {
   const {clearSession} = useAuth();
   const [userProfile, setUserProfile] = useState<QuestionnaireResultPayload['profile'] | null>(
@@ -220,7 +228,7 @@ function HomeScreen({navigation}: Props) {
     };
   }, [inventoryItems]);
 
-  const activeCoffeePreview = useMemo(() => inventoryTotals.active.slice(0, 4), [inventoryTotals.active]);
+  const activeCoffeePreview = useMemo(() => inventoryTotals.active.slice(0, 3), [inventoryTotals.active]);
 
   const recipeHighlights = useMemo(() => {
     const sorted = [...recipes].sort(
@@ -229,70 +237,99 @@ function HomeScreen({navigation}: Props) {
     return sorted.slice(0, 3);
   }, [recipes]);
 
-  const metricCards = [
-    {label: 'Aktívne kávy', value: String(inventoryTotals.active.length), tone: 'primary'},
-    {label: 'Dostupné gramy', value: `${inventoryTotals.gramsAvailable} g`, tone: 'secondary'},
-    {label: 'Uložené recepty', value: String(recipes.length), tone: 'tertiary'},
-    {label: 'Nízke zásoby', value: String(inventoryTotals.lowStock.length), tone: 'warning'},
-  ] as const;
+  const recentActivity = useMemo(() => {
+    const recentInventory = inventoryTotals.active
+      .slice(0, 2)
+      .map(item => ({
+        id: `inventory-${item.id}`,
+        icon: '🫘',
+        title: item.correctedText || item.rawText || 'Pridaná káva',
+        meta:
+          typeof item.remainingG === 'number'
+            ? `Inventár • ${item.remainingG} g zostáva`
+            : 'Inventár • aktualizované',
+        createdAt: item.createdAt,
+      }));
+
+    const recentRecipe = recipeHighlights.slice(0, 2).map(recipe => ({
+      id: `recipe-${recipe.id}`,
+      icon: '📘',
+      title: recipe.title || 'Nový recept',
+      meta: `${recipe.method} • Predikcia ${recipe.likeScore}%`,
+      createdAt: recipe.createdAt,
+    }));
+
+    return [...recentInventory, ...recentRecipe]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 3);
+  }, [inventoryTotals.active, recipeHighlights]);
+
+  const quickActions = [
+    {key: 'inventory', label: 'Pridať zásobu', icon: '🫘', onPress: handleInventoryPress},
+    {key: 'brew', label: 'Začať brew', icon: '⏱️', onPress: handleScanPress},
+    {key: 'recipes', label: 'Obľúbené recepty', icon: '☕', onPress: handleSavedRecipesPress},
+    {key: 'log', label: 'Rýchly záznam', icon: '📝', onPress: handlePhotoRecipePress},
+  ];
+
+  const inventoryAlert = inventoryTotals.lowStock[0];
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.container}>
         <View style={styles.heroCard}>
+          <View style={styles.heroDecorTop}>
+            <Text style={styles.heroDecorLeaf}>🍃</Text>
+            <Text style={styles.heroDecorCherry}>🍒</Text>
+          </View>
           <Text style={styles.overline}>BrewMate Home</Text>
-          <Text style={styles.title}>Tvoj coffee dashboard</Text>
-          <Text style={styles.heroSubtitle}>
-            Material 3 štýl: čisté karty, prehľadná typografia a dôležité dáta na prvý pohľad.
-          </Text>
+          <Text style={styles.title}>Vitaj v BrewMate</Text>
+          <Text style={styles.heroSubtitle}>Tvoja káva, zásoby a recepty na jednom mieste.</Text>
 
-          <View style={styles.heroActionsRow}>
-            <Pressable style={[styles.chip, styles.primaryChip]} onPress={handleScanPress}>
-              <Text style={styles.primaryChipLabel}>Scan coffee</Text>
-            </Pressable>
-            <Pressable style={styles.chip} onPress={handlePhotoRecipePress}>
-              <Text style={styles.chipLabel}>Foto recept</Text>
-            </Pressable>
+          <View style={styles.heroBadgeRow}>
+            <IconBadge icon="☕" />
+            <IconBadge icon="🫘" />
+            <IconBadge icon="🍃" />
+            <IconBadge icon="🍒" />
           </View>
         </View>
 
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Rýchly prehľad</Text>
+            <Text style={styles.sectionTitle}>Rýchle akcie</Text>
             {dashboardState === 'loading' ? <ActivityIndicator color="#5B4332" /> : null}
           </View>
           {dashboardState === 'error' ? <Text style={styles.errorText}>{dashboardError}</Text> : null}
-
-          <View style={styles.metricsGrid}>
-            {metricCards.map(metric => (
-              <View
-                key={metric.label}
-                style={[
-                  styles.metricCard,
-                  metric.tone === 'primary' && styles.metricCardPrimary,
-                  metric.tone === 'secondary' && styles.metricCardSecondary,
-                  metric.tone === 'tertiary' && styles.metricCardTertiary,
-                  metric.tone === 'warning' && styles.metricCardWarning,
-                ]}>
-                <Text style={styles.metricValue}>{metric.value}</Text>
-                <Text style={styles.metricLabel}>{metric.label}</Text>
-              </View>
+          <View style={styles.quickGrid}>
+            {quickActions.map(action => (
+              <Pressable key={action.key} style={styles.quickCard} onPress={action.onPress}>
+                <Text style={styles.quickIcon}>{action.icon}</Text>
+                <Text style={styles.quickLabel}>{action.label}</Text>
+              </Pressable>
             ))}
           </View>
-
-          <Text style={styles.summaryText}>
-            Inventár: {inventoryTotals.active.length} aktívnych • {inventoryTotals.empty.length} dopitých •{' '}
-            {inventoryTotals.archived.length} archivovaných
-          </Text>
         </View>
 
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Aktuálne kávy</Text>
+            <Text style={styles.sectionTitle}>Stav inventára</Text>
             <Pressable onPress={handleInventoryPress}>
-              <Text style={styles.textButton}>Celý inventár</Text>
+              <Text style={styles.textButton}>Doplniť inventár</Text>
             </Pressable>
           </View>
+          <Text style={styles.summaryText}>
+            Aktívne: {inventoryTotals.active.length} • Dostupné: {inventoryTotals.gramsAvailable} g • Dopité:{' '}
+            {inventoryTotals.empty.length}
+          </Text>
+          {inventoryAlert ? (
+            <View style={styles.alertRow}>
+              <Text style={styles.alertIcon}>⚠️</Text>
+              <Text style={styles.alertText}>
+                Dochádza {inventoryAlert.correctedText || inventoryAlert.rawText || 'káva'} ({inventoryAlert.remainingG} g)
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.goodStateText}>Super, zatiaľ nemáš žiadnu nízku zásobu.</Text>
+          )}
 
           {activeCoffeePreview.length === 0 ? (
             <Text style={styles.placeholder}>Zatiaľ nemáš aktívne kávy. Pridaj prvý balík do inventára.</Text>
@@ -302,7 +339,7 @@ function HomeScreen({navigation}: Props) {
               const remaining = item.remainingG === null ? 'Neznáme' : `${item.remainingG} g`;
               return (
                 <View key={item.id} style={styles.listTile}>
-                  <View style={styles.dot} />
+                  <Text style={styles.listTileIcon}>🫘</Text>
                   <View style={styles.listTextWrap}>
                     <Text style={styles.listTitle}>{name}</Text>
                     <Text style={styles.listMeta}>Zostáva: {remaining}</Text>
@@ -315,23 +352,28 @@ function HomeScreen({navigation}: Props) {
 
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recepty na rýchly štart</Text>
-            <Pressable onPress={handleSavedRecipesPress}>
-              <Text style={styles.textButton}>Všetky recepty</Text>
-            </Pressable>
+            <Text style={styles.sectionTitle}>Dnešný tip</Text>
+            <Text style={styles.tipTag}>🍃 Specialty</Text>
           </View>
+          <Text style={styles.tipText}>Skús pomer 1:16 pre čistejší filter a sladší profil šálky.</Text>
+          <Pressable style={styles.inlineAction} onPress={handleSavedRecipesPress}>
+            <Text style={styles.inlineActionText}>Zobraziť recepty</Text>
+          </Pressable>
+        </View>
 
-          {recipeHighlights.length === 0 ? (
-            <Text style={styles.placeholder}>Zatiaľ nemáš uložené recepty. Vytvor ich cez Foto recept.</Text>
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Posledná aktivita</Text>
+          </View>
+          {recentActivity.length === 0 ? (
+            <Text style={styles.placeholder}>Zatiaľ tu nič nie je. Začni skenom alebo pridaním zásoby.</Text>
           ) : (
-            recipeHighlights.map(recipe => (
-              <View key={recipe.id} style={styles.listTile}>
-                <View style={[styles.dot, styles.dotRecipe]} />
+            recentActivity.map(item => (
+              <View key={item.id} style={styles.listTile}>
+                <Text style={styles.listTileIcon}>{item.icon}</Text>
                 <View style={styles.listTextWrap}>
-                  <Text style={styles.listTitle}>{recipe.title || 'Recipe'}</Text>
-                  <Text style={styles.listMeta}>
-                    {recipe.method} • Predikcia chuti {recipe.likeScore}%
-                  </Text>
+                  <Text style={styles.listTitle}>{item.title}</Text>
+                  <Text style={styles.listMeta}>{item.meta}</Text>
                 </View>
               </View>
             ))
@@ -355,19 +397,29 @@ function HomeScreen({navigation}: Props) {
           {matchScore !== null ? <Text style={styles.matchScore}>Zhoda profilu: {matchScore}%</Text> : null}
         </View>
 
-        <View style={styles.bottomActions}>
-          <Pressable style={styles.secondaryAction} onPress={handleInventoryPress}>
-            <Text style={styles.secondaryActionText}>Coffee inventár</Text>
-          </Pressable>
-          <Pressable style={styles.secondaryAction} onPress={handleSavedRecipesPress}>
-            <Text style={styles.secondaryActionText}>Saved coffee recipes</Text>
-          </Pressable>
-        </View>
-
         <Pressable style={styles.outlineAction} onPress={handleLogout}>
           <Text style={styles.outlineActionText}>Odhlásiť sa</Text>
         </Pressable>
       </ScrollView>
+
+      <View style={styles.bottomNav}>
+        <Pressable style={[styles.navItem, styles.navItemActive]} onPress={() => undefined}>
+          <Text style={styles.navIcon}>🏠</Text>
+          <Text style={[styles.navLabel, styles.navLabelActive]}>Home</Text>
+        </Pressable>
+        <Pressable style={styles.navItem} onPress={handleInventoryPress}>
+          <Text style={styles.navIcon}>🧺</Text>
+          <Text style={styles.navLabel}>Inventár</Text>
+        </Pressable>
+        <Pressable style={styles.navItem} onPress={handleSavedRecipesPress}>
+          <Text style={styles.navIcon}>📚</Text>
+          <Text style={styles.navLabel}>Recepty</Text>
+        </Pressable>
+        <Pressable style={styles.navItem} onPress={handleQuestionnairePress}>
+          <Text style={styles.navIcon}>👤</Text>
+          <Text style={styles.navLabel}>Profil</Text>
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
@@ -375,25 +427,41 @@ function HomeScreen({navigation}: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8F3EE',
+    backgroundColor: '#F6F1EB',
   },
   scrollView: {
     flex: 1,
   },
   container: {
     flexGrow: 1,
-    backgroundColor: '#F8F3EE',
+    backgroundColor: '#F6F1EB',
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 48,
+    paddingBottom: 106,
   },
   heroCard: {
-    borderRadius: 28,
+    borderRadius: 30,
     padding: 20,
     marginBottom: 16,
     backgroundColor: '#EEDFCF',
     borderWidth: 1,
     borderColor: '#D7C2AB',
+    overflow: 'hidden',
+  },
+  heroDecorTop: {
+    position: 'absolute',
+    right: 12,
+    top: 8,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  heroDecorLeaf: {
+    fontSize: 18,
+    opacity: 0.8,
+  },
+  heroDecorCherry: {
+    fontSize: 18,
+    opacity: 0.85,
   },
   overline: {
     fontSize: 12,
@@ -415,31 +483,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
   },
-  heroActionsRow: {
+  heroBadgeRow: {
     flexDirection: 'row',
     marginTop: 16,
     gap: 10,
-    flexWrap: 'wrap',
   },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 24,
+  iconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#FFFFFFAA',
+    borderColor: '#D5BDA9',
     borderWidth: 1,
-    borderColor: '#D1BCAB',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  primaryChip: {
-    backgroundColor: '#5B4332',
-    borderColor: '#5B4332',
-  },
-  chipLabel: {
-    color: '#4C4137',
-    fontWeight: '600',
-  },
-  primaryChipLabel: {
-    color: '#FFFFFF',
-    fontWeight: '600',
+  iconEmoji: {
+    fontSize: 18,
   },
   sectionCard: {
     borderRadius: 24,
@@ -469,48 +529,62 @@ const styles = StyleSheet.create({
     color: '#BA1A1A',
     marginBottom: 8,
   },
-  metricsGrid: {
+  quickGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
   },
-  metricCard: {
+  quickCard: {
     width: '48%',
     borderRadius: 18,
     padding: 12,
     minHeight: 82,
     borderWidth: 1,
+    borderColor: '#E5D8CC',
+    backgroundColor: '#FFF8F3',
+    justifyContent: 'space-between',
   },
-  metricCardPrimary: {
-    backgroundColor: '#F8EDE1',
-    borderColor: '#E5D2BF',
-  },
-  metricCardSecondary: {
-    backgroundColor: '#F2F0E9',
-    borderColor: '#DBD8CD',
-  },
-  metricCardTertiary: {
-    backgroundColor: '#F5EDEE',
-    borderColor: '#E5D2D4',
-  },
-  metricCardWarning: {
-    backgroundColor: '#FAEEE5',
-    borderColor: '#E8D4C3',
-  },
-  metricValue: {
-    color: '#2C1F13',
-    fontWeight: '700',
+  quickIcon: {
     fontSize: 20,
   },
-  metricLabel: {
-    color: '#65584E',
-    marginTop: 4,
-    fontSize: 13,
+  quickLabel: {
+    marginTop: 6,
+    color: '#2C1F13',
+    fontWeight: '600',
+    fontSize: 14,
   },
   summaryText: {
-    marginTop: 12,
+    marginBottom: 10,
     color: '#65584E',
     fontSize: 13,
+  },
+  alertRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF1E7',
+    borderColor: '#F1D5BC',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 10,
+  },
+  alertIcon: {
+    marginRight: 8,
+    fontSize: 14,
+  },
+  alertText: {
+    color: '#7A4622',
+    fontSize: 13,
+    flex: 1,
+  },
+  goodStateText: {
+    color: '#3A6A3D',
+    backgroundColor: '#EAF6EA',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 10,
   },
   placeholder: {
     color: '#6A5B50',
@@ -528,15 +602,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginBottom: 8,
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 99,
-    backgroundColor: '#795548',
+  listTileIcon: {
     marginRight: 10,
-  },
-  dotRecipe: {
-    backgroundColor: '#8B6D4B',
+    fontSize: 16,
   },
   listTextWrap: {
     flex: 1,
@@ -551,6 +619,34 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 12,
   },
+  tipTag: {
+    color: '#416B43',
+    backgroundColor: '#EAF6EA',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    overflow: 'hidden',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  tipText: {
+    color: '#4F4439',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  inlineAction: {
+    alignSelf: 'flex-start',
+    borderRadius: 16,
+    backgroundColor: '#2C2218',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  inlineActionText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 13,
+  },
   matchScore: {
     marginTop: 12,
     borderRadius: 12,
@@ -561,25 +657,8 @@ const styles = StyleSheet.create({
     color: '#214D28',
     fontWeight: '700',
   },
-  bottomActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 2,
-  },
-  secondaryAction: {
-    flex: 1,
-    backgroundColor: '#2C2218',
-    borderRadius: 18,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  secondaryActionText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
-  },
   outlineAction: {
-    marginTop: 12,
+    marginTop: 2,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#70523D',
@@ -590,6 +669,42 @@ const styles = StyleSheet.create({
     color: '#70523D',
     fontWeight: '600',
     fontSize: 15,
+  },
+  bottomNav: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    bottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#E3D5C8',
+    backgroundColor: '#FFFCF9',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  navItem: {
+    flex: 1,
+    alignItems: 'center',
+    borderRadius: 16,
+    paddingVertical: 8,
+  },
+  navItemActive: {
+    backgroundColor: '#F1E6DB',
+  },
+  navIcon: {
+    fontSize: 17,
+  },
+  navLabel: {
+    marginTop: 4,
+    fontSize: 11,
+    color: '#6C5B4D',
+    fontWeight: '600',
+  },
+  navLabelActive: {
+    color: '#4B3325',
   },
 });
 
