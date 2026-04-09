@@ -363,13 +363,14 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Foto recept</Text>
+        <Text style={styles.overline}>BrewMate Recipe AI</Text>
+        <Text style={styles.title}>Coffee recipe scanner</Text>
         <Text style={styles.description}>
-          Nahrajte fotku kávy, nechajte AI odhadnúť chuť a vyberte si najlepší
-          spôsob prípravy.
+          Naskenuj etiketu kávy, nechaj AI odhadnúť chuť a vygeneruj recept podľa
+          zvolenej metódy a intenzity.
         </Text>
 
-        <View style={styles.block}>
+        <View style={styles.sectionCard}>
           <Text style={styles.label}>Fotografia kávy</Text>
           <View style={styles.buttonRow}>
             <Pressable
@@ -397,7 +398,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
             disabled={isInventoryLoading || isPicking}
           >
             <Text style={styles.secondaryButtonText}>
-              {isInventoryLoading ? 'Načítavam inventár…' : 'Vybrať z inventára'}
+              {isInventoryLoading ? 'Načítavam inventár…' : 'Vybrať fotku z inventára'}
             </Text>
           </Pressable>
 
@@ -448,7 +449,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
 
         {analysis ? (
           <>
-            <View style={styles.block}>
+            <View style={styles.sectionCard}>
               <Text style={styles.label}>Chuť kávy podľa AI</Text>
               <Text style={styles.profileTitle}>Chuťové tóny</Text>
               <Text style={styles.text}>
@@ -466,7 +467,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
               </Text>
             </View>
 
-            <View style={styles.block}>
+            <View style={styles.sectionCard}>
               <Text style={styles.label}>Najvhodnejšia príprava</Text>
               {analysis.recommendedPreparations.map((prep) => (
                 <Pressable
@@ -483,7 +484,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
               ))}
             </View>
 
-            <View style={styles.block}>
+            <View style={styles.sectionCard}>
               <Text style={styles.label}>
                 Aké chute chceš: jemné chute, slabšie alebo výraznejšie?
               </Text>
@@ -532,30 +533,46 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F6F1EB',
   },
   container: {
     flexGrow: 1,
-    padding: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  overline: {
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: '#6D5D4C',
+    marginBottom: 6,
+    fontWeight: '700',
   },
   title: {
-    fontSize: 26,
+    fontSize: 30,
     fontWeight: '700',
-    marginBottom: 12,
+    marginBottom: 10,
+    color: '#23180E',
   },
   description: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#6B5C52',
-    marginBottom: 16,
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#4C4137',
+    marginBottom: 14,
   },
-  block: {
-    marginBottom: 16,
+  sectionCard: {
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 12,
+    backgroundColor: '#FFFBFF',
+    borderWidth: 1,
+    borderColor: '#E7DCD1',
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     marginBottom: 8,
+    color: '#2C1F13',
   },
   helperText: {
     marginTop: 8,
@@ -569,8 +586,9 @@ const styles = StyleSheet.create({
   secondaryButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#6B4F3A',
-    paddingVertical: 10,
+    borderColor: '#D9C8B8',
+    backgroundColor: '#FFF8F3',
+    paddingVertical: 11,
     borderRadius: 16,
     alignItems: 'center',
   },
@@ -588,7 +606,8 @@ const styles = StyleSheet.create({
   },
   inventoryItem: {
     borderWidth: 1,
-    borderColor: '#C8BAB0',
+    borderColor: '#E5D8CC',
+    backgroundColor: '#FFF8F3',
     borderRadius: 16,
     padding: 10,
   },
@@ -604,8 +623,8 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: '#6B4F3A',
-    paddingVertical: 12,
-    borderRadius: 16,
+    paddingVertical: 14,
+    borderRadius: 18,
     alignItems: 'center',
     marginBottom: 12,
   },
@@ -637,7 +656,8 @@ const styles = StyleSheet.create({
   },
   optionCard: {
     borderWidth: 1,
-    borderColor: '#C8BAB0',
+    borderColor: '#E5D8CC',
+    backgroundColor: '#FFF8F3',
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,

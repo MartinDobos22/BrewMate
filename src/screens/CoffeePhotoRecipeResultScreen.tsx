@@ -58,6 +58,7 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.overline}>BrewMate Recipe AI</Text>
         <Text style={styles.title}>{recipe.title}</Text>
 
         <View style={styles.card}>
@@ -104,7 +105,7 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
         </Pressable>
 
         <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('CoffeeRecipesSaved')}>
-          <Text style={styles.secondaryButtonText}>Prejsť na Saved Recipes</Text>
+          <Text style={styles.secondaryButtonText}>Prejsť na uložené recepty</Text>
         </Pressable>
 
         {saveState === 'saved' ? <Text style={styles.success}>Recept uložený.</Text> : null}
@@ -115,17 +116,24 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
-  container: { padding: 24, gap: 12 },
-  title: { fontSize: 24, fontWeight: '700', color: '#271508' },
-  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDD3C9', borderRadius: 16, padding: 14 },
+  safeArea: { flex: 1, backgroundColor: '#F6F1EB' },
+  container: { paddingHorizontal: 20, paddingVertical: 16, gap: 12 },
+  overline: {
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: '#6D5D4C',
+    fontWeight: '700',
+  },
+  title: { fontSize: 30, fontWeight: '700', color: '#23180E' },
+  card: { backgroundColor: '#FFFBFF', borderWidth: 1, borderColor: '#E7DCD1', borderRadius: 20, padding: 16 },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8, color: '#271508' },
   text: { fontSize: 14, color: '#6B5C52', marginBottom: 4 },
   highlight: { fontWeight: '700', color: '#6B4F3A', marginBottom: 8 },
   warning: { color: '#9B6F42', fontWeight: '600' },
-  primaryButton: { backgroundColor: '#6B4F3A', borderRadius: 16, alignItems: 'center', paddingVertical: 12 },
+  primaryButton: { backgroundColor: '#6B4F3A', borderRadius: 18, alignItems: 'center', paddingVertical: 14 },
   primaryButtonText: { color: '#FFFFFF', fontWeight: '600' },
-  secondaryButton: { borderWidth: 1, borderColor: '#6B4F3A', borderRadius: 16, alignItems: 'center', paddingVertical: 12 },
+  secondaryButton: { borderWidth: 1, borderColor: '#D9C8B8', backgroundColor: '#FFF8F3', borderRadius: 18, alignItems: 'center', paddingVertical: 14 },
   secondaryButtonText: { color: '#6B4F3A', fontWeight: '600' },
   buttonDisabled: { opacity: 0.6 },
   success: { color: '#7A9255', fontWeight: '600' },

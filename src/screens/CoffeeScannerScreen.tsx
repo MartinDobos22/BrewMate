@@ -367,14 +367,14 @@ function CoffeeScannerScreen({ navigation }: Props) {
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.title}>Coffee Scanner</Text>
+          <Text style={styles.overline}>BrewMate Scanner</Text>
+          <Text style={styles.title}>Skenovanie kávy</Text>
           <Text style={styles.description}>
-            Vyberte alebo odfoťte obrázok etikety a odošlite ho na backend.
-            Server použije Google Vision OCR a následne opraví text cez OpenAI
-            API. Následne vráti odhad chuťového profilu bez hardcoded slovníkov.
+            Odfoť etiketu alebo vyber fotku z galérie. Po skene dostaneš čitateľný text,
+            chuťový profil a odporúčanie, či sa káva hodí k tvojmu dotazníku.
           </Text>
 
-          <View style={styles.field}>
+          <View style={styles.sectionCard}>
             <Text style={styles.label}>Obrázok etikety</Text>
             <View style={styles.buttonRow}>
               <Pressable
@@ -399,8 +399,8 @@ function CoffeeScannerScreen({ navigation }: Props) {
             </Text>
           </View>
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Language hints (oddelené čiarkou)</Text>
+          <View style={styles.sectionCard}>
+            <Text style={styles.label}>Jazyky na etikete (oddelené čiarkou)</Text>
             <TextInput
               style={styles.hintInput}
               placeholder="sk, en"
@@ -455,33 +455,49 @@ function CoffeeScannerScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F6F1EB',
   },
   flex: {
     flex: 1,
   },
   container: {
     flex: 1,
-    padding: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  overline: {
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: '#6D5D4C',
+    marginBottom: 6,
+    fontWeight: '700',
   },
   title: {
-    fontSize: 26,
+    fontSize: 30,
     fontWeight: '700',
-    marginBottom: 12,
+    marginBottom: 10,
+    color: '#23180E',
   },
   description: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#6B5C52',
-    marginBottom: 16,
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#4C4137',
+    marginBottom: 14,
   },
-  field: {
-    marginBottom: 16,
+  sectionCard: {
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 12,
+    backgroundColor: '#FFFBFF',
+    borderWidth: 1,
+    borderColor: '#E7DCD1',
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
+    fontWeight: '700',
+    marginBottom: 10,
+    color: '#2C1F13',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -490,8 +506,9 @@ const styles = StyleSheet.create({
   secondaryButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#6B4F3A',
-    paddingVertical: 10,
+    borderColor: '#D9C8B8',
+    backgroundColor: '#FFF8F3',
+    paddingVertical: 11,
     borderRadius: 16,
     alignItems: 'center',
   },
@@ -507,7 +524,8 @@ const styles = StyleSheet.create({
   },
   hintInput: {
     borderWidth: 1,
-    borderColor: '#C8BAB0',
+    borderColor: '#DCCFC2',
+    backgroundColor: '#FFF8F3',
     borderRadius: 16,
     paddingVertical: 10,
     paddingHorizontal: 12,
@@ -525,8 +543,8 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: '#6B4F3A',
-    paddingVertical: 12,
-    borderRadius: 16,
+    paddingVertical: 14,
+    borderRadius: 18,
     alignItems: 'center',
   },
   buttonDisabled: {
