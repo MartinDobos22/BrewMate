@@ -66,14 +66,14 @@ function MainNavigator() {
         name="CoffeeScanner"
         component={CoffeeScannerScreen}
         options={{
-          title: 'Coffee Scanner',
+          title: 'Skenovanie kávy',
         }}
       />
       <AppStack.Screen
         name="CoffeePhotoRecipe"
         component={CoffeePhotoRecipeScreen}
         options={{
-          title: 'Coffee Recipe Generator',
+          title: 'Generátor receptu',
         }}
       />
       <AppStack.Screen
@@ -101,7 +101,7 @@ function MainNavigator() {
         name="OcrResult"
         component={OcrResultScreen}
         options={{
-          title: 'OCR Result',
+          title: 'Výsledok skenovania',
         }}
       />
       <AppStack.Screen
@@ -115,7 +115,7 @@ function MainNavigator() {
         name="CoffeeRecipesSaved"
         component={CoffeeRecipesSavedScreen}
         options={{
-          title: 'Coffee Recipes Saved',
+          title: 'Uložené recepty',
         }}
       />
     </AppStack.Navigator>

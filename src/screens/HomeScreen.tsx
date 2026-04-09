@@ -265,10 +265,10 @@ function HomeScreen({navigation}: Props) {
   }, [inventoryTotals.active, recipeHighlights]);
 
   const quickActions = [
-    {key: 'inventory', label: 'Pridať zásobu', icon: '🫘', onPress: handleInventoryPress},
-    {key: 'brew', label: 'Začať brew', icon: '⏱️', onPress: handleScanPress},
+    {key: 'inventory', label: 'Môj inventár kávy', icon: '🫘', onPress: handleInventoryPress},
+    {key: 'brew', label: 'Skenovať kávu', icon: '📷', onPress: handleScanPress},
     {key: 'recipes', label: 'Obľúbené recepty', icon: '☕', onPress: handleSavedRecipesPress},
-    {key: 'log', label: 'Rýchly záznam', icon: '📝', onPress: handlePhotoRecipePress},
+    {key: 'log', label: 'Generovať recept', icon: '✨', onPress: handlePhotoRecipePress},
   ];
 
   const inventoryAlert = inventoryTotals.lowStock[0];

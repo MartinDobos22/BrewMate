@@ -235,7 +235,8 @@ function OcrResultScreen({ route }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Výsledok OCR</Text>
+        <Text style={styles.overline}>BrewMate Scanner</Text>
+        <Text style={styles.title}>Výsledok skenovania kávy</Text>
 
         <View style={styles.saveRow}>
           <Pressable
@@ -467,15 +468,25 @@ function OcrResultScreen({ route }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F6F1EB',
   },
   container: {
-    padding: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  overline: {
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: '#6D5D4C',
+    marginBottom: 6,
+    fontWeight: '700',
   },
   title: {
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: '700',
-    marginBottom: 16,
+    marginBottom: 14,
+    color: '#23180E',
   },
   saveRow: {
     marginBottom: 16,
@@ -508,7 +519,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   inventoryBlock: {
-    marginBottom: 20,
+    marginBottom: 12,
+    borderRadius: 24,
+    padding: 16,
+    backgroundColor: '#FFFBFF',
+    borderWidth: 1,
+    borderColor: '#E7DCD1',
   },
   inventoryButton: {
     marginTop: 12,
@@ -560,7 +576,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   block: {
-    marginBottom: 20,
+    marginBottom: 12,
+    borderRadius: 24,
+    padding: 16,
+    backgroundColor: '#FFFBFF',
+    borderWidth: 1,
+    borderColor: '#E7DCD1',
   },
   label: {
     fontSize: 14,
