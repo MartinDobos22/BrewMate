@@ -27,7 +27,8 @@ type InventoryItem = {
     flavorNotes?: string[];
   };
   aiMatchResult: {
-    willLike?: boolean;
+    matchScore?: number;
+    matchTier?: string;
     laymanSummary?: string;
   } | null;
   labelImageBase64: string | null;

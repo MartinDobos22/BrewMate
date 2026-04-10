@@ -21,37 +21,55 @@ const QUESTIONNAIRE = [
       'Čokoláda / orechy / karamel',
       'Ovocie (citrus, bobuľové, tropické)',
       'Klasickú kávovú chuť bez ovocia',
+      'Kombináciu všetkého, záleží na nálade',
     ],
   },
   {
     id: 'acidity',
     title: 'Kyslosť (šťavnatosť)',
-    options: ['Nechcem', 'Trochu', 'Výraznú'],
+    options: [
+      'Aktívne sa jej vyhýbam',
+      'Radšej nie, ale nevadí mi',
+      'Trochu',
+      'Mám ju rád/a',
+      'Výraznú',
+    ],
   },
   {
     id: 'bitterness',
     title: 'Horkosť',
-    options: ['Nechcem', 'Trochu', 'Výraznú'],
+    options: [
+      'Aktívne sa jej vyhýbam',
+      'Radšej nie, ale nevadí mi',
+      'Trochu',
+      'Mám ju rád/a',
+      'Výraznú',
+    ],
   },
   {
     id: 'sweetness',
     title: 'Sladkosť v chuti (bez cukru)',
-    options: ['Nízka', 'Stredná', 'Vysoká'],
+    options: ['Nízka', 'Skôr nižšia', 'Stredná', 'Vyššia', 'Vysoká'],
   },
   {
     id: 'body',
     title: 'Telo (pocit v ústach)',
-    options: ['Ľahké a čisté', 'Stredné', 'Hutné a krémové'],
+    options: ['Ľahké a čisté', 'Skôr ľahšie', 'Stredné', 'Skôr hutnejšie', 'Hutné a krémové'],
   },
   {
     id: 'intensity',
     title: 'Intenzita chuti',
-    options: ['Jemná', 'Stredná', 'Výrazná'],
+    options: ['Jemná', 'Skôr jemnejšia', 'Stredná', 'Skôr výraznejšia', 'Výrazná'],
   },
   {
     id: 'aftertaste',
     title: 'Ktorá dochuť je vám príjemnejšia?',
-    options: ['Kakaová/horká', 'Ovocná/šťavnatá', 'Sladká/karamelová'],
+    options: [
+      'Kakaová/horká',
+      'Ovocná/šťavnatá',
+      'Sladká/karamelová',
+      'Nemám preferenciu',
+    ],
   },
   {
     id: 'clarity',
@@ -60,8 +78,22 @@ const QUESTIONNAIRE = [
   },
   {
     id: 'dislike',
-    title: 'Čo vám vadí viac?',
-    options: ['Kyslosť', 'Horkosť', 'Nič, nech je výrazná'],
+    title: 'Čo vám v káve skutočne vadí? (dealbreaker)',
+    options: [
+      'Výrazná kyslosť',
+      'Výrazná horkosť',
+      'Slabá/vodová chuť',
+      'Nič mi extra nevadí',
+    ],
+  },
+  {
+    id: 'openness',
+    title: 'Aký ste typ kávičkára?',
+    options: [
+      'Konzervatívny — chcem presne to čo poznám a viem že mi chutí',
+      'Otvorený — rád/a skúšam nové veci ale opatrne',
+      'Dobrodruh — baví ma objavovať nové chute aj mimo komfortnú zónu',
+    ],
   },
   {
     id: 'milk',
@@ -169,7 +201,7 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Chuťový dotazník</Text>
         <Text style={styles.subtitle}>
-          Vyplňte všetkých 10 otázok. Stav: {answeredCount} / {QUESTIONNAIRE.length}
+          Vyplňte všetky otázky. Stav: {answeredCount} / {QUESTIONNAIRE.length}
         </Text>
 
         {QUESTIONNAIRE.map((question) => (

@@ -145,6 +145,8 @@ const buildCoffeeQuestionnairePayload = (answers) => ({
           'recommendedOrigins',
           'brewingTips',
           'tasteVector',
+          'toleranceVector',
+          'openness',
           'confidence',
         ],
         properties: {
@@ -165,6 +167,20 @@ const buildCoffeeQuestionnairePayload = (answers) => ({
               roast: { type: 'number', enum: [0, 25, 50, 75, 100] },
             },
           },
+          toleranceVector: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['acidity', 'sweetness', 'bitterness', 'body', 'fruity', 'roast'],
+            properties: {
+              acidity: { type: 'string', enum: ['dislike', 'neutral', 'tolerant'] },
+              sweetness: { type: 'string', enum: ['dislike', 'neutral', 'tolerant'] },
+              bitterness: { type: 'string', enum: ['dislike', 'neutral', 'tolerant'] },
+              body: { type: 'string', enum: ['dislike', 'neutral', 'tolerant'] },
+              fruity: { type: 'string', enum: ['dislike', 'neutral', 'tolerant'] },
+              roast: { type: 'string', enum: ['dislike', 'neutral', 'tolerant'] },
+            },
+          },
+          openness: { type: 'string', enum: ['conservative', 'moderate', 'adventurous'] },
           confidence: { type: 'number', minimum: 0, maximum: 1 },
         },
       },
@@ -177,6 +193,13 @@ const buildCoffeeQuestionnairePayload = (answers) => ({
         'Si coffee sensory analytik pre baristu. Z odpovedí zákazníka odhadni profil chutí '
         + 'a odporuč štýl kávy. Odpovedaj po slovensky a drž sa stručných odstavcov. '
         + 'Zahrň tasteVector (0, 25, 50, 75, 100) pre acidity, sweetness, bitterness, body, fruity, roast. '
+        + 'Zahrň toleranceVector — pre každú os urči či zákazník danú vlastnosť "dislike" (aktívne odmietá), '
+        + '"neutral" (je mu to jedno, nemusí tam byť ale nevadí) alebo "tolerant" (toleruje aj keď to priamo nehľadá). '
+        + 'DÔLEŽITÉ: "Nechcem" v dotazníku môže znamenať "aktívne odmietam" ale aj "nie je to moja priorita". '
+        + 'Pozri sa na kontext celého dotazníka — ak zákazník odpovedal napr. že mu nič nevadí alebo chce výraznú chuť, '
+        + 'tak pravdepodobne toleruje aj to čo explicitne nehľadá. '
+        + 'Zahrň openness — odhadni z odpovedí mieru ochoty experimentovať: '
+        + '"conservative" (chce presne to čo pozná), "moderate" (otvorený ale opatrný), "adventurous" (rád skúša nové). '
         + 'Ak niečo nie je jasné, daj 50 a zníž confidence. '
         + 'Výstup musí presne sedieť na JSON schému.',
     },
@@ -189,7 +212,7 @@ const buildCoffeeQuestionnairePayload = (answers) => ({
 
 const buildCoffeeMatchPayload = (questionnaire, coffeeProfile) => ({
   model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-  temperature: 0.2,
+  temperature: 0.3,
   response_format: {
     type: 'json_schema',
     json_schema: {
@@ -199,22 +222,35 @@ const buildCoffeeMatchPayload = (questionnaire, coffeeProfile) => ({
         type: 'object',
         additionalProperties: false,
         required: [
-          'willLike',
+          'matchScore',
+          'matchTier',
           'confidence',
           'baristaSummary',
           'laymanSummary',
           'keyMatches',
           'keyConflicts',
           'suggestedAdjustments',
+          'adventureNote',
         ],
         properties: {
-          willLike: { type: 'boolean' },
+          matchScore: { type: 'number', minimum: 0, maximum: 100 },
+          matchTier: {
+            type: 'string',
+            enum: [
+              'perfect_match',
+              'great_choice',
+              'worth_trying',
+              'interesting_experiment',
+              'not_for_you',
+            ],
+          },
           confidence: { type: 'number', minimum: 0, maximum: 1 },
           baristaSummary: { type: 'string' },
           laymanSummary: { type: 'string' },
           keyMatches: { type: 'array', items: { type: 'string' } },
           keyConflicts: { type: 'array', items: { type: 'string' } },
           suggestedAdjustments: { type: 'string' },
+          adventureNote: { type: 'string' },
         },
       },
     },
@@ -223,8 +259,15 @@ const buildCoffeeMatchPayload = (questionnaire, coffeeProfile) => ({
     {
       role: 'system',
       content:
-        'Si coffee sensory analytik. Porovnaj profil chutí z dotazníka s profilom kávy z etikety. '
-        + 'Vráť verdikt či bude káva chutiť, s istotou, a vysvetlenie pre baristu aj laika. '
+        'Si priateľský coffee sensory analytik. Porovnaj profil chutí z dotazníka s profilom kávy z etikety. '
+        + 'DÔLEŽITÉ: Nebuď príliš striktný. Svet chutí je spektrum, nie binárne áno/nie. '
+        + 'Väčšina kvalitných specialty káv dokáže potešiť aj ľudí mimo ich "komfortnú zónu". '
+        + 'Rozlišuj medzi DEALBREAKER-mi (človek aktívne odmietá niečo a káva to má veľmi výrazne) a MENŠÍMI ODCHÝLKAMI (káva je trochu iná než profil, ale stále pitná a zaujímavá). '
+        + 'Zohľadni pole "tolerance" z dotazníka — ak je tam hodnota "tolerujem" alebo "je mi to jedno", nepenalizuj odchýlky v danej vlastnosti. '
+        + 'Zohľadni aj "openness" (ochotu experimentovať) — ak je zákazník otvorený novým chutiam, buď zhovievavejší. '
+        + '\n\nmatchScore (0-100): 85-100 = perfektná zhoda, 70-84 = veľmi dobrá voľba, 50-69 = zaujímavý experiment (stojí za to skúsiť), 30-49 = mimo komfortnú zónu (ale môže prekvapiť), 0-29 = skutočný konflikt v kľúčových preferenciách. '
+        + 'matchTier: perfect_match (85+), great_choice (70-84), worth_trying (50-69), interesting_experiment (30-49), not_for_you (0-29). '
+        + 'adventureNote: Vždy napíš čo zaujímavé môže káva ponúknuť aj keď nie je presná zhoda. '
         + 'Buď konkrétny, odkazuj na zhody/konflikty v preferenciách (kyslosť, horkosť, telo, sladkosť, ovocnosť, intenzita). '
         + 'Výstup musí presne sedieť na JSON schému.',
     },
