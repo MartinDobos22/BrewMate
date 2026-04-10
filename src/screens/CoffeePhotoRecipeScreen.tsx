@@ -10,6 +10,7 @@ import {
 } from 'react-native-image-picker';
 import { RootStackParamList } from '../navigation/types';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import BottomNavBar from '../components/BottomNavBar';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeePhotoRecipe'>;
 
@@ -526,6 +527,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
         {infoMessage ? <Text style={styles.infoText}>{infoMessage}</Text> : null}
         {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
       </ScrollView>
+      <BottomNavBar />
     </SafeAreaView>
   );
 }
@@ -539,6 +541,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 20,
     paddingVertical: 16,
+    paddingBottom: 90,
   },
   overline: {
     fontSize: 12,

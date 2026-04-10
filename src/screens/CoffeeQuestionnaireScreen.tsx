@@ -12,6 +12,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { ensureQuestionnaireProfile } from '../utils/tasteVector';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import BottomNavBar from '../components/BottomNavBar';
 
 const QUESTIONNAIRE = [
   {
@@ -240,6 +241,7 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
           )}
         </Pressable>
       </ScrollView>
+      <BottomNavBar />
     </SafeAreaView>
   );
 }
@@ -250,7 +252,7 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 90,
   },
   title: {
     fontSize: 24,

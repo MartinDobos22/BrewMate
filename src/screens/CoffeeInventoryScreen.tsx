@@ -12,6 +12,7 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {apiFetch, DEFAULT_API_HOST} from '../utils/api';
+import BottomNavBar from '../components/BottomNavBar';
 
 type InventoryStatus = 'active' | 'empty' | 'archived';
 type TrackingMode = 'manual' | 'estimated';
@@ -551,6 +552,7 @@ function CoffeeInventoryScreen() {
           );
         })}
       </ScrollView>
+      <BottomNavBar />
     </SafeAreaView>
   );
 }
@@ -563,7 +565,7 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 40,
+    paddingBottom: 90,
     backgroundColor: '#F6F1EB',
   },
   heroCard: {

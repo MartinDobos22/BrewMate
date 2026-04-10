@@ -12,6 +12,7 @@ import {
 } from '../utils/localSave';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import BottomNavBar from '../components/BottomNavBar';
 import {
   MatchTier,
   MATCH_TIER_LABELS,
@@ -499,6 +500,7 @@ function OcrResultScreen({ route }: Props) {
           ) : null}
         </View>
       </ScrollView>
+      <BottomNavBar />
     </SafeAreaView>
   );
 }
@@ -511,6 +513,7 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
     paddingVertical: 16,
+    paddingBottom: 90,
   },
   overline: {
     fontSize: 12,

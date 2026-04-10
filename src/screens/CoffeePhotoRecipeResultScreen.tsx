@@ -5,6 +5,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../navigation/types';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import BottomNavBar from '../components/BottomNavBar';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeePhotoRecipeResult'>;
 
@@ -111,13 +112,14 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
         {saveState === 'saved' ? <Text style={styles.success}>Recept uložený.</Text> : null}
         {saveState === 'error' ? <Text style={styles.error}>{errorMessage}</Text> : null}
       </ScrollView>
+      <BottomNavBar />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F6F1EB' },
-  container: { paddingHorizontal: 20, paddingVertical: 16, gap: 12 },
+  container: { paddingHorizontal: 20, paddingVertical: 16, paddingBottom: 90, gap: 12 },
   overline: {
     fontSize: 12,
     letterSpacing: 1,

@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import BottomNavBar from '../components/BottomNavBar';
 
 type Item = {
   id: string;
@@ -93,13 +94,14 @@ function CoffeeRecipesSavedScreen() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
+      <BottomNavBar />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
-  container: { padding: 20, gap: 14 },
+  container: { padding: 20, paddingBottom: 90, gap: 14 },
   title: { fontSize: 28, fontWeight: '700', color: '#271508' },
   card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDD3C9', borderRadius: 16, padding: 14 },
   cardTitle: { fontSize: 17, fontWeight: '700', marginBottom: 8, color: '#271508' },
