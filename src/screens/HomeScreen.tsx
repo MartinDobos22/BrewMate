@@ -13,6 +13,7 @@ import {RootStackParamList} from '../navigation/types';
 import {apiFetch, DEFAULT_API_HOST} from '../utils/api';
 import {useAuth} from '../context/AuthContext';
 import TasteProfileBars from '../components/TasteProfileBars';
+import BottomNavBar from '../components/BottomNavBar';
 import {
   DEFAULT_TASTE_VECTOR,
   DEFAULT_TOLERANCE_VECTOR,
@@ -434,24 +435,7 @@ function HomeScreen({navigation}: Props) {
         </Pressable>
       </ScrollView>
 
-      <View style={styles.bottomNav}>
-        <Pressable style={[styles.navItem, styles.navItemActive]} onPress={() => undefined}>
-          <Text style={styles.navIcon}>🏠</Text>
-          <Text style={[styles.navLabel, styles.navLabelActive]}>Home</Text>
-        </Pressable>
-        <Pressable style={styles.navItem} onPress={handleInventoryPress}>
-          <Text style={styles.navIcon}>🧺</Text>
-          <Text style={styles.navLabel}>Inventár</Text>
-        </Pressable>
-        <Pressable style={styles.navItem} onPress={handleSavedRecipesPress}>
-          <Text style={styles.navIcon}>📚</Text>
-          <Text style={styles.navLabel}>Recepty</Text>
-        </Pressable>
-        <Pressable style={styles.navItem} onPress={handleQuestionnairePress}>
-          <Text style={styles.navIcon}>👤</Text>
-          <Text style={styles.navLabel}>Profil</Text>
-        </Pressable>
-      </View>
+      <BottomNavBar />
     </SafeAreaView>
   );
 }
@@ -701,42 +685,6 @@ const styles = StyleSheet.create({
     color: '#70523D',
     fontWeight: '600',
     fontSize: 15,
-  },
-  bottomNav: {
-    position: 'absolute',
-    left: 14,
-    right: 14,
-    bottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#E3D5C8',
-    backgroundColor: '#FFFCF9',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-  },
-  navItem: {
-    flex: 1,
-    alignItems: 'center',
-    borderRadius: 16,
-    paddingVertical: 8,
-  },
-  navItemActive: {
-    backgroundColor: '#F1E6DB',
-  },
-  navIcon: {
-    fontSize: 17,
-  },
-  navLabel: {
-    marginTop: 4,
-    fontSize: 11,
-    color: '#6C5B4D',
-    fontWeight: '600',
-  },
-  navLabelActive: {
-    color: '#4B3325',
   },
 });
 

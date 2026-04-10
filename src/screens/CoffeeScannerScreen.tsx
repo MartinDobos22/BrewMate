@@ -20,6 +20,7 @@ import {
 import { RootStackParamList } from '../navigation/types';
 import { ensureCoffeeProfile } from '../utils/tasteVector';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import BottomNavBar from '../components/BottomNavBar';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeeScanner'>;
 
@@ -448,6 +449,7 @@ function CoffeeScannerScreen({ navigation }: Props) {
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
+      <BottomNavBar />
     </SafeAreaView>
   );
 }
@@ -464,6 +466,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingVertical: 16,
+    paddingBottom: 90,
   },
   overline: {
     fontSize: 12,

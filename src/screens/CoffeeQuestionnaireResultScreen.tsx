@@ -5,6 +5,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import { saveQuestionnaireResult } from '../utils/localSave';
+import BottomNavBar from '../components/BottomNavBar';
 
 const SECTION_LABELS = {
   profileSummary: 'Profil chutí',
@@ -103,6 +104,7 @@ function CoffeeQuestionnaireResultScreen({ route }: Props) {
           ))}
         </View>
       </ScrollView>
+      <BottomNavBar />
     </SafeAreaView>
   );
 }
@@ -113,7 +115,7 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 90,
   },
   title: {
     fontSize: 24,
