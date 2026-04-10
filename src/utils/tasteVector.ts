@@ -62,12 +62,59 @@ const normalizeString = (value: unknown, fallback = '') =>
 const normalizeStringArray = (value: unknown) =>
   Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [];
 
+export type ToleranceLevel = 'dislike' | 'neutral' | 'tolerant';
+
+export type ToleranceVector = {
+  acidity: ToleranceLevel;
+  sweetness: ToleranceLevel;
+  bitterness: ToleranceLevel;
+  body: ToleranceLevel;
+  fruity: ToleranceLevel;
+  roast: ToleranceLevel;
+};
+
+export type Openness = 'conservative' | 'moderate' | 'adventurous';
+
+export const DEFAULT_TOLERANCE_VECTOR: ToleranceVector = {
+  acidity: 'neutral',
+  sweetness: 'neutral',
+  bitterness: 'neutral',
+  body: 'neutral',
+  fruity: 'neutral',
+  roast: 'neutral',
+};
+
+export type MatchTier =
+  | 'perfect_match'
+  | 'great_choice'
+  | 'worth_trying'
+  | 'interesting_experiment'
+  | 'not_for_you';
+
+export const MATCH_TIER_LABELS: Record<MatchTier, string> = {
+  perfect_match: 'Presne tvoj štýl!',
+  great_choice: 'Veľmi dobrá voľba',
+  worth_trying: 'Stojí za vyskúšanie',
+  interesting_experiment: 'Zaujímavý experiment',
+  not_for_you: 'Asi nie pre teba',
+};
+
+export const MATCH_TIER_COLORS: Record<MatchTier, { bg: string; border: string }> = {
+  perfect_match: { bg: '#D8ECBA', border: '#7A9255' },
+  great_choice: { bg: '#D8ECBA', border: '#8FAA6B' },
+  worth_trying: { bg: '#FFF3D6', border: '#C9A84C' },
+  interesting_experiment: { bg: '#FFE8D6', border: '#C4895C' },
+  not_for_you: { bg: '#FFDAD6', border: '#BA1A1A' },
+};
+
 export type QuestionnaireProfile = {
   profileSummary: string;
   recommendedStyle: string;
   recommendedOrigins: string;
   brewingTips: string;
   tasteVector: TasteVector;
+  toleranceVector: ToleranceVector;
+  openness: Openness;
   confidence: number;
 };
 
@@ -84,6 +131,31 @@ export type CoffeeProfile = {
   tasteVector: TasteVector;
 };
 
+const normalizeToleranceLevel = (value: unknown): ToleranceLevel => {
+  if (value === 'dislike' || value === 'neutral' || value === 'tolerant') {
+    return value;
+  }
+  return 'neutral';
+};
+
+const normalizeToleranceVector = (
+  vector?: Partial<ToleranceVector> | null,
+): ToleranceVector => ({
+  acidity: normalizeToleranceLevel(vector?.acidity),
+  sweetness: normalizeToleranceLevel(vector?.sweetness),
+  bitterness: normalizeToleranceLevel(vector?.bitterness),
+  body: normalizeToleranceLevel(vector?.body),
+  fruity: normalizeToleranceLevel(vector?.fruity),
+  roast: normalizeToleranceLevel(vector?.roast),
+});
+
+const normalizeOpenness = (value: unknown): Openness => {
+  if (value === 'conservative' || value === 'moderate' || value === 'adventurous') {
+    return value;
+  }
+  return 'moderate';
+};
+
 export const ensureQuestionnaireProfile = (value: unknown): QuestionnaireProfile => {
   const parsed = parseJsonIfString(value);
   const fallbackSummary = typeof value === 'string' ? value : '';
@@ -95,6 +167,8 @@ export const ensureQuestionnaireProfile = (value: unknown): QuestionnaireProfile
     recommendedOrigins: normalizeString(candidate.recommendedOrigins),
     brewingTips: normalizeString(candidate.brewingTips),
     tasteVector: normalizeTasteVector(candidate.tasteVector),
+    toleranceVector: normalizeToleranceVector(candidate.toleranceVector),
+    openness: normalizeOpenness(candidate.openness),
     confidence: typeof candidate.confidence === 'number' ? candidate.confidence : 0.2,
   };
 };

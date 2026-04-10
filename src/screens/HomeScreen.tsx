@@ -15,8 +15,12 @@ import {useAuth} from '../context/AuthContext';
 import TasteProfileBars from '../components/TasteProfileBars';
 import {
   DEFAULT_TASTE_VECTOR,
+  DEFAULT_TOLERANCE_VECTOR,
   normalizeTasteVector,
   TasteVector,
+  ToleranceVector,
+  MATCH_TIER_LABELS,
+  MatchTier,
 } from '../utils/tasteVector';
 import {
   CoffeeProfilePayload,
@@ -199,12 +203,28 @@ function HomeScreen({navigation}: Props) {
 
     const user = normalizeTasteVector(userProfile.tasteVector);
     const coffee = normalizeTasteVector(coffeeProfile.tasteVector);
+    const tolerance: ToleranceVector = userProfile.toleranceVector ?? DEFAULT_TOLERANCE_VECTOR;
     type TasteAxis = Exclude<keyof TasteVector, 'confidence'>;
     const axes: TasteAxis[] = ['acidity', 'sweetness', 'bitterness', 'body', 'fruity', 'roast'];
-    const avgDiff =
-      axes.reduce((sum, key) => sum + Math.abs(user[key] - coffee[key]), 0) / axes.length;
+
+    const toleranceWeight = (axis: TasteAxis): number => {
+      const level = tolerance[axis];
+      if (level === 'tolerant') { return 0.4; }
+      if (level === 'neutral') { return 0.7; }
+      return 1.0;
+    };
+
+    let totalWeight = 0;
+    let weightedDiff = 0;
+    for (const axis of axes) {
+      const w = toleranceWeight(axis);
+      totalWeight += w;
+      weightedDiff += Math.abs(user[axis] - coffee[axis]) * w;
+    }
+
+    const avgDiff = totalWeight > 0 ? weightedDiff / totalWeight : 0;
     return Math.round(100 - avgDiff);
-  }, [coffeeProfile?.tasteVector, userProfile?.tasteVector]);
+  }, [coffeeProfile?.tasteVector, userProfile?.tasteVector, userProfile?.toleranceVector]);
 
   const inventoryTotals = useMemo(() => {
     const active = inventoryItems.filter(item => item.status === 'active');
@@ -394,7 +414,19 @@ function HomeScreen({navigation}: Props) {
             </Text>
           ) : null}
           <TasteProfileBars vector={userVector} />
-          {matchScore !== null ? <Text style={styles.matchScore}>Zhoda profilu: {matchScore}%</Text> : null}
+          {matchScore !== null ? (
+            <Text style={styles.matchScore}>
+              Zhoda profilu: {matchScore}% — {
+                MATCH_TIER_LABELS[
+                  (matchScore >= 85 ? 'perfect_match'
+                    : matchScore >= 70 ? 'great_choice'
+                    : matchScore >= 50 ? 'worth_trying'
+                    : matchScore >= 30 ? 'interesting_experiment'
+                    : 'not_for_you') as MatchTier
+                ]
+              }
+            </Text>
+          ) : null}
         </View>
 
         <Pressable style={styles.outlineAction} onPress={handleLogout}>

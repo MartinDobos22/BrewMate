@@ -12,17 +12,24 @@ import {
 } from '../utils/localSave';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import {
+  MatchTier,
+  MATCH_TIER_LABELS,
+  MATCH_TIER_COLORS,
+} from '../utils/tasteVector';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OcrResult'>;
 
 type MatchResult = {
-  willLike: boolean;
+  matchScore: number;
+  matchTier: MatchTier;
   confidence: number;
   baristaSummary: string;
   laymanSummary: string;
   keyMatches: string[];
   keyConflicts: string[];
   suggestedAdjustments: string;
+  adventureNote: string;
 };
 
 function OcrResultScreen({ route }: Props) {
@@ -227,9 +234,14 @@ function OcrResultScreen({ route }: Props) {
     if (!matchResult) {
       return '';
     }
-    return matchResult.willLike
-      ? 'Táto káva ti pravdepodobne bude chutiť.'
-      : 'Táto káva ti pravdepodobne chutiť nebude.';
+    return MATCH_TIER_LABELS[matchResult.matchTier] || 'Neznáme hodnotenie';
+  }, [matchResult]);
+
+  const tierColors = useMemo(() => {
+    if (!matchResult) {
+      return MATCH_TIER_COLORS.worth_trying;
+    }
+    return MATCH_TIER_COLORS[matchResult.matchTier] || MATCH_TIER_COLORS.worth_trying;
   }, [matchResult]);
 
   return (
@@ -420,32 +432,58 @@ function OcrResultScreen({ route }: Props) {
               <View
                 style={[
                   styles.verdictBadge,
-                  matchResult.willLike
-                    ? styles.verdictPositive
-                    : styles.verdictNegative,
+                  {
+                    backgroundColor: tierColors.bg,
+                    borderColor: tierColors.border,
+                    borderWidth: 1,
+                  },
                 ]}
               >
                 <Text style={styles.verdictText}>{verdictLabel}</Text>
-                <Text style={styles.verdictSubText}>
-                  Istota: {Math.round(matchResult.confidence * 100)}%
-                </Text>
+                <View style={styles.scoreRow}>
+                  <Text style={styles.scoreText}>
+                    Zhoda: {Math.round(matchResult.matchScore)}%
+                  </Text>
+                  <Text style={styles.verdictSubText}>
+                    Istota: {Math.round(matchResult.confidence * 100)}%
+                  </Text>
+                </View>
+                <View style={styles.scoreBarBackground}>
+                  <View
+                    style={[
+                      styles.scoreBarFill,
+                      {
+                        width: `${Math.round(matchResult.matchScore)}%`,
+                        backgroundColor: tierColors.border,
+                      },
+                    ]}
+                  />
+                </View>
               </View>
-              <Text style={styles.profileTitle}>Pre baristu</Text>
-              <Text style={styles.text}>{matchResult.baristaSummary}</Text>
+              {matchResult.adventureNote ? (
+                <View style={styles.adventureNoteBlock}>
+                  <Text style={styles.profileTitle}>Prečo to skúsiť</Text>
+                  <Text style={styles.text}>{matchResult.adventureNote}</Text>
+                </View>
+              ) : null}
               <Text style={styles.profileTitle}>Pre laika</Text>
               <Text style={styles.text}>{matchResult.laymanSummary}</Text>
+              <Text style={styles.profileTitle}>Pre baristu</Text>
+              <Text style={styles.text}>{matchResult.baristaSummary}</Text>
               <Text style={styles.profileTitle}>Kľúčové zhody</Text>
               <Text style={styles.text}>
                 {matchResult.keyMatches.length
                   ? matchResult.keyMatches.join(', ')
                   : 'Žiadne výrazné zhody.'}
               </Text>
-              <Text style={styles.profileTitle}>Potenciálne konflikty</Text>
-              <Text style={styles.text}>
-                {matchResult.keyConflicts.length
-                  ? matchResult.keyConflicts.join(', ')
-                  : 'Žiadne výrazné konflikty.'}
-              </Text>
+              {matchResult.keyConflicts.length > 0 ? (
+                <>
+                  <Text style={styles.profileTitle}>Potenciálne konflikty</Text>
+                  <Text style={styles.text}>
+                    {matchResult.keyConflicts.join(', ')}
+                  </Text>
+                </>
+              ) : null}
               <Text style={styles.profileTitle}>Ako si ju upraviť</Text>
               <Text style={styles.text}>{matchResult.suggestedAdjustments}</Text>
               {questionnaireSnapshot ? (
@@ -610,25 +648,44 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
   },
-  verdictPositive: {
-    backgroundColor: '#D8ECBA',
-    borderWidth: 1,
-    borderColor: '#7A9255',
-  },
-  verdictNegative: {
-    backgroundColor: '#FFDAD6',
-    borderWidth: 1,
-    borderColor: '#BA1A1A',
-  },
   verdictText: {
-    fontSize: 15,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#271508',
+  },
+  scoreRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  scoreText: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#271508',
   },
   verdictSubText: {
-    marginTop: 4,
     fontSize: 12,
     color: '#6B5C52',
+  },
+  scoreBarBackground: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#E7DCD1',
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  scoreBarFill: {
+    height: 6,
+    borderRadius: 3,
+  },
+  adventureNoteBlock: {
+    backgroundColor: '#FFF8F0',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E7DCD1',
   },
   helperNote: {
     marginTop: 12,
