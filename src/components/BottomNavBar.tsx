@@ -17,13 +17,14 @@ const TABS: Array<{
   {key: 'home', label: 'Home', icon: '\u{1F3E0}', route: 'Home'},
   {key: 'inventory', label: 'Invent\u00E1r', icon: '\u{1F9FA}', route: 'CoffeeInventory'},
   {key: 'recipes', label: 'Recepty', icon: '\u{1F4DA}', route: 'CoffeeRecipesSaved'},
-  {key: 'profile', label: 'Profil', icon: '\u{1F464}', route: 'CoffeeQuestionnaire'},
+  {key: 'profile', label: 'Profil', icon: '\u{1F464}', route: 'Profile'},
 ];
 
 const ROUTE_TO_TAB: Record<string, TabKey> = {
   Home: 'home',
   CoffeeInventory: 'inventory',
   CoffeeRecipesSaved: 'recipes',
+  Profile: 'profile',
   CoffeeQuestionnaire: 'profile',
   CoffeeQuestionnaireResult: 'profile',
 };

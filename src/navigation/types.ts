@@ -2,6 +2,7 @@ import { CoffeeProfile, QuestionnaireProfile } from '../utils/tasteVector';
 
 export type RootStackParamList = {
   Home: undefined;
+  Profile: undefined;
   CoffeeScanner: undefined;
   CoffeePhotoRecipe: undefined;
   CoffeePhotoRecipeResult: {
