@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+
 import { TasteVector } from '../utils/tasteVector';
+import { useTheme } from '../theme/useTheme';
 
 const AXES: Array<{ key: keyof TasteVector; label: string }> = [
   { key: 'acidity', label: 'Kyslosť' },
@@ -16,6 +18,44 @@ type Props = {
 };
 
 function TasteProfileBars({ vector }: Props) {
+  const { colors, typescale, shape } = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        wrapper: {
+          gap: 12,
+        },
+        item: {
+          gap: 6,
+        },
+        row: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+        },
+        label: {
+          ...typescale.labelLarge,
+          color: colors.onSurface,
+        },
+        value: {
+          ...typescale.labelLarge,
+          color: colors.primary,
+        },
+        bar: {
+          height: 10,
+          backgroundColor: colors.outlineVariant,
+          borderRadius: shape.full,
+          overflow: 'hidden',
+        },
+        barFill: {
+          height: '100%',
+          backgroundColor: colors.primary,
+          borderRadius: shape.full,
+        },
+      }),
+    [colors, shape.full, typescale],
+  );
+
   return (
     <View style={styles.wrapper}>
       {AXES.map(({ key, label }) => {
@@ -35,39 +75,5 @@ function TasteProfileBars({ vector }: Props) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrapper: {
-    gap: 12,
-  },
-  item: {
-    gap: 6,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#3E2F25',
-  },
-  value: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#6B4F3A',
-  },
-  bar: {
-    height: 8,
-    backgroundColor: '#E3DED6',
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: '100%',
-    backgroundColor: '#6B4F3A',
-    borderRadius: 999,
-  },
-});
 
 export default TasteProfileBars;
