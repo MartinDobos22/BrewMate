@@ -141,23 +141,21 @@ function OcrResultScreen({ route }: Props) {
 
     const loadMatch = async () => {
       console.log('[OcrResult] Loading latest questionnaire snapshot');
+      if (!isActive) { return; }
       setMatchState('loading');
       setMatchError('');
       setMatchResult(null);
       setQuestionnaireSnapshot(null);
 
       const latestQuestionnaire = await loadLatestQuestionnaireResult();
+      if (!isActive) { return; }
       if (!latestQuestionnaire?.payload) {
-        if (isActive) {
-          console.warn('[OcrResult] Missing questionnaire snapshot for match');
-          setMatchState('missing');
-        }
+        console.warn('[OcrResult] Missing questionnaire snapshot for match');
+        setMatchState('missing');
         return;
       }
 
-      if (isActive) {
-        setQuestionnaireSnapshot(latestQuestionnaire);
-      }
+      setQuestionnaireSnapshot(latestQuestionnaire);
 
       try {
         const matchRequestStart = Date.now();
@@ -185,7 +183,8 @@ function OcrResultScreen({ route }: Props) {
           },
         );
 
-        const payload = await response.json();
+        const payload = await response.json().catch(() => null);
+        if (!isActive) { return; }
         console.log('[OcrResult] OpenAI coffee match response content', {
           payload,
         });
@@ -197,29 +196,31 @@ function OcrResultScreen({ route }: Props) {
             message,
             payload,
           });
-          if (isActive) {
-            setMatchError(message);
-            setMatchState('error');
-          }
+          setMatchError(message);
+          setMatchState('error');
           return;
         }
 
-        if (isActive) {
-          setMatchResult(payload.match);
-          setMatchState('ready');
-          console.log('[OcrResult] Coffee match ready', {
-            durationMs: Date.now() - matchRequestStart,
-          });
+        if (!payload?.match) {
+          console.error('[OcrResult] Coffee match response missing match field', { payload });
+          setMatchError('Odpoveď servera neobsahovala výsledok porovnania.');
+          setMatchState('error');
+          return;
         }
+
+        setMatchResult(payload.match);
+        setMatchState('ready');
+        console.log('[OcrResult] Coffee match ready', {
+          durationMs: Date.now() - matchRequestStart,
+        });
       } catch (error) {
+        if (!isActive) { return; }
         const message =
           error instanceof Error
             ? error.message
             : 'Nepodarilo sa porovnať kávu s dotazníkom.';
-        if (isActive) {
-          setMatchError(message);
-          setMatchState('error');
-        }
+        setMatchError(message);
+        setMatchState('error');
         console.error('[OcrResult] Coffee match failed', error);
       }
     };

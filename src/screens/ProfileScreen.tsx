@@ -4,7 +4,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../navigation/types';
 import {useAuth} from '../context/AuthContext';
-import {apiFetch, DEFAULT_API_HOST} from '../utils/api';
+import {useLogout} from '../hooks/useLogout';
 import {loadLatestQuestionnaireResult, QuestionnaireResultPayload} from '../utils/localSave';
 import TasteProfileBars from '../components/TasteProfileBars';
 import {DEFAULT_TASTE_VECTOR, normalizeTasteVector} from '../utils/tasteVector';
@@ -13,7 +13,8 @@ import BottomNavBar from '../components/BottomNavBar';
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
 function ProfileScreen({navigation}: Props) {
-  const {user, clearSession} = useAuth();
+  const {user} = useAuth();
+  const {logout, isLoggingOut} = useLogout();
   const [profile, setProfile] = useState<QuestionnaireResultPayload['profile'] | null>(null);
 
   const loadProfile = useCallback(async () => {
@@ -25,31 +26,6 @@ function ProfileScreen({navigation}: Props) {
     loadProfile();
     return navigation.addListener('focus', loadProfile);
   }, [loadProfile, navigation]);
-
-  const handleLogout = async () => {
-    try {
-      const response = await apiFetch(
-        `${DEFAULT_API_HOST}/auth/logout`,
-        {
-          method: 'POST',
-          credentials: 'include',
-        },
-        {
-          feature: 'Auth',
-          action: 'logout',
-        },
-      );
-
-      if (!response.ok) {
-        console.warn('[Auth] Logout failed.', response.status);
-        return;
-      }
-
-      await clearSession();
-    } catch (error) {
-      console.warn('[Auth] Logout failed.', error);
-    }
-  };
 
   const userVector = normalizeTasteVector(profile?.tasteVector ?? DEFAULT_TASTE_VECTOR);
 
@@ -98,8 +74,16 @@ function ProfileScreen({navigation}: Props) {
           </Pressable>
         </View>
 
-        <Pressable style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Odhlásiť sa</Text>
+        <Pressable
+          style={({pressed}) => [
+            styles.logoutButton,
+            (pressed || isLoggingOut) && styles.logoutButtonPressed,
+          ]}
+          onPress={logout}
+          disabled={isLoggingOut}>
+          <Text style={styles.logoutButtonText}>
+            {isLoggingOut ? 'Odhlasujem…' : 'Odhlásiť sa'}
+          </Text>
         </Pressable>
       </ScrollView>
       <BottomNavBar />
@@ -215,6 +199,9 @@ const styles = StyleSheet.create({
     borderColor: '#70523D',
     paddingVertical: 13,
     alignItems: 'center',
+  },
+  logoutButtonPressed: {
+    opacity: 0.7,
   },
   logoutButtonText: {
     color: '#70523D',

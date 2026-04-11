@@ -24,7 +24,10 @@ import BottomNavBar from '../components/BottomNavBar';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeeScanner'>;
 
-const PICKER_TIMEOUT_MS = 2000000;
+// 30 seconds is more than enough for the native picker to respond. The
+// previous value (2,000,000 ms ≈ 33 minutes) effectively disabled the timeout
+// and left users stuck on a spinner indefinitely.
+const PICKER_TIMEOUT_MS = 30_000;
 const MAX_IMAGE_DIMENSION = 1600;
 const IMAGE_QUALITY = 0.6;
 const MAX_BASE64_BYTES = 2_000_000;
@@ -78,6 +81,9 @@ function CoffeeScannerScreen({ navigation }: Props) {
       submitStartRef.current = Date.now();
     }
 
+    // Refreshing the progress bar every 500 ms is plenty for a visual
+    // indicator and avoids 5-updates-per-second re-renders.
+    const PROGRESS_TICK_MS = 500;
     const intervalId = setInterval(() => {
       const startedAt = submitStartRef.current ?? Date.now();
       const elapsed = Date.now() - startedAt;
@@ -89,10 +95,12 @@ function CoffeeScannerScreen({ navigation }: Props) {
         if (current >= target) {
           return current;
         }
-        const increment = target === 100 ? 6 : 2;
+        // Each tick we advance more aggressively during the final stage so the
+        // bar visibly finishes in time with the request.
+        const increment = target === 100 ? 15 : 5;
         return Math.min(target, current + increment);
       });
-    }, 200);
+    }, PROGRESS_TICK_MS);
 
     return () => clearInterval(intervalId);
   }, [isSubmitting, submitStage, submitStageTarget]);
@@ -148,7 +156,10 @@ function CoffeeScannerScreen({ navigation }: Props) {
         durationMs: Date.now() - ocrRequestStart,
       });
 
-      const payload = await response.json();
+      const payload = await response.json().catch((parseError) => {
+        console.warn('[CoffeeScanner] Failed to parse OCR response', parseError);
+        return null;
+      });
       console.log('[CoffeeScanner] OCR response content', {
         payload,
       });
@@ -157,6 +168,12 @@ function CoffeeScannerScreen({ navigation }: Props) {
         const message = payload?.error || 'OCR request failed.';
         console.error('[CoffeeScanner] OCR request failed', { message, payload });
         setErrorMessage(message);
+        return;
+      }
+
+      if (!payload || typeof payload.correctedText !== 'string' || typeof payload.rawText !== 'string') {
+        console.error('[CoffeeScanner] OCR response malformed', { payload });
+        setErrorMessage('Server vrátil neočakávanú OCR odpoveď.');
         return;
       }
 
@@ -188,7 +205,10 @@ function CoffeeScannerScreen({ navigation }: Props) {
         durationMs: Date.now() - profileRequestStart,
       });
 
-      const profilePayload = await profileResponse.json();
+      const profilePayload = await profileResponse.json().catch((parseError) => {
+        console.warn('[CoffeeScanner] Failed to parse profile response', parseError);
+        return null;
+      });
       console.log('[CoffeeScanner] Coffee profile response content', {
         payload: profilePayload,
       });
@@ -302,16 +322,23 @@ function CoffeeScannerScreen({ navigation }: Props) {
     setImageUri(asset.uri ?? null);
   };
 
-  const withPickerTimeout = async <T,>(promise: Promise<T>): Promise<T> =>
-    Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        const timeoutId = setTimeout(() => {
-          clearTimeout(timeoutId);
-          reject(new Error('Image picker timed out.'));
-        }, PICKER_TIMEOUT_MS);
-      }),
-    ]);
+  const withPickerTimeout = async <T,>(promise: Promise<T>): Promise<T> => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    try {
+      return await Promise.race<T>([
+        promise,
+        new Promise<T>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error('Image picker timed out.'));
+          }, PICKER_TIMEOUT_MS);
+        }),
+      ]);
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  };
 
   const handleSelectFromGallery = async () => {
     setIsPicking(true);
