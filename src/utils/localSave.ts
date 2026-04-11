@@ -18,16 +18,39 @@ export type QuestionnaireResultPayload = {
   profile: QuestionnaireProfile;
 };
 
+const readEntries = async <T,>(key: string): Promise<Array<SaveEntry<T>>> => {
+  try {
+    const existing = await AsyncStorage.getItem(key);
+    if (!existing) {
+      return [];
+    }
+    const parsed = JSON.parse(existing);
+    return Array.isArray(parsed) ? (parsed as Array<SaveEntry<T>>) : [];
+  } catch (error) {
+    // Corrupt payload or storage error — fall back to an empty list so the
+    // caller can still write fresh data without losing functionality.
+    console.error('[LocalSave] Failed to read entries', { key, error });
+    return [];
+  }
+};
+
 const saveEntry = async <T,>(key: string, payload: T) => {
   const entry: SaveEntry<T> = {
     id: `${key}-${Date.now()}`,
     savedAt: new Date().toISOString(),
     payload,
   };
-  const existing = await AsyncStorage.getItem(key);
-  const parsed: Array<SaveEntry<T>> = existing ? JSON.parse(existing) : [];
+
+  const parsed = await readEntries<T>(key);
   parsed.unshift(entry);
-  await AsyncStorage.setItem(key, JSON.stringify(parsed));
+
+  try {
+    await AsyncStorage.setItem(key, JSON.stringify(parsed));
+  } catch (error) {
+    console.error('[LocalSave] Failed to persist entry', { key, error });
+    throw error;
+  }
+
   return entry;
 };
 
@@ -44,18 +67,8 @@ export const saveQuestionnaireResult = async (
 ) => saveEntry(STORAGE_KEYS.questionnaireResult, payload);
 
 const loadLatestEntry = async <T,>(key: string): Promise<SaveEntry<T> | null> => {
-  const existing = await AsyncStorage.getItem(key);
-  if (!existing) {
-    return null;
-  }
-
-  try {
-    const parsed: Array<SaveEntry<T>> = JSON.parse(existing);
-    return parsed?.[0] ?? null;
-  } catch (error) {
-    console.error('[LocalSave] Failed to parse storage entry', { key, error });
-    return null;
-  }
+  const entries = await readEntries<T>(key);
+  return entries[0] ?? null;
 };
 
 export const loadLatestQuestionnaireResult = async () =>

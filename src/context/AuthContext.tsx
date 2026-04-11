@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 
-type AuthUser = {
+export type AuthUser = {
   id: string;
   email: string;
   name: string | null;
@@ -15,12 +15,10 @@ type AuthContextValue = {
   refreshSession: () => Promise<void>;
 };
 
-const AuthContext = createContext<AuthContextValue>({
-  user: null,
-  initializing: true,
-  clearSession: async () => {},
-  refreshSession: async () => {},
-});
+// Using `undefined` as default so `useAuth()` can throw when the context is
+// consumed outside of `<AuthProvider>`. This avoids the silent-failure trap of
+// no-op async stubs that previously masked configuration errors.
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -94,6 +92,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
-  return useContext(AuthContext);
+export function useAuth(): AuthContextValue {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an <AuthProvider>.');
+  }
+  return context;
 }

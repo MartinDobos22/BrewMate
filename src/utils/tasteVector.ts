@@ -1,3 +1,5 @@
+import { MATCH_SCORE_THRESHOLDS, TOLERANCE_WEIGHTS } from '../constants/business';
+
 export type TasteVector = {
   acidity: number;
   sweetness: number;
@@ -8,20 +10,35 @@ export type TasteVector = {
   confidence?: number;
 };
 
+/** Taste axes excluding meta fields like `confidence`. */
+export type TasteAxis = Exclude<keyof TasteVector, 'confidence'>;
+
+export const TASTE_AXES: readonly TasteAxis[] = [
+  'acidity',
+  'sweetness',
+  'bitterness',
+  'body',
+  'fruity',
+  'roast',
+] as const;
+
 export const TASTE_LEVELS = [0, 25, 50, 75, 100] as const;
 
+/** Default neutral value for an uninitialized taste axis. */
+const DEFAULT_TASTE_AXIS_VALUE = 50;
+
 export const DEFAULT_TASTE_VECTOR: TasteVector = {
-  acidity: 50,
-  sweetness: 50,
-  bitterness: 50,
-  body: 50,
-  fruity: 50,
-  roast: 50,
+  acidity: DEFAULT_TASTE_AXIS_VALUE,
+  sweetness: DEFAULT_TASTE_AXIS_VALUE,
+  bitterness: DEFAULT_TASTE_AXIS_VALUE,
+  body: DEFAULT_TASTE_AXIS_VALUE,
+  fruity: DEFAULT_TASTE_AXIS_VALUE,
+  roast: DEFAULT_TASTE_AXIS_VALUE,
 };
 
 export const snapToTasteLevel = (value: number) => {
   if (!Number.isFinite(value)) {
-    return 50;
+    return DEFAULT_TASTE_AXIS_VALUE;
   }
   return TASTE_LEVELS.reduce((closest, level) => {
     const currentDistance = Math.abs(level - value);
@@ -30,18 +47,26 @@ export const snapToTasteLevel = (value: number) => {
       return level > closest ? level : closest;
     }
     return currentDistance < closestDistance ? level : closest;
-  }, 50);
+  }, DEFAULT_TASTE_AXIS_VALUE as number);
+};
+
+const coerceAxisValue = (value: unknown): number => {
+  if (value === null || value === undefined) {
+    return DEFAULT_TASTE_AXIS_VALUE;
+  }
+  const numeric = typeof value === 'number' ? value : Number(value);
+  return snapToTasteLevel(numeric);
 };
 
 export const normalizeTasteVector = (
   vector?: Partial<TasteVector> | null,
 ): TasteVector => ({
-  acidity: snapToTasteLevel(Number(vector?.acidity)),
-  sweetness: snapToTasteLevel(Number(vector?.sweetness)),
-  bitterness: snapToTasteLevel(Number(vector?.bitterness)),
-  body: snapToTasteLevel(Number(vector?.body)),
-  fruity: snapToTasteLevel(Number(vector?.fruity)),
-  roast: snapToTasteLevel(Number(vector?.roast)),
+  acidity: coerceAxisValue(vector?.acidity),
+  sweetness: coerceAxisValue(vector?.sweetness),
+  bitterness: coerceAxisValue(vector?.bitterness),
+  body: coerceAxisValue(vector?.body),
+  fruity: coerceAxisValue(vector?.fruity),
+  roast: coerceAxisValue(vector?.roast),
 });
 
 const parseJsonIfString = (value: unknown) => {
@@ -171,6 +196,60 @@ export const ensureQuestionnaireProfile = (value: unknown): QuestionnaireProfile
     openness: normalizeOpenness(candidate.openness),
     confidence: typeof candidate.confidence === 'number' ? candidate.confidence : 0.2,
   };
+};
+
+/**
+ * Returns the tolerance weight for a single taste axis. Low-weight (tolerant)
+ * axes contribute less to the overall mismatch, while dislike axes have full
+ * weight — effectively punishing any deviation on them.
+ */
+const getToleranceWeight = (tolerance: ToleranceVector, axis: TasteAxis): number => {
+  const level = tolerance[axis];
+  return TOLERANCE_WEIGHTS[level] ?? TOLERANCE_WEIGHTS.neutral;
+};
+
+/**
+ * Computes a 0–100 match score between a user's preferred taste vector and a
+ * coffee's measured taste vector, weighted by the user's per-axis tolerance.
+ *
+ * Returns `null` when inputs are missing so callers can render a "no data"
+ * state instead of a misleading numeric score.
+ */
+export const calculateMatchScore = (
+  userVector?: Partial<TasteVector> | null,
+  coffeeVector?: Partial<TasteVector> | null,
+  toleranceVector?: Partial<ToleranceVector> | null,
+): number | null => {
+  if (!userVector || !coffeeVector) {
+    return null;
+  }
+
+  const user = normalizeTasteVector(userVector);
+  const coffee = normalizeTasteVector(coffeeVector);
+  const tolerance = normalizeToleranceVector(toleranceVector);
+
+  let totalWeight = 0;
+  let weightedDistance = 0;
+  for (const axis of TASTE_AXES) {
+    const weight = getToleranceWeight(tolerance, axis);
+    totalWeight += weight;
+    weightedDistance += Math.abs(user[axis] - coffee[axis]) * weight;
+  }
+
+  const normalizedDistance = totalWeight > 0 ? weightedDistance / totalWeight : 0;
+  return Math.round(100 - normalizedDistance);
+};
+
+/**
+ * Maps a numeric match score to a human-readable tier. Keeping this logic in
+ * one place means the UI layer can simply render the tier label.
+ */
+export const matchScoreToTier = (score: number): MatchTier => {
+  if (score >= MATCH_SCORE_THRESHOLDS.perfect) { return 'perfect_match'; }
+  if (score >= MATCH_SCORE_THRESHOLDS.great) { return 'great_choice'; }
+  if (score >= MATCH_SCORE_THRESHOLDS.worthTrying) { return 'worth_trying'; }
+  if (score >= MATCH_SCORE_THRESHOLDS.experiment) { return 'interesting_experiment'; }
+  return 'not_for_you';
 };
 
 export const ensureCoffeeProfile = (value: unknown): CoffeeProfile => {
