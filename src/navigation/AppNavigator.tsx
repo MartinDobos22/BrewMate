@@ -10,6 +10,7 @@ import CoffeeQuestionnaireScreen from '../screens/CoffeeQuestionnaireScreen';
 import CoffeeQuestionnaireResultScreen from '../screens/CoffeeQuestionnaireResultScreen';
 import CoffeeInventoryScreen from '../screens/CoffeeInventoryScreen';
 import CoffeeRecipesSavedScreen from '../screens/CoffeeRecipesSavedScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import AuthLoadingScreen from '../screens/AuthLoadingScreen';
@@ -60,6 +61,13 @@ function MainNavigator() {
         options={{
           title: 'BrewMate',
           headerBackVisible: false,
+        }}
+      />
+      <AppStack.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          title: 'Profil',
         }}
       />
       <AppStack.Screen
