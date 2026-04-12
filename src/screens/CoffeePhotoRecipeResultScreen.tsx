@@ -199,6 +199,12 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
               Recept sa dá uložiť až od {APPROVAL_THRESHOLD}%.
             </Text>
           ) : null}
+          {recipe.whyThisRecipe ? (
+            <>
+              <Text style={s.highlight}>Prečo tento recept?</Text>
+              <Text style={s.bodyText}>{recipe.whyThisRecipe}</Text>
+            </>
+          ) : null}
         </View>
 
         <View style={s.card}>

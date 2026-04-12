@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
@@ -42,16 +42,33 @@ const PICKER_TIMEOUT_MS = 2000000;
 const MAX_IMAGE_DIMENSION = 1600;
 const IMAGE_QUALITY = 0.6;
 const MAX_BASE64_BYTES = 2_000_000;
+const DEFAULT_BREW_RATIO = 15.5;
+const CUSTOM_PREPARATION_VALUE = '__custom_preparation__';
 
 const estimateBase64Bytes = (base64: string) =>
   Math.ceil((base64.length * 3) / 4);
 
 const normalizeBase64 = (value: string) => value.replace(/^data:image\/\w+;base64,/, '').trim();
+const parseOptionalNumber = (value: string) => {
+  if (!value.trim()) {
+    return null;
+  }
+
+  const normalized = value.replace(',', '.');
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return parsed;
+};
+
+const roundOneDecimal = (value: number) => Math.round(value * 10) / 10;
 
 function CoffeePhotoRecipeScreen({ navigation }: Props) {
   const [imageBase64, setImageBase64] = useState('');
   const [analysis, setAnalysis] = useState<PhotoAnalysis | null>(null);
   const [selectedPreparation, setSelectedPreparation] = useState<string | null>(null);
+  const [customPreparationText, setCustomPreparationText] = useState('');
   const [strengthPreference, setStrengthPreference] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
@@ -61,9 +78,19 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
   const [inventoryItems, setInventoryItems] = useState<InventoryCoffee[]>([]);
   const [isInventoryVisible, setIsInventoryVisible] = useState(false);
   const [isInventoryLoading, setIsInventoryLoading] = useState(false);
+  const [targetWaterMl, setTargetWaterMl] = useState('');
+  const [targetDoseG, setTargetDoseG] = useState('');
+  const [targetRatio, setTargetRatio] = useState('');
+  const [grinderType, setGrinderType] = useState<string | null>(null);
+  const [grinderModel, setGrinderModel] = useState('');
+  const [grinderSettingScale, setGrinderSettingScale] = useState('');
 
   const strengthOptions = useMemo(
     () => ['jemné chute', 'slabšie', 'výraznejšie'],
+    [],
+  );
+  const grinderTypes = useMemo(
+    () => ['elektrický', 'ručný', 'nemám mlynček'],
     [],
   );
 
@@ -160,7 +187,14 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     setIsInventoryVisible(false);
     setAnalysis(null);
     setSelectedPreparation(null);
+    setCustomPreparationText('');
     setStrengthPreference(null);
+    setTargetWaterMl('');
+    setTargetDoseG('');
+    setTargetRatio('');
+    setGrinderType(null);
+    setGrinderModel('');
+    setGrinderSettingScale('');
   };
 
   const withPickerTimeout = async <T,>(promise: Promise<T>): Promise<T> =>
@@ -232,7 +266,14 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     setIsAnalyzing(true);
     setAnalysis(null);
     setSelectedPreparation(null);
+    setCustomPreparationText('');
     setStrengthPreference(null);
+    setTargetWaterMl('');
+    setTargetDoseG('');
+    setTargetRatio('');
+    setGrinderType(null);
+    setGrinderModel('');
+    setGrinderSettingScale('');
 
     try {
       console.log('[PhotoRecipe] OpenAI photo analysis request via backend', {
@@ -281,6 +322,68 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     }
   };
 
+  const applyRecommendedRatio = () => {
+    const recommendedRatio = DEFAULT_BREW_RATIO;
+    setTargetRatio(String(recommendedRatio));
+
+    const parsedDose = parseOptionalNumber(targetDoseG);
+    const parsedWater = parseOptionalNumber(targetWaterMl);
+
+    if (parsedDose && !parsedWater) {
+      setTargetWaterMl(String(roundOneDecimal(parsedDose * recommendedRatio)));
+      return;
+    }
+
+    if (parsedWater && !parsedDose) {
+      setTargetDoseG(String(roundOneDecimal(parsedWater / recommendedRatio)));
+    }
+  };
+
+  const handleDoseChange = (value: string) => {
+    setTargetDoseG(value);
+
+    const parsedDose = parseOptionalNumber(value);
+    const parsedWater = parseOptionalNumber(targetWaterMl);
+    const parsedRatio = parseOptionalNumber(targetRatio) ?? DEFAULT_BREW_RATIO;
+
+    if (parsedDose && !parsedWater) {
+      setTargetWaterMl(String(roundOneDecimal(parsedDose * parsedRatio)));
+    }
+  };
+
+  const handleWaterChange = (value: string) => {
+    setTargetWaterMl(value);
+
+    const parsedWater = parseOptionalNumber(value);
+    const parsedDose = parseOptionalNumber(targetDoseG);
+    const parsedRatio = parseOptionalNumber(targetRatio) ?? DEFAULT_BREW_RATIO;
+
+    if (parsedWater && !parsedDose) {
+      setTargetDoseG(String(roundOneDecimal(parsedWater / parsedRatio)));
+    }
+  };
+
+  const handleRatioChange = (value: string) => {
+    setTargetRatio(value);
+
+    const parsedRatio = parseOptionalNumber(value);
+    if (!parsedRatio) {
+      return;
+    }
+
+    const parsedDose = parseOptionalNumber(targetDoseG);
+    const parsedWater = parseOptionalNumber(targetWaterMl);
+
+    if (parsedDose && !parsedWater) {
+      setTargetWaterMl(String(roundOneDecimal(parsedDose * parsedRatio)));
+      return;
+    }
+
+    if (parsedWater && !parsedDose) {
+      setTargetDoseG(String(roundOneDecimal(parsedWater / parsedRatio)));
+    }
+  };
+
   const handleGenerateRecipe = async () => {
     if (isGenerating) {
       return;
@@ -305,6 +408,26 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     setInfoMessage('');
     setIsGenerating(true);
 
+    const parsedDose = parseOptionalNumber(targetDoseG);
+    const parsedWater = parseOptionalNumber(targetWaterMl);
+    const parsedRatio = parseOptionalNumber(targetRatio);
+    const computedRatio = parsedRatio ?? (parsedDose && parsedWater ? roundOneDecimal(parsedWater / parsedDose) : null);
+    const finalPreparation = selectedPreparation === CUSTOM_PREPARATION_VALUE
+      ? customPreparationText.trim()
+      : selectedPreparation;
+
+    if (!finalPreparation) {
+      setErrorMessage('Vyberte spôsob prípravy alebo napíšte vlastný.');
+      setIsGenerating(false);
+      return;
+    }
+
+    if (!grinderType) {
+      setErrorMessage('Vyberte prosím typ mlynčeka.');
+      setIsGenerating(false);
+      return;
+    }
+
     try {
       console.log('[PhotoRecipe] OpenAI photo recipe request via backend', {
         endpoint: '/api/coffee-photo-recipe',
@@ -318,8 +441,26 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
           },
           body: JSON.stringify({
             analysis,
-            selectedPreparation,
+            selectedPreparation: finalPreparation,
+            customPreparationText: selectedPreparation === CUSTOM_PREPARATION_VALUE
+              ? customPreparationText.trim()
+              : null,
             strengthPreference,
+            grinderProfile: {
+              grinderType,
+              grinderModel: grinderModel.trim() || null,
+              grinderSettingScale: grinderSettingScale.trim() || null,
+            },
+            brewPreferences: {
+              targetDoseG: parsedDose,
+              targetWaterMl: parsedWater,
+              targetRatio: computedRatio,
+              providedByUser: {
+                targetDoseG: Boolean(parsedDose),
+                targetWaterMl: Boolean(parsedWater),
+                targetRatio: Boolean(parsedRatio),
+              },
+            },
           }),
         },
         {
@@ -345,7 +486,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
 
       navigation.navigate('CoffeePhotoRecipeResult', {
         analysis,
-        selectedPreparation,
+        selectedPreparation: finalPreparation,
         strengthPreference,
         recipe: payload.recipe,
         likePrediction: payload.likePrediction || {
@@ -518,6 +659,59 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
           ...typescale.bodyMedium,
           color: colors.onSurface,
         },
+        inputGroup: {
+          marginTop: spacing.sm,
+          gap: spacing.sm,
+        },
+        inputLabel: {
+          ...typescale.labelMedium,
+          color: colors.onSurfaceVariant,
+        },
+        input: {
+          ...typescale.bodyMedium,
+          color: colors.onSurface,
+          borderWidth: 1,
+          borderColor: colors.outlineVariant,
+          borderRadius: shape.medium,
+          backgroundColor: colors.surfaceContainerLowest,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
+        },
+        ratioHintCard: {
+          marginTop: spacing.sm,
+          borderRadius: shape.medium,
+          borderWidth: 1,
+          borderColor: colors.outlineVariant,
+          backgroundColor: colors.surfaceContainerLowest,
+          padding: spacing.md,
+          gap: spacing.xs,
+        },
+        chipsRow: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: spacing.sm,
+          marginTop: spacing.sm,
+        },
+        chipButton: {
+          borderWidth: 1,
+          borderColor: colors.outlineVariant,
+          borderRadius: shape.large,
+          paddingVertical: spacing.xs,
+          paddingHorizontal: spacing.md,
+          backgroundColor: colors.surfaceContainerLowest,
+        },
+        chipButtonActive: {
+          borderColor: colors.primary,
+          backgroundColor: colors.primaryContainer,
+        },
+        chipButtonText: {
+          ...typescale.bodySmall,
+          color: colors.onSurface,
+        },
+        chipButtonTextActive: {
+          color: colors.onPrimaryContainer,
+          fontWeight: '600',
+        },
         errorText: {
           ...typescale.bodySmall,
           color: colors.error,
@@ -541,8 +735,8 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
         </View>
         <Text style={s.title}>Coffee recipe scanner</Text>
         <Text style={s.description}>
-          Naskenuj etiketu kávy, nechaj AI odhadnúť chuť a vygeneruj recept podľa
-          zvolenej metódy a intenzity.
+          Vyber kávu z inventára alebo ju naskenuj a AI ti navrhne najlepšie
+          metódy prípravy podľa jej profilu.
         </Text>
 
         <View style={s.card}>
@@ -666,6 +860,42 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
                   </Pressable>
                 );
               })}
+              <Pressable
+                style={[
+                  s.optionCard,
+                  selectedPreparation === CUSTOM_PREPARATION_VALUE && s.optionCardActive,
+                ]}
+                onPress={() => setSelectedPreparation(CUSTOM_PREPARATION_VALUE)}
+              >
+                <Text
+                  style={[
+                    s.optionTitle,
+                    selectedPreparation === CUSTOM_PREPARATION_VALUE && s.optionTitleActive,
+                  ]}
+                >
+                  Chcem vlastnú prípravu
+                </Text>
+                <Text
+                  style={[
+                    s.optionText,
+                    selectedPreparation === CUSTOM_PREPARATION_VALUE && s.optionTextActive,
+                  ]}
+                >
+                  Napr. Origami, Kalita, experimentálny recept.
+                </Text>
+              </Pressable>
+              {selectedPreparation === CUSTOM_PREPARATION_VALUE ? (
+                <View style={s.inputGroup}>
+                  <Text style={s.inputLabel}>Zadaj vlastný spôsob prípravy</Text>
+                  <TextInput
+                    style={s.input}
+                    value={customPreparationText}
+                    onChangeText={setCustomPreparationText}
+                    placeholder="napr. V60 s jemnejším mletím"
+                    placeholderTextColor={colors.onSurfaceVariant}
+                  />
+                </View>
+              ) : null}
             </View>
 
             <View style={s.card}>
@@ -695,6 +925,115 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
                     <Text style={s.radioLabel}>{option}</Text>
                   </Pressable>
                 ))}
+              </View>
+            </View>
+
+            <View style={s.card}>
+              <View style={s.cardHeader}>
+                <CoffeeBeanIcon size={20} color={colors.primary} />
+                <Text style={s.cardTitle}>Tvoj mlynček</Text>
+              </View>
+              <Text style={s.helperText}>
+                Vyber typ mlynčeka, aby AI vedela lepšie odhadnúť hrubosť mletia.
+              </Text>
+              <View style={s.chipsRow}>
+                {grinderTypes.map((type) => {
+                  const isActive = grinderType === type;
+                  return (
+                    <Pressable
+                      key={type}
+                      onPress={() => setGrinderType(type)}
+                      style={[s.chipButton, isActive && s.chipButtonActive]}
+                    >
+                      <Text style={[s.chipButtonText, isActive && s.chipButtonTextActive]}>
+                        {type}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <View style={s.inputGroup}>
+                <Text style={s.inputLabel}>Model mlynčeka (voliteľné)</Text>
+                <TextInput
+                  style={s.input}
+                  value={grinderModel}
+                  onChangeText={setGrinderModel}
+                  placeholder="napr. Comandante C40"
+                  placeholderTextColor={colors.onSurfaceVariant}
+                />
+              </View>
+              <View style={s.inputGroup}>
+                <Text style={s.inputLabel}>Škála nastavenia (voliteľné)</Text>
+                <TextInput
+                  style={s.input}
+                  value={grinderSettingScale}
+                  onChangeText={setGrinderSettingScale}
+                  placeholder="napr. kliky 1-30 alebo čísla 1-40"
+                  placeholderTextColor={colors.onSurfaceVariant}
+                />
+              </View>
+            </View>
+
+            <View style={s.card}>
+              <View style={s.cardHeader}>
+                <CoffeeBeanIcon size={20} color={colors.primary} />
+                <Text style={s.cardTitle}>Voda, gramáž a pomer (voliteľné)</Text>
+              </View>
+              <Text style={s.helperText}>
+                Ideálny štart pre filter je pomer káva:voda 1:15,5.
+              </Text>
+              <Text style={s.helperText}>
+                Príklad: 20 g kávy → 310 g vody.
+              </Text>
+              <MD3Button
+                label="Použiť odporúčaný pomer 1:15,5"
+                variant="outlined"
+                onPress={applyRecommendedRatio}
+                style={{ marginTop: spacing.md }}
+              />
+              <View style={s.inputGroup}>
+                <Text style={s.inputLabel}>Gramáž kávy (g)</Text>
+                <TextInput
+                  style={s.input}
+                  value={targetDoseG}
+                  onChangeText={handleDoseChange}
+                  keyboardType="decimal-pad"
+                  placeholder="napr. 20"
+                  placeholderTextColor={colors.onSurfaceVariant}
+                />
+              </View>
+              <View style={s.inputGroup}>
+                <Text style={s.inputLabel}>Množstvo vody (g / ml)</Text>
+                <TextInput
+                  style={s.input}
+                  value={targetWaterMl}
+                  onChangeText={handleWaterChange}
+                  keyboardType="decimal-pad"
+                  placeholder="napr. 310"
+                  placeholderTextColor={colors.onSurfaceVariant}
+                />
+              </View>
+              <View style={s.inputGroup}>
+                <Text style={s.inputLabel}>Pomer vody ku káve</Text>
+                <TextInput
+                  style={s.input}
+                  value={targetRatio}
+                  onChangeText={handleRatioChange}
+                  keyboardType="decimal-pad"
+                  placeholder="napr. 15.5"
+                  placeholderTextColor={colors.onSurfaceVariant}
+                />
+              </View>
+              <View style={s.ratioHintCard}>
+                <Text style={s.bodyText}>
+                  Živý náhľad: {targetDoseG || '—'} g kávy • {targetWaterMl || '—'} g vody • 1:{targetRatio || '15.5'}
+                </Text>
+                <Text style={s.helperText}>
+                  Keď zadáš jednu hodnotu + pomer, ostatné dopočítame automaticky.
+                </Text>
+                <Text style={s.helperText}>
+                  Transparentnosť: AI berie do úvahy iba to, čo zadáš. Chýbajúce hodnoty dopočíta.
+                </Text>
               </View>
             </View>
 
