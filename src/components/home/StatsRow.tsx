@@ -2,9 +2,7 @@ import React, { ReactNode, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '../../theme/useTheme';
-import CoffeeBeanIcon from '../icons/CoffeeBeanIcon';
-import CoffeeCupIcon from '../icons/CoffeeCupIcon';
-import FlameIcon from '../icons/FlameIcon';
+import { CoffeeBeanIcon, CoffeeCupIcon, FlameIcon } from '../icons';
 
 type Props = {
   activeCoffeeCount: number;

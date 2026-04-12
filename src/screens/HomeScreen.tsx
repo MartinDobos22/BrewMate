@@ -21,8 +21,8 @@ import TasteProfileCard from '../components/home/TasteProfileCard';
 import RecentActivitySection, {
   RecentActivityEntry,
 } from '../components/home/RecentActivitySection';
-import FAB from '../components/md3/FAB';
-import PlusIcon from '../components/icons/PlusIcon';
+import { FAB } from '../components/md3';
+import { PlusIcon } from '../components/icons';
 import {
   calculateMatchScore,
   DEFAULT_TASTE_VECTOR,

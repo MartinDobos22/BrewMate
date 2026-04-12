@@ -2,11 +2,8 @@ import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useTheme } from '../../theme/useTheme';
-import Tile from '../md3/Tile';
-import CoffeeBeanIcon from '../icons/CoffeeBeanIcon';
-import CoffeeCupIcon from '../icons/CoffeeCupIcon';
-import ScanIcon from '../icons/ScanIcon';
-import SparklesIcon from '../icons/SparklesIcon';
+import { Tile } from '../md3';
+import { CoffeeBeanIcon, CoffeeCupIcon, ScanIcon, SparklesIcon } from '../icons';
 
 type Props = {
   activeCount: number;

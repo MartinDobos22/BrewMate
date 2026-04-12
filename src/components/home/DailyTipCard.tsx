@@ -2,8 +2,7 @@ import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '../../theme/useTheme';
-import LeafIcon from '../icons/LeafIcon';
-import ArrowRightIcon from '../icons/ArrowRightIcon';
+import { LeafIcon, ArrowRightIcon } from '../icons';
 
 type Props = {
   title?: string;

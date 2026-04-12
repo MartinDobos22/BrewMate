@@ -6,10 +6,7 @@ import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../navigation/types';
 import {useTheme} from '../theme/useTheme';
 import {elevation} from '../theme/theme';
-import HomeIcon from './icons/HomeIcon';
-import CoffeeBeanIcon from './icons/CoffeeBeanIcon';
-import CoffeeCupIcon from './icons/CoffeeCupIcon';
-import ProfileIcon from './icons/ProfileIcon';
+import { HomeIcon, CoffeeBeanIcon, CoffeeCupIcon, ProfileIcon } from './icons';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 

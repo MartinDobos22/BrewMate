@@ -2,7 +2,34 @@ import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '../../theme/useTheme';
-import { formatSlovakDate, getTimeGreeting } from '../../utils/greeting';
+
+// ---------------------------------------------------------------------------
+// Greeting helpers (inlined — previously in utils/greeting.ts)
+// ---------------------------------------------------------------------------
+
+function getTimeGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return 'Dobré ráno';
+  if (hour >= 12 && hour < 18) return 'Dobrý deň';
+  return 'Dobrý večer';
+}
+
+function formatSlovakDate(): string {
+  try {
+    const formatted = new Date().toLocaleDateString('sk-SK', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    });
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  } catch {
+    return '';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 type Props = {
   userName: string | null | undefined;

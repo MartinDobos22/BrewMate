@@ -2,8 +2,7 @@ import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '../../theme/useTheme';
-import CoffeeBeanIcon from '../icons/CoffeeBeanIcon';
-import CoffeeCupIcon from '../icons/CoffeeCupIcon';
+import { CoffeeBeanIcon, CoffeeCupIcon } from '../icons';
 
 export type RecentActivityIconKind = 'bean' | 'recipe';
 

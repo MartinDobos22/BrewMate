@@ -5,9 +5,8 @@ import { useTheme } from '../../theme/useTheme';
 import { elevation } from '../../theme/theme';
 import TasteProfileBars from '../TasteProfileBars';
 import type { TasteVector } from '../../utils/tasteVector';
-import Chip from '../md3/Chip';
-import MD3Button from '../md3/MD3Button';
-import SparklesIcon from '../icons/SparklesIcon';
+import { Chip, MD3Button } from '../md3';
+import { SparklesIcon } from '../icons';
 
 type Props = {
   vector: TasteVector;

@@ -3,10 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '../../theme/useTheme';
 import { elevation } from '../../theme/theme';
-import PortafilterIcon from '../icons/PortafilterIcon';
-import SparklesIcon from '../icons/SparklesIcon';
-import ArrowRightIcon from '../icons/ArrowRightIcon';
-import Chip from '../md3/Chip';
+import { PortafilterIcon, SparklesIcon, ArrowRightIcon } from '../icons';
+import { Chip } from '../md3';
 import type { HomeInventoryItem } from '../../hooks/useHomeDashboard';
 
 type Props = {
