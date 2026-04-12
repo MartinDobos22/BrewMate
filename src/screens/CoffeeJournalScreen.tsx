@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { DimensionValue, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
@@ -248,7 +248,7 @@ function CoffeeJournalScreen() {
 }
 
 function BarRow({ bucket, max }: { bucket: InsightBucket; max: number }) {
-  const width = max > 0 ? `${Math.max(12, (bucket.count / max) * 100)}%` : '12%';
+  const width: DimensionValue = max > 0 ? `${Math.max(12, (bucket.count / max) * 100)}%` : '12%';
 
   return (
     <View style={styles.barRow}>
