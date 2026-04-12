@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -18,6 +18,9 @@ import {
   MATCH_TIER_LABELS,
   MATCH_TIER_COLORS,
 } from '../utils/tasteVector';
+import { useTheme } from '../theme/useTheme';
+import { ScanIcon, CoffeeBeanIcon, SparklesIcon } from '../components/icons';
+import { MD3Button, Chip } from '../components/md3';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OcrResult'>;
 
@@ -232,6 +235,8 @@ function OcrResultScreen({ route }: Props) {
     };
   }, [coffeeProfile]);
 
+  const { colors, typescale, shape, elevation: elev, spacing } = useTheme();
+
   const verdictLabel = useMemo(() => {
     if (!matchResult) {
       return '';
@@ -246,67 +251,234 @@ function OcrResultScreen({ route }: Props) {
     return MATCH_TIER_COLORS[matchResult.matchTier] || MATCH_TIER_COLORS.worth_trying;
   }, [matchResult]);
 
-  return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.overline}>BrewMate Scanner</Text>
-        <Text style={styles.title}>Výsledok skenovania kávy</Text>
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        safeArea: {
+          flex: 1,
+          backgroundColor: colors.background,
+        },
+        container: {
+          paddingHorizontal: spacing.xl,
+          paddingTop: spacing.lg,
+          paddingBottom: 106,
+          gap: spacing.md,
+        },
+        headerRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+        },
+        overline: {
+          ...typescale.labelMedium,
+          color: colors.onSurfaceVariant,
+          textTransform: 'uppercase',
+        },
+        title: {
+          ...typescale.headlineMedium,
+          color: colors.onSurface,
+        },
+        card: {
+          backgroundColor: colors.surfaceContainerLow,
+          borderRadius: shape.extraLarge,
+          padding: spacing.lg,
+          ...elev.level1.shadow,
+        },
+        cardHeader: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+          marginBottom: spacing.md,
+        },
+        cardTitle: {
+          ...typescale.titleSmall,
+          color: colors.onSurface,
+        },
+        subsectionTitle: {
+          ...typescale.labelLarge,
+          color: colors.primary,
+          marginTop: spacing.md,
+          marginBottom: spacing.xs,
+        },
+        bodyText: {
+          ...typescale.bodyMedium,
+          color: colors.onSurface,
+        },
+        errorText: {
+          ...typescale.bodyMedium,
+          color: colors.error,
+          fontWeight: '600',
+        },
+        saveHint: {
+          ...typescale.bodySmall,
+          color: colors.tertiary,
+          fontWeight: '600',
+          marginTop: spacing.sm,
+        },
+        saveError: {
+          ...typescale.bodySmall,
+          color: colors.error,
+          fontWeight: '600',
+          marginTop: spacing.sm,
+        },
+        helperNote: {
+          ...typescale.bodySmall,
+          color: colors.onSurfaceVariant,
+          marginTop: spacing.md,
+        },
+        packageOptionsRow: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: spacing.sm,
+          marginBottom: spacing.sm,
+        },
+        packageOption: {
+          borderWidth: 1,
+          borderColor: colors.outlineVariant,
+          paddingVertical: spacing.sm,
+          paddingHorizontal: spacing.md,
+          borderRadius: shape.full,
+          backgroundColor: colors.surfaceContainerLowest,
+        },
+        packageOptionActive: {
+          borderColor: colors.tertiary,
+          backgroundColor: colors.tertiaryContainer,
+        },
+        packageOptionText: {
+          ...typescale.labelSmall,
+          color: colors.onSurfaceVariant,
+        },
+        packageOptionTextActive: {
+          color: colors.onTertiaryContainer,
+        },
+        remainingInputWrap: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.xs + 2,
+          marginBottom: spacing.sm,
+        },
+        remainingPrefix: {
+          ...typescale.bodySmall,
+          color: colors.onSurfaceVariant,
+        },
+        remainingValue: {
+          ...typescale.labelMedium,
+          color: colors.onSurface,
+        },
+        flavorRow: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: spacing.sm,
+        },
+        loadingRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+        },
+        verdictBadge: {
+          borderRadius: shape.large,
+          padding: spacing.md,
+          marginBottom: spacing.md,
+        },
+        verdictText: {
+          ...typescale.titleMedium,
+          color: colors.onSurface,
+        },
+        scoreRow: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: spacing.xs + 2,
+        },
+        scoreText: {
+          ...typescale.labelLarge,
+          color: colors.onSurface,
+        },
+        verdictSubText: {
+          ...typescale.bodySmall,
+          color: colors.onSurfaceVariant,
+        },
+        scoreBarBackground: {
+          height: 6,
+          borderRadius: 3,
+          backgroundColor: colors.outlineVariant,
+          marginTop: spacing.sm,
+          overflow: 'hidden' as const,
+        },
+        scoreBarFill: {
+          height: 6,
+          borderRadius: 3,
+        },
+        adventureNoteBlock: {
+          backgroundColor: colors.secondaryContainer,
+          borderRadius: shape.medium,
+          padding: spacing.md,
+          marginBottom: spacing.sm,
+        },
+      }),
+    [colors, typescale, shape, elev, spacing],
+  );
 
-        <View style={styles.saveRow}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.saveButton,
-              pressed && styles.saveButtonPressed,
-              saveState === 'saving' && styles.saveButtonDisabled,
-            ]}
+  return (
+    <SafeAreaView style={s.safeArea} edges={['bottom']}>
+      <ScrollView contentContainerStyle={s.container}>
+        <View style={s.headerRow}>
+          <ScanIcon size={20} color={colors.onSurfaceVariant} />
+          <Text style={s.overline}>BrewMate Scanner</Text>
+        </View>
+        <Text style={s.title}>Výsledok skenovania kávy</Text>
+
+        <View>
+          <MD3Button
+            label={saveState === 'saving' ? 'Ukladám...' : 'Uložiť lokálne'}
             onPress={handleSave}
             disabled={saveState === 'saving'}
-          >
-            <Text style={styles.saveButtonText}>
-              {saveState === 'saving' ? 'Ukladám...' : 'Uložiť lokálne'}
-            </Text>
-          </Pressable>
+            loading={saveState === 'saving'}
+          />
           {saveState === 'saved' ? (
-            <Text style={styles.saveHint}>Uložené do zariadenia.</Text>
+            <Text style={s.saveHint}>Uložené do zariadenia.</Text>
           ) : null}
           {saveState === 'error' ? (
-            <Text style={styles.saveError}>Uloženie zlyhalo.</Text>
+            <Text style={s.saveError}>Uloženie zlyhalo.</Text>
           ) : null}
         </View>
 
-        <View style={styles.inventoryBlock}>
-          <Text style={styles.label}>Inventár</Text>
-          <Text style={styles.text}>
+        <View style={s.card}>
+          <View style={s.cardHeader}>
+            <CoffeeBeanIcon size={20} color={colors.primary} />
+            <Text style={s.cardTitle}>Inventár</Text>
+          </View>
+          <Text style={s.bodyText}>
             Ak si túto kávu nekúpil, nič nemusíš vypĺňať. Inventár je len voliteľný.
           </Text>
           {!showInventoryDetails ? (
-            <Pressable
-              style={({ pressed }) => [styles.inventoryButton, pressed && styles.saveButtonPressed]}
+            <MD3Button
+              label="Kúpil som ju, pridať do inventára"
+              variant="tonal"
               onPress={() => {
                 setInventoryState('idle');
                 setInventoryError('');
                 setShowInventoryDetails(true);
               }}
-            >
-              <Text style={styles.saveButtonText}>Kúpil som ju, pridať do inventára</Text>
-            </Pressable>
+              style={{ marginTop: spacing.md }}
+            />
           ) : null}
           {showInventoryDetails ? (
             <>
-              <Text style={styles.profileTitle}>Veľkosť balíka (voliteľné)</Text>
-              <View style={styles.packageOptionsRow}>
+              <Text style={s.subsectionTitle}>Veľkosť balíka (voliteľné)</Text>
+              <View style={s.packageOptionsRow}>
                 {['', '250', '500', '1000'].map((value) => {
                   const isActive = packageSizeG === value;
                   return (
                     <Pressable
                       key={value || 'empty'}
-                      style={[styles.packageOption, isActive && styles.packageOptionActive]}
+                      style={[s.packageOption, isActive && s.packageOptionActive]}
                       onPress={() => setPackageSizeG(value)}
                     >
                       <Text
                         style={[
-                          styles.packageOptionText,
-                          isActive && styles.packageOptionTextActive,
+                          s.packageOptionText,
+                          isActive && s.packageOptionTextActive,
                         ]}
                       >
                         {value ? `${value} g` : 'nechať prázdne'}
@@ -315,26 +487,26 @@ function OcrResultScreen({ route }: Props) {
                   );
                 })}
               </View>
-              <Text style={styles.profileTitle}>Zostáva teraz (voliteľné)</Text>
-              <View style={styles.remainingInputWrap}>
-                <Text style={styles.remainingPrefix}>g</Text>
-                <Text style={styles.remainingValue}>
+              <Text style={s.subsectionTitle}>Zostáva teraz (voliteľné)</Text>
+              <View style={s.remainingInputWrap}>
+                <Text style={s.remainingPrefix}>g</Text>
+                <Text style={s.remainingValue}>
                   {remainingG.trim().length > 0 ? remainingG : 'nevyplnené'}
                 </Text>
               </View>
-              <View style={styles.packageOptionsRow}>
+              <View style={s.packageOptionsRow}>
                 {['', '50', '100', '150', '200'].map((value) => {
                   const isActive = remainingG === value;
                   return (
                     <Pressable
                       key={value || 'none'}
-                      style={[styles.packageOption, isActive && styles.packageOptionActive]}
+                      style={[s.packageOption, isActive && s.packageOptionActive]}
                       onPress={() => setRemainingG(value)}
                     >
                       <Text
                         style={[
-                          styles.packageOptionText,
-                          isActive && styles.packageOptionTextActive,
+                          s.packageOptionText,
+                          isActive && s.packageOptionTextActive,
                         ]}
                       >
                         {value ? `${value} g` : 'nechať prázdne'}
@@ -346,94 +518,110 @@ function OcrResultScreen({ route }: Props) {
             </>
           ) : null}
           {showInventoryDetails ? (
-            <Pressable
-              style={({ pressed }) => [
-                styles.inventoryButton,
-                pressed && styles.saveButtonPressed,
-                (inventoryState === 'saving' || !user) && styles.saveButtonDisabled,
-              ]}
+            <MD3Button
+              label={inventoryState === 'saving' ? 'Ukladám...' : 'Uložiť do inventára'}
               onPress={handleInventorySave}
               disabled={inventoryState === 'saving' || !user}
-            >
-              <Text style={styles.saveButtonText}>
-                {inventoryState === 'saving' ? 'Ukladám...' : 'Uložiť do inventára'}
-              </Text>
-            </Pressable>
+              loading={inventoryState === 'saving'}
+              style={{ backgroundColor: colors.tertiary, marginTop: spacing.md }}
+            />
           ) : null}
           {!user ? (
-            <Text style={styles.helperNote}>
+            <Text style={s.helperNote}>
               Pre uloženie do inventára sa musíš prihlásiť.
             </Text>
           ) : null}
           {inventoryState === 'saved' ? (
-            <Text style={styles.saveHint}>Káva uložená v inventári.</Text>
+            <Text style={s.saveHint}>Káva uložená v inventári.</Text>
           ) : null}
           {inventoryState === 'error' ? (
-            <Text style={styles.saveError}>{inventoryError}</Text>
+            <Text style={s.saveError}>{inventoryError}</Text>
           ) : null}
         </View>
 
-        <View style={styles.block}>
-          <Text style={styles.label}>Oskenovaný text</Text>
-          <Text style={styles.text}>{rawText}</Text>
+        <View style={s.card}>
+          <View style={s.cardHeader}>
+            <ScanIcon size={20} color={colors.primary} />
+            <Text style={s.cardTitle}>Oskenovaný text</Text>
+          </View>
+          <Text style={s.bodyText}>{rawText}</Text>
         </View>
 
-        <View style={styles.block}>
-          <Text style={styles.label}>Opravený text</Text>
-          <Text style={styles.text}>{correctedText}</Text>
+        <View style={s.card}>
+          <View style={s.cardHeader}>
+            <SparklesIcon size={20} color={colors.primary} />
+            <Text style={s.cardTitle}>Opravený text</Text>
+          </View>
+          <Text style={s.bodyText}>{correctedText}</Text>
         </View>
 
-        <View style={styles.block}>
-          <Text style={styles.label}>Chuťový profil</Text>
-          <Text style={styles.profileTitle}>Chuťové tóny</Text>
-          <Text style={styles.text}>
-            {coffeeProfile.flavorNotes.length > 0
-              ? coffeeProfile.flavorNotes.join(', ')
-              : 'Neurčené'}
-          </Text>
-          <Text style={styles.profileTitle}>Profil chuti</Text>
-          <Text style={styles.text}>{coffeeProfile.tasteProfile}</Text>
-          <Text style={styles.profileTitle}>Odborný popis</Text>
-          <Text style={styles.text}>{coffeeProfile.expertSummary}</Text>
-          <Text style={styles.profileTitle}>Popis pre laika</Text>
-          <Text style={styles.text}>{coffeeProfile.laymanSummary}</Text>
-          <Text style={styles.profileTitle}>Komu bude chutiť</Text>
-          <Text style={styles.text}>{coffeeProfile.preferenceHint}</Text>
-          <Text style={styles.profileTitle}>Prečo tieto tóny</Text>
-          <Text style={styles.text}>{coffeeProfile.reasoning}</Text>
-          <Text style={styles.profileTitle}>Istota</Text>
-          <Text style={styles.text}>
+        <View style={s.card}>
+          <View style={s.cardHeader}>
+            <CoffeeBeanIcon size={20} color={colors.primary} />
+            <Text style={s.cardTitle}>Chuťový profil</Text>
+          </View>
+
+          <Text style={s.subsectionTitle}>Chuťové tóny</Text>
+          {coffeeProfile.flavorNotes.length > 0 ? (
+            <View style={s.flavorRow}>
+              {coffeeProfile.flavorNotes.map((note: string, i: number) => (
+                <Chip key={i} label={note} role="tertiary" />
+              ))}
+            </View>
+          ) : (
+            <Text style={s.bodyText}>Neurčené</Text>
+          )}
+
+          <Text style={s.subsectionTitle}>Profil chuti</Text>
+          <Text style={s.bodyText}>{coffeeProfile.tasteProfile}</Text>
+          <Text style={s.subsectionTitle}>Odborný popis</Text>
+          <Text style={s.bodyText}>{coffeeProfile.expertSummary}</Text>
+          <Text style={s.subsectionTitle}>Popis pre laika</Text>
+          <Text style={s.bodyText}>{coffeeProfile.laymanSummary}</Text>
+          <Text style={s.subsectionTitle}>Komu bude chutiť</Text>
+          <Text style={s.bodyText}>{coffeeProfile.preferenceHint}</Text>
+          <Text style={s.subsectionTitle}>Prečo tieto tóny</Text>
+          <Text style={s.bodyText}>{coffeeProfile.reasoning}</Text>
+          <Text style={s.subsectionTitle}>Istota</Text>
+          <Text style={s.bodyText}>
             {Math.round(coffeeProfile.confidence * 100)}%
           </Text>
           {coffeeProfile.missingInfo?.length ? (
             <>
-              <Text style={styles.profileTitle}>Chýbajúce informácie</Text>
-              <Text style={styles.text}>
+              <Text style={s.subsectionTitle}>Chýbajúce informácie</Text>
+              <Text style={s.bodyText}>
                 {coffeeProfile.missingInfo.join(', ')}
               </Text>
             </>
           ) : null}
         </View>
 
-        <View style={styles.block}>
-          <Text style={styles.label}>Zhoda s dotazníkom</Text>
+        <View style={s.card}>
+          <View style={s.cardHeader}>
+            <SparklesIcon size={20} color={colors.primary} />
+            <Text style={s.cardTitle}>Zhoda s dotazníkom</Text>
+          </View>
+
           {matchState === 'loading' ? (
-            <Text style={styles.text}>Porovnávam s dotazníkom…</Text>
+            <View style={s.loadingRow}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={s.bodyText}>Porovnávam s dotazníkom…</Text>
+            </View>
           ) : null}
           {matchState === 'missing' ? (
-            <Text style={styles.text}>
+            <Text style={s.bodyText}>
               Zatiaľ nemám uložený výsledok dotazníka. Najprv ho vyplňte a uložte,
               aby som vedel porovnávať.
             </Text>
           ) : null}
           {matchState === 'error' ? (
-            <Text style={styles.errorText}>{matchError}</Text>
+            <Text style={s.errorText}>{matchError}</Text>
           ) : null}
           {matchState === 'ready' && matchResult ? (
             <>
               <View
                 style={[
-                  styles.verdictBadge,
+                  s.verdictBadge,
                   {
                     backgroundColor: tierColors.bg,
                     borderColor: tierColors.border,
@@ -441,19 +629,19 @@ function OcrResultScreen({ route }: Props) {
                   },
                 ]}
               >
-                <Text style={styles.verdictText}>{verdictLabel}</Text>
-                <View style={styles.scoreRow}>
-                  <Text style={styles.scoreText}>
+                <Text style={s.verdictText}>{verdictLabel}</Text>
+                <View style={s.scoreRow}>
+                  <Text style={s.scoreText}>
                     Zhoda: {Math.round(matchResult.matchScore)}%
                   </Text>
-                  <Text style={styles.verdictSubText}>
+                  <Text style={s.verdictSubText}>
                     Istota: {Math.round(matchResult.confidence * 100)}%
                   </Text>
                 </View>
-                <View style={styles.scoreBarBackground}>
+                <View style={s.scoreBarBackground}>
                   <View
                     style={[
-                      styles.scoreBarFill,
+                      s.scoreBarFill,
                       {
                         width: `${Math.round(matchResult.matchScore)}%`,
                         backgroundColor: tierColors.border,
@@ -463,33 +651,33 @@ function OcrResultScreen({ route }: Props) {
                 </View>
               </View>
               {matchResult.adventureNote ? (
-                <View style={styles.adventureNoteBlock}>
-                  <Text style={styles.profileTitle}>Prečo to skúsiť</Text>
-                  <Text style={styles.text}>{matchResult.adventureNote}</Text>
+                <View style={s.adventureNoteBlock}>
+                  <Text style={[s.subsectionTitle, { marginTop: 0 }]}>Prečo to skúsiť</Text>
+                  <Text style={s.bodyText}>{matchResult.adventureNote}</Text>
                 </View>
               ) : null}
-              <Text style={styles.profileTitle}>Pre laika</Text>
-              <Text style={styles.text}>{matchResult.laymanSummary}</Text>
-              <Text style={styles.profileTitle}>Pre baristu</Text>
-              <Text style={styles.text}>{matchResult.baristaSummary}</Text>
-              <Text style={styles.profileTitle}>Kľúčové zhody</Text>
-              <Text style={styles.text}>
+              <Text style={s.subsectionTitle}>Pre laika</Text>
+              <Text style={s.bodyText}>{matchResult.laymanSummary}</Text>
+              <Text style={s.subsectionTitle}>Pre baristu</Text>
+              <Text style={s.bodyText}>{matchResult.baristaSummary}</Text>
+              <Text style={s.subsectionTitle}>Kľúčové zhody</Text>
+              <Text style={s.bodyText}>
                 {matchResult.keyMatches.length
                   ? matchResult.keyMatches.join(', ')
                   : 'Žiadne výrazné zhody.'}
               </Text>
               {matchResult.keyConflicts.length > 0 ? (
                 <>
-                  <Text style={styles.profileTitle}>Potenciálne konflikty</Text>
-                  <Text style={styles.text}>
+                  <Text style={s.subsectionTitle}>Potenciálne konflikty</Text>
+                  <Text style={s.bodyText}>
                     {matchResult.keyConflicts.join(', ')}
                   </Text>
                 </>
               ) : null}
-              <Text style={styles.profileTitle}>Ako si ju upraviť</Text>
-              <Text style={styles.text}>{matchResult.suggestedAdjustments}</Text>
+              <Text style={s.subsectionTitle}>Ako si ju upraviť</Text>
+              <Text style={s.bodyText}>{matchResult.suggestedAdjustments}</Text>
               {questionnaireSnapshot ? (
-                <Text style={styles.helperNote}>
+                <Text style={s.helperNote}>
                   Porovnávané s posledným uloženým dotazníkom z{' '}
                   {new Date(questionnaireSnapshot.savedAt).toLocaleDateString(
                     'sk-SK',
@@ -505,197 +693,5 @@ function OcrResultScreen({ route }: Props) {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F6F1EB',
-  },
-  container: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 90,
-  },
-  overline: {
-    fontSize: 12,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: '#6D5D4C',
-    marginBottom: 6,
-    fontWeight: '700',
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: '700',
-    marginBottom: 14,
-    color: '#23180E',
-  },
-  saveRow: {
-    marginBottom: 16,
-  },
-  saveButton: {
-    backgroundColor: '#6B4F3A',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  saveButtonPressed: {
-    opacity: 0.8,
-  },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  saveHint: {
-    marginTop: 8,
-    color: '#6B4F3A',
-    fontWeight: '600',
-  },
-  saveError: {
-    marginTop: 8,
-    color: '#BA1A1A',
-    fontWeight: '600',
-  },
-  inventoryBlock: {
-    marginBottom: 12,
-    borderRadius: 24,
-    padding: 16,
-    backgroundColor: '#FFFBFF',
-    borderWidth: 1,
-    borderColor: '#E7DCD1',
-  },
-  inventoryButton: {
-    marginTop: 12,
-    backgroundColor: '#7A9255',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  packageOptionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 8,
-  },
-  packageOption: {
-    borderWidth: 1,
-    borderColor: '#DDD3C9',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-  },
-  packageOptionActive: {
-    borderColor: '#7A9255',
-    backgroundColor: '#D8ECBA',
-  },
-  packageOptionText: {
-    fontSize: 12,
-    color: '#6B5C52',
-    fontWeight: '600',
-  },
-  packageOptionTextActive: {
-    color: '#6B4F3A',
-  },
-  remainingInputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
-  },
-  remainingPrefix: {
-    color: '#6B5C52',
-    fontSize: 12,
-  },
-  remainingValue: {
-    color: '#271508',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  block: {
-    marginBottom: 12,
-    borderRadius: 24,
-    padding: 16,
-    backgroundColor: '#FFFBFF',
-    borderWidth: 1,
-    borderColor: '#E7DCD1',
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  profileTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 10,
-    marginBottom: 4,
-    color: '#6B4F3A',
-  },
-  text: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#1C1917',
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#BA1A1A',
-    fontWeight: '600',
-  },
-  verdictBadge: {
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
-  },
-  verdictText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#271508',
-  },
-  scoreRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  scoreText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#271508',
-  },
-  verdictSubText: {
-    fontSize: 12,
-    color: '#6B5C52',
-  },
-  scoreBarBackground: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#E7DCD1',
-    marginTop: 8,
-    overflow: 'hidden',
-  },
-  scoreBarFill: {
-    height: 6,
-    borderRadius: 3,
-  },
-  adventureNoteBlock: {
-    backgroundColor: '#FFF8F0',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#E7DCD1',
-  },
-  helperNote: {
-    marginTop: 12,
-    fontSize: 12,
-    color: '#6B5C52',
-  },
-});
 
 export default OcrResultScreen;
