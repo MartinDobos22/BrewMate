@@ -11,6 +11,9 @@ import {
 import { RootStackParamList } from '../navigation/types';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import BottomNavBar from '../components/BottomNavBar';
+import { useTheme } from '../theme/useTheme';
+import { CoffeeBeanIcon, CoffeeCupIcon, FlameIcon, SparklesIcon } from '../components/icons';
+import { MD3Button, Chip } from '../components/md3';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeePhotoRecipe'>;
 
@@ -361,50 +364,219 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     }
   };
 
+  const { colors, typescale, shape, elevation: elev, spacing } = useTheme();
+
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        safeArea: {
+          flex: 1,
+          backgroundColor: colors.background,
+        },
+        container: {
+          flexGrow: 1,
+          paddingHorizontal: spacing.xl,
+          paddingTop: spacing.lg,
+          paddingBottom: 106,
+          gap: spacing.md,
+        },
+        headerRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+        },
+        overline: {
+          ...typescale.labelMedium,
+          color: colors.onSurfaceVariant,
+          textTransform: 'uppercase',
+        },
+        title: {
+          ...typescale.headlineMedium,
+          color: colors.onSurface,
+        },
+        description: {
+          ...typescale.bodyMedium,
+          color: colors.onSurfaceVariant,
+        },
+        card: {
+          backgroundColor: colors.surfaceContainerLow,
+          borderRadius: shape.extraLarge,
+          padding: spacing.lg,
+          ...elev.level1.shadow,
+        },
+        cardHeader: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+          marginBottom: spacing.md,
+        },
+        cardTitle: {
+          ...typescale.titleSmall,
+          color: colors.onSurface,
+        },
+        subsectionTitle: {
+          ...typescale.labelLarge,
+          color: colors.primary,
+          marginTop: spacing.md,
+          marginBottom: spacing.xs,
+        },
+        bodyText: {
+          ...typescale.bodyMedium,
+          color: colors.onSurface,
+        },
+        helperText: {
+          ...typescale.bodySmall,
+          color: colors.onSurfaceVariant,
+          marginTop: spacing.sm,
+        },
+        buttonRow: {
+          flexDirection: 'row',
+          gap: spacing.md,
+        },
+        inventoryList: {
+          marginTop: spacing.md,
+          gap: spacing.sm,
+        },
+        inventoryItem: {
+          borderWidth: 1,
+          borderColor: colors.outlineVariant,
+          backgroundColor: colors.surfaceContainerLowest,
+          borderRadius: shape.large,
+          padding: spacing.md,
+        },
+        inventoryItemDisabled: {
+          opacity: 0.5,
+        },
+        inventoryItemTitle: {
+          ...typescale.labelLarge,
+          color: colors.onSurface,
+        },
+        inventoryItemMeta: {
+          ...typescale.bodySmall,
+          color: colors.onSurfaceVariant,
+          marginTop: spacing.xs,
+        },
+        flavorRow: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: spacing.sm,
+        },
+        optionCard: {
+          borderWidth: 1,
+          borderColor: colors.outlineVariant,
+          backgroundColor: colors.surfaceContainerLowest,
+          borderRadius: shape.medium,
+          padding: spacing.md,
+          marginBottom: spacing.sm,
+        },
+        optionCardActive: {
+          borderColor: colors.primary,
+          backgroundColor: colors.primaryContainer,
+        },
+        optionTitle: {
+          ...typescale.titleSmall,
+          color: colors.onSurface,
+          marginBottom: spacing.xs,
+        },
+        optionTitleActive: {
+          color: colors.onPrimaryContainer,
+        },
+        optionText: {
+          ...typescale.bodySmall,
+          color: colors.onSurfaceVariant,
+        },
+        optionTextActive: {
+          color: colors.onPrimaryContainer,
+        },
+        radioGroup: {
+          gap: spacing.md,
+        },
+        radioRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.md,
+        },
+        radioOuter: {
+          width: 20,
+          height: 20,
+          borderRadius: 10,
+          borderWidth: 2,
+          borderColor: colors.outline,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        radioOuterActive: {
+          borderColor: colors.primary,
+        },
+        radioInner: {
+          width: 10,
+          height: 10,
+          borderRadius: 5,
+          backgroundColor: colors.primary,
+        },
+        radioLabel: {
+          ...typescale.bodyMedium,
+          color: colors.onSurface,
+        },
+        errorText: {
+          ...typescale.bodySmall,
+          color: colors.error,
+          fontWeight: '600',
+        },
+        infoText: {
+          ...typescale.bodySmall,
+          color: colors.tertiary,
+          fontWeight: '600',
+        },
+      }),
+    [colors, typescale, shape, elev, spacing],
+  );
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.overline}>BrewMate Recipe AI</Text>
-        <Text style={styles.title}>Coffee recipe scanner</Text>
-        <Text style={styles.description}>
+    <SafeAreaView style={s.safeArea} edges={['bottom']}>
+      <ScrollView contentContainerStyle={s.container}>
+        <View style={s.headerRow}>
+          <CoffeeCupIcon size={20} color={colors.onSurfaceVariant} />
+          <Text style={s.overline}>BrewMate Recipe AI</Text>
+        </View>
+        <Text style={s.title}>Coffee recipe scanner</Text>
+        <Text style={s.description}>
           Naskenuj etiketu kávy, nechaj AI odhadnúť chuť a vygeneruj recept podľa
           zvolenej metódy a intenzity.
         </Text>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.label}>Fotografia kávy</Text>
-          <View style={styles.buttonRow}>
-            <Pressable
-              style={[styles.secondaryButton, isPicking && styles.buttonDisabled]}
+        <View style={s.card}>
+          <View style={s.cardHeader}>
+            <CoffeeBeanIcon size={20} color={colors.primary} />
+            <Text style={s.cardTitle}>Fotografia kávy</Text>
+          </View>
+          <View style={s.buttonRow}>
+            <MD3Button
+              label="Vybrať z galérie"
+              variant="outlined"
               onPress={handleSelectFromGallery}
               disabled={isPicking}
-            >
-              <Text style={styles.secondaryButtonText}>Vybrať z galérie</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.secondaryButton, isPicking && styles.buttonDisabled]}
+              style={{ flex: 1 }}
+            />
+            <MD3Button
+              label="Odfotiť"
+              variant="tonal"
               onPress={handleTakePhoto}
               disabled={isPicking}
-            >
-              <Text style={styles.secondaryButtonText}>Odfotiť</Text>
-            </Pressable>
+              style={{ flex: 1 }}
+            />
           </View>
-          <Pressable
-            style={[
-              styles.secondaryButton,
-              styles.inventoryButton,
-              (isInventoryLoading || isPicking) && styles.buttonDisabled,
-            ]}
+          <MD3Button
+            label={isInventoryLoading ? 'Načítavam inventár…' : 'Vybrať fotku z inventára'}
+            variant="outlined"
             onPress={loadInventory}
             disabled={isInventoryLoading || isPicking}
-          >
-            <Text style={styles.secondaryButtonText}>
-              {isInventoryLoading ? 'Načítavam inventár…' : 'Vybrať fotku z inventára'}
-            </Text>
-          </Pressable>
+            loading={isInventoryLoading}
+            style={{ marginTop: spacing.md }}
+          />
 
           {isInventoryVisible ? (
-            <View style={styles.inventoryList}>
+            <View style={s.inventoryList}>
               {inventoryItems.length > 0 ? (
                 inventoryItems.map((item) => {
                   const coffeeName = item.correctedText || item.rawText || 'Neznáma káva';
@@ -413,12 +585,12 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
                   return (
                     <Pressable
                       key={item.id}
-                      style={[styles.inventoryItem, !hasImage && styles.buttonDisabled]}
+                      style={[s.inventoryItem, !hasImage && s.inventoryItemDisabled]}
                       onPress={() => handleSelectInventoryCoffee(item)}
                       disabled={!hasImage}
                     >
-                      <Text style={styles.inventoryItemTitle}>{coffeeName}</Text>
-                      <Text style={styles.inventoryItemMeta}>
+                      <Text style={s.inventoryItemTitle}>{coffeeName}</Text>
+                      <Text style={s.inventoryItemMeta}>
                         {hasImage
                           ? 'Použiť fotku etikety z inventára'
                           : 'Bez fotky etikety'}
@@ -427,287 +599,120 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
                   );
                 })
               ) : (
-                <Text style={styles.helperText}>V inventári nemáš žiadnu aktívnu kávu.</Text>
+                <Text style={s.helperText}>V inventári nemáš žiadnu aktívnu kávu.</Text>
               )}
             </View>
           ) : null}
-          <Text style={styles.helperText}>
+          <Text style={s.helperText}>
             {imageBase64
               ? 'Fotka je pripravená.'
               : 'Zatiaľ nie je vybraná žiadna fotka.'}
           </Text>
         </View>
 
-        <Pressable
-          style={[styles.primaryButton, (isAnalyzing || isPicking) && styles.buttonDisabled]}
+        <MD3Button
+          label={isAnalyzing ? 'Analyzujem fotku…' : 'Analyzovať fotku'}
           onPress={handleAnalyze}
           disabled={isAnalyzing || isPicking}
-        >
-          <Text style={styles.primaryButtonText}>
-            {isAnalyzing ? 'Analyzujem fotku…' : 'Analyzovať fotku'}
-          </Text>
-        </Pressable>
+          loading={isAnalyzing}
+        />
 
         {analysis ? (
           <>
-            <View style={styles.sectionCard}>
-              <Text style={styles.label}>Chuť kávy podľa AI</Text>
-              <Text style={styles.profileTitle}>Chuťové tóny</Text>
-              <Text style={styles.text}>
-                {analysis.flavorNotes.length > 0
-                  ? analysis.flavorNotes.join(', ')
-                  : 'Neurčené'}
-              </Text>
-              <Text style={styles.profileTitle}>Profil chuti</Text>
-              <Text style={styles.text}>{analysis.tasteProfile}</Text>
-              <Text style={styles.profileTitle}>Krátke zhrnutie</Text>
-              <Text style={styles.text}>{analysis.summary}</Text>
-              <Text style={styles.profileTitle}>Istota</Text>
-              <Text style={styles.text}>
+            <View style={s.card}>
+              <View style={s.cardHeader}>
+                <SparklesIcon size={20} color={colors.primary} />
+                <Text style={s.cardTitle}>Chuť kávy podľa AI</Text>
+              </View>
+              <Text style={s.subsectionTitle}>Chuťové tóny</Text>
+              {analysis.flavorNotes.length > 0 ? (
+                <View style={s.flavorRow}>
+                  {analysis.flavorNotes.map((note: string, i: number) => (
+                    <Chip key={i} label={note} role="tertiary" />
+                  ))}
+                </View>
+              ) : (
+                <Text style={s.bodyText}>Neurčené</Text>
+              )}
+              <Text style={s.subsectionTitle}>Profil chuti</Text>
+              <Text style={s.bodyText}>{analysis.tasteProfile}</Text>
+              <Text style={s.subsectionTitle}>Krátke zhrnutie</Text>
+              <Text style={s.bodyText}>{analysis.summary}</Text>
+              <Text style={s.subsectionTitle}>Istota</Text>
+              <Text style={s.bodyText}>
                 {Math.round(analysis.confidence * 100)}%
               </Text>
             </View>
 
-            <View style={styles.sectionCard}>
-              <Text style={styles.label}>Najvhodnejšia príprava</Text>
-              {analysis.recommendedPreparations.map((prep) => (
-                <Pressable
-                  key={prep.method}
-                  style={[
-                    styles.optionCard,
-                    selectedPreparation === prep.method && styles.optionCardActive,
-                  ]}
-                  onPress={() => setSelectedPreparation(prep.method)}
-                >
-                  <Text style={styles.optionTitle}>{prep.method}</Text>
-                  <Text style={styles.optionText}>{prep.description}</Text>
-                </Pressable>
-              ))}
+            <View style={s.card}>
+              <View style={s.cardHeader}>
+                <CoffeeCupIcon size={20} color={colors.primary} />
+                <Text style={s.cardTitle}>Najvhodnejšia príprava</Text>
+              </View>
+              {analysis.recommendedPreparations.map((prep) => {
+                const isActive = selectedPreparation === prep.method;
+                return (
+                  <Pressable
+                    key={prep.method}
+                    style={[s.optionCard, isActive && s.optionCardActive]}
+                    onPress={() => setSelectedPreparation(prep.method)}
+                  >
+                    <Text style={[s.optionTitle, isActive && s.optionTitleActive]}>
+                      {prep.method}
+                    </Text>
+                    <Text style={[s.optionText, isActive && s.optionTextActive]}>
+                      {prep.description}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
 
-            <View style={styles.sectionCard}>
-              <Text style={styles.label}>
-                Aké chute chceš: jemné chute, slabšie alebo výraznejšie?
-              </Text>
-              <View style={styles.radioGroup}>
+            <View style={s.card}>
+              <View style={s.cardHeader}>
+                <FlameIcon size={20} color={colors.primary} />
+                <Text style={s.cardTitle}>
+                  Aké chute chceš?
+                </Text>
+              </View>
+              <View style={s.radioGroup}>
                 {strengthOptions.map((option) => (
                   <Pressable
                     key={option}
-                    style={styles.radioRow}
+                    style={s.radioRow}
                     onPress={() => setStrengthPreference(option)}
                   >
                     <View
                       style={[
-                        styles.radioOuter,
-                        strengthPreference === option && styles.radioOuterActive,
+                        s.radioOuter,
+                        strengthPreference === option && s.radioOuterActive,
                       ]}
                     >
                       {strengthPreference === option ? (
-                        <View style={styles.radioInner} />
+                        <View style={s.radioInner} />
                       ) : null}
                     </View>
-                    <Text style={styles.radioLabel}>{option}</Text>
+                    <Text style={s.radioLabel}>{option}</Text>
                   </Pressable>
                 ))}
               </View>
             </View>
 
-            <Pressable
-              style={[styles.primaryButton, isGenerating && styles.buttonDisabled]}
+            <MD3Button
+              label={isGenerating ? 'Generujem recept…' : 'Generovať recept'}
               onPress={handleGenerateRecipe}
               disabled={isGenerating}
-            >
-              <Text style={styles.primaryButtonText}>
-                {isGenerating ? 'Generujem recept…' : 'Generovať recept'}
-              </Text>
-            </Pressable>
+              loading={isGenerating}
+            />
           </>
         ) : null}
 
-        {infoMessage ? <Text style={styles.infoText}>{infoMessage}</Text> : null}
-        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+        {infoMessage ? <Text style={s.infoText}>{infoMessage}</Text> : null}
+        {errorMessage ? <Text style={s.errorText}>{errorMessage}</Text> : null}
       </ScrollView>
       <BottomNavBar />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F6F1EB',
-  },
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 90,
-  },
-  overline: {
-    fontSize: 12,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: '#6D5D4C',
-    marginBottom: 6,
-    fontWeight: '700',
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: '700',
-    marginBottom: 10,
-    color: '#23180E',
-  },
-  description: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#4C4137',
-    marginBottom: 14,
-  },
-  sectionCard: {
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 12,
-    backgroundColor: '#FFFBFF',
-    borderWidth: 1,
-    borderColor: '#E7DCD1',
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 8,
-    color: '#2C1F13',
-  },
-  helperText: {
-    marginTop: 8,
-    fontSize: 12,
-    color: '#6B5C52',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  secondaryButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#D9C8B8',
-    backgroundColor: '#FFF8F3',
-    paddingVertical: 11,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    color: '#6B4F3A',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  inventoryButton: {
-    marginTop: 12,
-  },
-  inventoryList: {
-    marginTop: 10,
-    gap: 8,
-  },
-  inventoryItem: {
-    borderWidth: 1,
-    borderColor: '#E5D8CC',
-    backgroundColor: '#FFF8F3',
-    borderRadius: 16,
-    padding: 10,
-  },
-  inventoryItemTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#271508',
-  },
-  inventoryItemMeta: {
-    marginTop: 4,
-    fontSize: 12,
-    color: '#6B5C52',
-  },
-  primaryButton: {
-    backgroundColor: '#6B4F3A',
-    paddingVertical: 14,
-    borderRadius: 18,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  errorText: {
-    color: '#BA1A1A',
-    marginTop: 8,
-  },
-  infoText: {
-    color: '#6B4F3A',
-    marginTop: 8,
-  },
-  profileTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 8,
-  },
-  text: {
-    fontSize: 14,
-    color: '#271508',
-    marginTop: 4,
-  },
-  optionCard: {
-    borderWidth: 1,
-    borderColor: '#E5D8CC',
-    backgroundColor: '#FFF8F3',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
-  },
-  optionCardActive: {
-    borderColor: '#6B4F3A',
-    backgroundColor: '#D8ECBA',
-  },
-  optionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  optionText: {
-    fontSize: 13,
-    color: '#6B5C52',
-  },
-  radioGroup: {
-    gap: 10,
-  },
-  radioRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  radioOuter: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#6B4F3A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioOuterActive: {
-    borderColor: '#6B4F3A',
-  },
-  radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#6B4F3A',
-  },
-  radioLabel: {
-    fontSize: 14,
-    color: '#271508',
-  },
-});
 
 export default CoffeePhotoRecipeScreen;
