@@ -1,9 +1,14 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import {ActivityIndicator, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
-import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import {apiFetch, DEFAULT_API_HOST} from '../utils/api';
 import BottomNavBar from '../components/BottomNavBar';
+import {useTheme} from '../theme/useTheme';
+import {elevation} from '../theme/theme';
+import {CoffeeCupIcon, SparklesIcon} from '../components/icons';
+import {Chip} from '../components/md3';
+import {BOTTOM_NAV_SAFE_PADDING} from '../constants/ui';
 
 type Item = {
   id: string;
@@ -17,7 +22,7 @@ type Item = {
   flavorNotes: string[];
 };
 
-type Bucket = { label: string; count: number; avgLikeScore: number };
+type Bucket = {label: string; count: number; avgLikeScore: number};
 
 type Insights = {
   aiSummary: string;
@@ -30,6 +35,7 @@ type Insights = {
 };
 
 function CoffeeRecipesSavedScreen() {
+  const {colors, typescale, shape} = useTheme();
   const [items, setItems] = useState<Item[]>([]);
   const [insights, setInsights] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,8 +46,8 @@ function CoffeeRecipesSavedScreen() {
       setLoading(true);
       setError('');
       const [itemsResponse, insightsResponse] = await Promise.all([
-        apiFetch(`${DEFAULT_API_HOST}/api/coffee-recipes?days=30`, { credentials: 'include' }),
-        apiFetch(`${DEFAULT_API_HOST}/api/coffee-recipes/insights?days=30`, { credentials: 'include' }),
+        apiFetch(`${DEFAULT_API_HOST}/api/coffee-recipes?days=30`, {credentials: 'include'}),
+        apiFetch(`${DEFAULT_API_HOST}/api/coffee-recipes/insights?days=30`, {credentials: 'include'}),
       ]);
       const itemsPayload = await itemsResponse.json().catch(() => ({}));
       const insightsPayload = await insightsResponse.json().catch(() => ({}));
@@ -68,50 +74,148 @@ function CoffeeRecipesSavedScreen() {
 
   const favorite = useMemo(() => insights?.totals.methods?.[0]?.label ?? null, [insights]);
 
-  return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Coffee Recipes Saved</Text>
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        safeArea: {
+          flex: 1,
+          backgroundColor: colors.background,
+        },
+        container: {
+          padding: 20,
+          paddingBottom: BOTTOM_NAV_SAFE_PADDING + 24,
+          gap: 14,
+        },
+        headerRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+        },
+        title: {
+          ...typescale.headlineMedium,
+          color: colors.onBackground,
+        },
+        card: {
+          backgroundColor: colors.surfaceContainerLow,
+          borderRadius: shape.extraLarge,
+          padding: 18,
+          ...elevation.level1.shadow,
+        },
+        cardHeader: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 10,
+        },
+        cardTitle: {
+          ...typescale.titleLarge,
+          color: colors.onSurface,
+        },
+        text: {
+          ...typescale.bodyMedium,
+          color: colors.onSurface,
+          lineHeight: 22,
+        },
+        favorite: {
+          ...typescale.labelLarge,
+          marginTop: 10,
+          color: colors.primary,
+        },
+        muted: {
+          ...typescale.bodyMedium,
+          color: colors.onSurfaceVariant,
+        },
+        item: {
+          paddingVertical: 12,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.outlineVariant,
+        },
+        itemLastChild: {
+          borderBottomWidth: 0,
+        },
+        itemTitle: {
+          ...typescale.titleSmall,
+          color: colors.onSurface,
+        },
+        meta: {
+          ...typescale.bodySmall,
+          color: colors.onSurfaceVariant,
+          marginTop: 2,
+        },
+        chipRow: {
+          flexDirection: 'row',
+          gap: 6,
+          marginTop: 6,
+        },
+        loadingRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+        },
+        error: {
+          ...typescale.bodySmall,
+          color: colors.error,
+        },
+      }),
+    [colors, shape, typescale],
+  );
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>AI sumarizácia (30 dní)</Text>
-          {loading ? <Text style={styles.muted}>Načítavam...</Text> : null}
-          {!loading && insights ? <Text style={styles.text}>{insights.aiSummary}</Text> : null}
-          {favorite ? <Text style={styles.favorite}>Aktuálny favorit: {favorite}</Text> : null}
+  return (
+    <SafeAreaView style={s.safeArea} edges={['bottom']}>
+      <ScrollView contentContainerStyle={s.container}>
+        <View style={s.headerRow}>
+          <CoffeeCupIcon size={26} color={colors.primary} />
+          <Text style={s.title}>Uložené recepty</Text>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Uložené recepty</Text>
-          {items.map((item) => (
-            <View key={item.id} style={styles.item}>
-              <Text style={styles.itemTitle}>{item.title}</Text>
-              <Text style={styles.meta}>{item.method} • {item.strengthPreference} • {item.likeScore}%</Text>
-              <Text style={styles.meta}>{item.dose} • {item.water} • {item.totalTime}</Text>
+        <View style={s.card}>
+          <View style={s.cardHeader}>
+            <SparklesIcon size={18} color={colors.primary} />
+            <Text style={s.cardTitle}>AI sumarizácia (30 dní)</Text>
+          </View>
+          {loading ? (
+            <View style={s.loadingRow}>
+              <ActivityIndicator color={colors.primary} />
+              <Text style={s.muted}>Načítavam...</Text>
+            </View>
+          ) : null}
+          {!loading && insights ? <Text style={s.text}>{insights.aiSummary}</Text> : null}
+          {favorite ? <Text style={s.favorite}>Aktuálny favorit: {favorite}</Text> : null}
+        </View>
+
+        <View style={s.card}>
+          <View style={s.cardHeader}>
+            <CoffeeCupIcon size={18} color={colors.primary} />
+            <Text style={s.cardTitle}>Recepty</Text>
+          </View>
+          {items.map((item, index) => (
+            <View key={item.id} style={[s.item, index === items.length - 1 && s.itemLastChild]}>
+              <Text style={s.itemTitle}>{item.title}</Text>
+              <Text style={s.meta}>
+                {item.method} · {item.strengthPreference} · {item.likeScore}%
+              </Text>
+              <Text style={s.meta}>
+                {item.dose} · {item.water} · {item.totalTime}
+              </Text>
+              {item.flavorNotes?.length ? (
+                <View style={s.chipRow}>
+                  {item.flavorNotes.slice(0, 3).map(note => (
+                    <Chip key={note} role="tertiary" label={note} />
+                  ))}
+                </View>
+              ) : null}
             </View>
           ))}
-          {!loading && items.length === 0 ? <Text style={styles.muted}>Zatiaľ bez receptov.</Text> : null}
+          {!loading && items.length === 0 ? (
+            <Text style={s.muted}>Zatiaľ bez receptov.</Text>
+          ) : null}
         </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text style={s.error}>{error}</Text> : null}
       </ScrollView>
       <BottomNavBar />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  container: { padding: 20, paddingBottom: 90, gap: 14 },
-  title: { fontSize: 28, fontWeight: '700', color: '#271508' },
-  card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDD3C9', borderRadius: 16, padding: 14 },
-  cardTitle: { fontSize: 17, fontWeight: '700', marginBottom: 8, color: '#271508' },
-  text: { color: '#271508' },
-  favorite: { marginTop: 8, color: '#6B4F3A', fontWeight: '600' },
-  item: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#EDE7DF' },
-  itemTitle: { color: '#271508', fontWeight: '600' },
-  meta: { color: '#6B5C52', fontSize: 12, marginTop: 2 },
-  muted: { color: '#6B5C52' },
-  error: { color: '#BA1A1A', fontWeight: '600' },
-});
 
 export default CoffeeRecipesSavedScreen;
