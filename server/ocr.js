@@ -309,7 +309,7 @@ const buildPhotoCoffeeAnalysisPayload = (text) => ({
           recommendedPreparations: {
             type: 'array',
             minItems: 3,
-            maxItems: 4,
+            maxItems: 5,
             items: {
               type: 'object',
               additionalProperties: false,
@@ -341,7 +341,14 @@ const buildPhotoCoffeeAnalysisPayload = (text) => ({
   ],
 });
 
-const buildPhotoCoffeeRecipePayload = (analysis, strengthPreference, selectedPreparation) => ({
+const buildPhotoCoffeeRecipePayload = (
+  analysis,
+  strengthPreference,
+  selectedPreparation,
+  brewPreferences = null,
+  grinderProfile = null,
+  customPreparationText = null,
+) => ({
   model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
   temperature: 0.35,
   response_format: {
@@ -363,6 +370,7 @@ const buildPhotoCoffeeRecipePayload = (analysis, strengthPreference, selectedPre
           'totalTime',
           'steps',
           'baristaTips',
+          'whyThisRecipe',
         ],
         properties: {
           title: { type: 'string' },
@@ -383,6 +391,7 @@ const buildPhotoCoffeeRecipePayload = (analysis, strengthPreference, selectedPre
             minItems: 2,
             items: { type: 'string' },
           },
+          whyThisRecipe: { type: 'string' },
         },
       },
     },
@@ -401,7 +410,13 @@ const buildPhotoCoffeeRecipePayload = (analysis, strengthPreference, selectedPre
         analysis,
         null,
         2,
-      )}\n\nVybraný spôsob prípravy: ${selectedPreparation}\nPožadovaná sila: ${strengthPreference}\n\nVytvor detailný recept.`,
+      )}\n\nVybraný spôsob prípravy: ${selectedPreparation}\nVlastná príprava od používateľa: ${customPreparationText || 'nie'}\nPožadovaná sila: ${strengthPreference}\nProfil mlynčeka používateľa: ${JSON.stringify(
+        grinderProfile || {},
+      )}\nVoliteľné preferencie používateľa pre výpočet dávky/vody/pomeru: ${JSON.stringify(
+        brewPreferences || {},
+      )}\n\nAk používateľ zadal vodu alebo gramáž alebo pomer, recept tomu prispôsob a prepočítaj dávku/vodu konzistentne.
+Ak používateľ zadal profil mlynčeka, odporuč mletie čo najpraktickejšie pre jeho škálu.
+Pole whyThisRecipe napíš v 1-2 vetách veľmi zrozumiteľne.\nVytvor detailný recept.`,
     },
   ],
 });
@@ -668,11 +683,23 @@ router.post('/api/coffee-photo-analysis', async (req, res, next) => {
 
 router.post('/api/coffee-photo-recipe', async (req, res, next) => {
   try {
-    const { analysis, strengthPreference, selectedPreparation } = req.body || {};
+    const {
+      analysis,
+      strengthPreference,
+      selectedPreparation,
+      customPreparationText,
+      grinderProfile,
+      brewPreferences,
+    } = req.body || {};
+    const effectivePreparation = typeof selectedPreparation === 'string' && selectedPreparation.trim()
+      ? selectedPreparation.trim()
+      : typeof customPreparationText === 'string' && customPreparationText.trim()
+        ? customPreparationText.trim()
+        : '';
 
-    if (!analysis || !strengthPreference || !selectedPreparation) {
+    if (!analysis || !strengthPreference || !effectivePreparation) {
       return res.status(400).json({
-        error: 'analysis, strengthPreference, and selectedPreparation are required.',
+        error: 'analysis, strengthPreference, and selectedPreparation/customPreparationText are required.',
       });
     }
 
@@ -683,8 +710,10 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
     }
 
     console.log('[PhotoRecipe] OpenAI request started', {
-      selectedPreparation,
+      selectedPreparation: effectivePreparation,
       strengthPreference,
+      brewPreferences: brewPreferences || null,
+      grinderProfile: grinderProfile || null,
     });
     const openAiRequestStart = Date.now();
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -697,7 +726,10 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
         buildPhotoCoffeeRecipePayload(
           analysis,
           strengthPreference,
-          selectedPreparation,
+          effectivePreparation,
+          brewPreferences,
+          grinderProfile,
+          customPreparationText || null,
         ),
       ),
     });
@@ -746,7 +778,7 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
 
     const likePrediction = buildLikePrediction({
       analysis,
-      selectedPreparation,
+      selectedPreparation: effectivePreparation,
       strengthPreference,
     });
 

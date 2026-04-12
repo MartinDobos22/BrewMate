@@ -29,6 +29,7 @@ export type RootStackParamList = {
       totalTime: string;
       steps: string[];
       baristaTips: string[];
+      whyThisRecipe?: string;
     };
     likePrediction: {
       score: number;
