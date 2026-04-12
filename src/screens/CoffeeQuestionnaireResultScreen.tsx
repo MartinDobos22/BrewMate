@@ -1,11 +1,14 @@
-import React, { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import { saveQuestionnaireResult } from '../utils/localSave';
 import BottomNavBar from '../components/BottomNavBar';
+import { useTheme } from '../theme/useTheme';
+import { SparklesIcon, CoffeeCupIcon } from '../components/icons';
+import { MD3Button } from '../components/md3';
 
 const SECTION_LABELS = {
   profileSummary: 'Profil chutí',
@@ -55,51 +58,139 @@ function CoffeeQuestionnaireResultScreen({ route }: Props) {
     }
   }, [answers, profile]);
 
-  return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Výsledok dotazníka</Text>
+  const { colors, typescale, shape, elevation: elev, spacing } = useTheme();
 
-        <View style={styles.saveRow}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.saveButton,
-              pressed && styles.saveButtonPressed,
-              saveState === 'saving' && styles.saveButtonDisabled,
-            ]}
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        safeArea: {
+          flex: 1,
+          backgroundColor: colors.background,
+        },
+        container: {
+          paddingHorizontal: spacing.xl,
+          paddingTop: spacing.lg,
+          paddingBottom: 106,
+          gap: spacing.md,
+        },
+        headerRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+        },
+        title: {
+          ...typescale.headlineSmall,
+          color: colors.onSurface,
+        },
+        card: {
+          backgroundColor: colors.surfaceContainerLow,
+          borderRadius: shape.extraLarge,
+          padding: spacing.lg,
+          ...elev.level1.shadow,
+        },
+        cardHeader: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+          marginBottom: spacing.md,
+        },
+        cardTitle: {
+          ...typescale.titleSmall,
+          color: colors.onSurface,
+        },
+        profileBlock: {
+          backgroundColor: colors.surfaceContainerLowest,
+          borderRadius: shape.large,
+          padding: spacing.lg,
+          marginBottom: spacing.md,
+        },
+        profileLabel: {
+          ...typescale.labelLarge,
+          color: colors.primary,
+          marginBottom: spacing.xs + 2,
+        },
+        profileText: {
+          ...typescale.bodyMedium,
+          color: colors.onSurface,
+        },
+        answerRow: {
+          backgroundColor: colors.surfaceContainerLowest,
+          borderRadius: shape.medium,
+          padding: spacing.md,
+          marginBottom: spacing.sm,
+        },
+        answerQuestion: {
+          ...typescale.labelMedium,
+          color: colors.onSurface,
+          marginBottom: spacing.xs,
+        },
+        answerValue: {
+          ...typescale.bodyMedium,
+          color: colors.onSurfaceVariant,
+        },
+        saveHint: {
+          ...typescale.bodySmall,
+          color: colors.tertiary,
+          fontWeight: '600',
+          marginTop: spacing.sm,
+        },
+        saveError: {
+          ...typescale.bodySmall,
+          color: colors.error,
+          fontWeight: '600',
+          marginTop: spacing.sm,
+        },
+      }),
+    [colors, typescale, shape, elev, spacing],
+  );
+
+  return (
+    <SafeAreaView style={s.safeArea} edges={['bottom']}>
+      <ScrollView contentContainerStyle={s.container}>
+        <View style={s.headerRow}>
+          <SparklesIcon size={22} color={colors.primary} />
+          <Text style={s.title}>Výsledok dotazníka</Text>
+        </View>
+
+        <View>
+          <MD3Button
+            label={saveState === 'saving' ? 'Ukladám...' : 'Uložiť do profilu'}
             onPress={handleSave}
             disabled={saveState === 'saving'}
-          >
-            <Text style={styles.saveButtonText}>
-              {saveState === 'saving' ? 'Ukladám...' : 'Uložiť do profilu'}
-            </Text>
-          </Pressable>
+            loading={saveState === 'saving'}
+          />
           {saveState === 'saved' ? (
-            <Text style={styles.saveHint}>Uložené lokálne aj do profilu.</Text>
+            <Text style={s.saveHint}>Uložené lokálne aj do profilu.</Text>
           ) : null}
           {saveState === 'error' ? (
-            <Text style={styles.saveError}>Uloženie zlyhalo.</Text>
+            <Text style={s.saveError}>Uloženie zlyhalo.</Text>
           ) : null}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>AI odporúčanie</Text>
+        <View style={s.card}>
+          <View style={s.cardHeader}>
+            <SparklesIcon size={20} color={colors.primary} />
+            <Text style={s.cardTitle}>AI odporúčanie</Text>
+          </View>
           {(Object.keys(SECTION_LABELS) as Array<keyof typeof SECTION_LABELS>).map(
             (key) => (
-              <View key={key} style={styles.profileBlock}>
-                <Text style={styles.profileLabel}>{SECTION_LABELS[key]}</Text>
-                <Text style={styles.profileText}>{profile[key]}</Text>
+              <View key={key} style={s.profileBlock}>
+                <Text style={s.profileLabel}>{SECTION_LABELS[key]}</Text>
+                <Text style={s.profileText}>{profile[key]}</Text>
               </View>
             ),
           )}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Vaše odpovede</Text>
+        <View style={s.card}>
+          <View style={s.cardHeader}>
+            <CoffeeCupIcon size={20} color={colors.primary} />
+            <Text style={s.cardTitle}>Vaše odpovede</Text>
+          </View>
           {answers.map((item) => (
-            <View key={item.question} style={styles.answerRow}>
-              <Text style={styles.answerQuestion}>{item.question}</Text>
-              <Text style={styles.answerValue}>{item.answer}</Text>
+            <View key={item.question} style={s.answerRow}>
+              <Text style={s.answerQuestion}>{item.question}</Text>
+              <Text style={s.answerValue}>{item.answer}</Text>
             </View>
           ))}
         </View>
@@ -108,92 +199,5 @@ function CoffeeQuestionnaireResultScreen({ route }: Props) {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  container: {
-    padding: 20,
-    paddingBottom: 90,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 16,
-  },
-  saveRow: {
-    marginBottom: 16,
-  },
-  saveButton: {
-    backgroundColor: '#6B4F3A',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  saveButtonPressed: {
-    opacity: 0.8,
-  },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  saveHint: {
-    marginTop: 8,
-    color: '#6B4F3A',
-    fontWeight: '600',
-  },
-  saveError: {
-    marginTop: 8,
-    color: '#BA1A1A',
-    fontWeight: '600',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  profileBlock: {
-    backgroundColor: '#F5F1EC',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#DDD3C9',
-  },
-  profileLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#6B4F3A',
-    marginBottom: 6,
-  },
-  profileText: {
-    fontSize: 14,
-    color: '#271508',
-    lineHeight: 20,
-  },
-  answerRow: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#DDD3C9',
-  },
-  answerQuestion: {
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  answerValue: {
-    color: '#6B5C52',
-  },
-});
 
 export default CoffeeQuestionnaireResultScreen;
