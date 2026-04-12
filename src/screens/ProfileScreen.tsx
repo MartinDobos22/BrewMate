@@ -1,7 +1,8 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
+
 import {RootStackParamList} from '../navigation/types';
 import {useAuth} from '../context/AuthContext';
 import {useLogout} from '../hooks/useLogout';
@@ -9,12 +10,18 @@ import {loadLatestQuestionnaireResult, QuestionnaireResultPayload} from '../util
 import TasteProfileBars from '../components/TasteProfileBars';
 import {DEFAULT_TASTE_VECTOR, normalizeTasteVector} from '../utils/tasteVector';
 import BottomNavBar from '../components/BottomNavBar';
+import {MD3Button} from '../components/md3';
+import {SparklesIcon} from '../components/icons';
+import {useTheme} from '../theme/useTheme';
+import {elevation} from '../theme/theme';
+import {BOTTOM_NAV_SAFE_PADDING} from '../constants/ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
 function ProfileScreen({navigation}: Props) {
   const {user} = useAuth();
   const {logout, isLoggingOut} = useLogout();
+  const {colors, typescale, shape} = useTheme();
   const [profile, setProfile] = useState<QuestionnaireResultPayload['profile'] | null>(null);
 
   const loadProfile = useCallback(async () => {
@@ -29,14 +36,113 @@ function ProfileScreen({navigation}: Props) {
 
   const userVector = normalizeTasteVector(profile?.tasteVector ?? DEFAULT_TASTE_VECTOR);
 
+  const initial = useMemo(() => {
+    const fromName = user?.name?.trim().charAt(0);
+    if (fromName) return fromName.toUpperCase();
+    const fromEmail = user?.email?.trim().charAt(0);
+    if (fromEmail) return fromEmail.toUpperCase();
+    return '?';
+  }, [user?.name, user?.email]);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        safeArea: {
+          flex: 1,
+          backgroundColor: colors.background,
+        },
+        container: {
+          flexGrow: 1,
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: BOTTOM_NAV_SAFE_PADDING + 24,
+        },
+        profileCard: {
+          borderRadius: shape.extraLarge,
+          padding: 24,
+          marginBottom: 16,
+          backgroundColor: colors.primaryContainer,
+          alignItems: 'center',
+          ...elevation.level1.shadow,
+        },
+        avatarCircle: {
+          width: 72,
+          height: 72,
+          borderRadius: 36,
+          backgroundColor: colors.primary,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 12,
+        },
+        avatarText: {
+          ...typescale.headlineMedium,
+          color: colors.onPrimary,
+        },
+        userName: {
+          ...typescale.headlineSmall,
+          color: colors.onPrimaryContainer,
+          marginBottom: 4,
+        },
+        userEmail: {
+          ...typescale.bodyMedium,
+          color: colors.onPrimaryContainer,
+          opacity: 0.78,
+        },
+        sectionCard: {
+          borderRadius: shape.extraLarge,
+          padding: 18,
+          marginBottom: 14,
+          backgroundColor: colors.surfaceContainerLow,
+          ...elevation.level1.shadow,
+        },
+        sectionHeader: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 14,
+        },
+        sectionTitle: {
+          ...typescale.titleLarge,
+          color: colors.onSurface,
+        },
+        profileBlock: {
+          backgroundColor: colors.surfaceContainerLowest,
+          borderRadius: shape.large,
+          padding: 16,
+          marginBottom: 12,
+        },
+        profileLabel: {
+          ...typescale.labelLarge,
+          color: colors.primary,
+          marginBottom: 6,
+        },
+        profileText: {
+          ...typescale.bodyMedium,
+          color: colors.onSurface,
+          lineHeight: 22,
+        },
+        placeholder: {
+          ...typescale.bodyMedium,
+          color: colors.onSurfaceVariant,
+          lineHeight: 22,
+          marginBottom: 12,
+        },
+        buttonRow: {
+          marginTop: 8,
+        },
+        logoutWrap: {
+          marginTop: 4,
+        },
+      }),
+    [colors, shape, typescale],
+  );
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.profileCard}>
           <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>
-              {user?.name ? user.name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() ?? '?'}
-            </Text>
+            <Text style={styles.avatarText}>{initial}</Text>
           </View>
           <Text style={styles.userName}>{user?.name ?? 'Používateľ'}</Text>
           <Text style={styles.userEmail}>{user?.email ?? ''}</Text>
@@ -44,6 +150,7 @@ function ProfileScreen({navigation}: Props) {
 
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
+            <SparklesIcon size={20} color={colors.primary} />
             <Text style={styles.sectionTitle}>Chuťový profil</Text>
           </View>
 
@@ -61,153 +168,34 @@ function ProfileScreen({navigation}: Props) {
             </>
           ) : (
             <Text style={styles.placeholder}>
-              Ešte nemáš vyplnený chuťový dotazník. Vyplň ho a získaj personalizované odporúčania.
+              Ešte nemáš vyplnený chuťový dotazník. Vyplň ho a získaj
+              personalizované odporúčania.
             </Text>
           )}
 
-          <Pressable
-            style={styles.questionnaireButton}
-            onPress={() => navigation.navigate('CoffeeQuestionnaire')}>
-            <Text style={styles.questionnaireButtonText}>
-              {profile ? 'Vyplniť dotazník znova' : 'Vyplniť chuťový dotazník'}
-            </Text>
-          </Pressable>
+          <View style={styles.buttonRow}>
+            <MD3Button
+              label={profile ? 'Vyplniť dotazník znova' : 'Vyplniť chuťový dotazník'}
+              variant="filled"
+              icon={<SparklesIcon size={18} color={colors.onPrimary} />}
+              onPress={() => navigation.navigate('CoffeeQuestionnaire')}
+            />
+          </View>
         </View>
 
-        <Pressable
-          style={({pressed}) => [
-            styles.logoutButton,
-            (pressed || isLoggingOut) && styles.logoutButtonPressed,
-          ]}
-          onPress={logout}
-          disabled={isLoggingOut}>
-          <Text style={styles.logoutButtonText}>
-            {isLoggingOut ? 'Odhlasujem…' : 'Odhlásiť sa'}
-          </Text>
-        </Pressable>
+        <View style={styles.logoutWrap}>
+          <MD3Button
+            label={isLoggingOut ? 'Odhlasujem…' : 'Odhlásiť sa'}
+            variant="outlined"
+            onPress={logout}
+            disabled={isLoggingOut}
+            loading={isLoggingOut}
+          />
+        </View>
       </ScrollView>
       <BottomNavBar />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F6F1EB',
-  },
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 106,
-  },
-  profileCard: {
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 16,
-    backgroundColor: '#EEDFCF',
-    borderWidth: 1,
-    borderColor: '#D7C2AB',
-    alignItems: 'center',
-  },
-  avatarCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#6B4F3A',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  avatarText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  userName: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#23180E',
-    marginBottom: 4,
-  },
-  userEmail: {
-    fontSize: 14,
-    color: '#6D5D4C',
-  },
-  sectionCard: {
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 14,
-    backgroundColor: '#FFFBFF',
-    borderWidth: 1,
-    borderColor: '#E7DCD1',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 19,
-    color: '#2C1F13',
-    fontWeight: '700',
-  },
-  profileBlock: {
-    backgroundColor: '#F5F1EC',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#DDD3C9',
-  },
-  profileLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#6B4F3A',
-    marginBottom: 6,
-  },
-  profileText: {
-    fontSize: 14,
-    color: '#271508',
-    lineHeight: 20,
-  },
-  placeholder: {
-    color: '#6A5B50',
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  questionnaireButton: {
-    marginTop: 8,
-    backgroundColor: '#6B4F3A',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-  questionnaireButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  logoutButton: {
-    marginTop: 2,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#70523D',
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  logoutButtonPressed: {
-    opacity: 0.7,
-  },
-  logoutButtonText: {
-    color: '#70523D',
-    fontWeight: '600',
-    fontSize: 15,
-  },
-});
 
 export default ProfileScreen;
