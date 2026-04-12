@@ -1,23 +1,28 @@
-import React from 'react';
+import React, {ReactNode, useMemo} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+
 import {RootStackParamList} from '../navigation/types';
+import {useTheme} from '../theme/useTheme';
+import {elevation} from '../theme/theme';
+import { HomeIcon, CoffeeBeanIcon, CoffeeCupIcon, ProfileIcon } from './icons';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
 type TabKey = 'home' | 'inventory' | 'recipes' | 'profile';
 
-const TABS: Array<{
+type Tab = {
   key: TabKey;
   label: string;
-  icon: string;
   route: keyof RootStackParamList;
-}> = [
-  {key: 'home', label: 'Home', icon: '\u{1F3E0}', route: 'Home'},
-  {key: 'inventory', label: 'Invent\u00E1r', icon: '\u{1F9FA}', route: 'CoffeeInventory'},
-  {key: 'recipes', label: 'Recepty', icon: '\u{1F4DA}', route: 'CoffeeRecipesSaved'},
-  {key: 'profile', label: 'Profil', icon: '\u{1F464}', route: 'Profile'},
+};
+
+const TABS: Tab[] = [
+  {key: 'home', label: 'Domov', route: 'Home'},
+  {key: 'inventory', label: 'Inventár', route: 'CoffeeInventory'},
+  {key: 'recipes', label: 'Recepty', route: 'CoffeeRecipesSaved'},
+  {key: 'profile', label: 'Profil', route: 'Profile'},
 ];
 
 const ROUTE_TO_TAB: Record<string, TabKey> = {
@@ -33,6 +38,63 @@ function BottomNavBar() {
   const navigation = useNavigation<NavProp>();
   const route = useRoute();
   const activeTab = ROUTE_TO_TAB[route.name] ?? null;
+  const {colors, typescale, shape} = useTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        bottomNav: {
+          position: 'absolute',
+          left: 14,
+          right: 14,
+          bottom: 12,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderRadius: shape.extraLarge,
+          backgroundColor: colors.surfaceContainer,
+          paddingHorizontal: 8,
+          paddingVertical: 8,
+          ...elevation.level2.shadow,
+        },
+        navItem: {
+          flex: 1,
+          alignItems: 'center',
+          flexDirection: 'row',
+          justifyContent: 'center',
+          gap: 6,
+          borderRadius: shape.full,
+          paddingVertical: 10,
+          paddingHorizontal: 6,
+        },
+        navItemActive: {
+          backgroundColor: colors.secondaryContainer,
+        },
+        navLabel: {
+          ...typescale.labelSmall,
+          color: colors.onSurfaceVariant,
+        },
+        navLabelActive: {
+          color: colors.onSecondaryContainer,
+        },
+      }),
+    [colors, shape.extraLarge, shape.full, typescale],
+  );
+
+  const renderIcon = (key: TabKey, isActive: boolean): ReactNode => {
+    const color = isActive ? colors.onSecondaryContainer : colors.onSurfaceVariant;
+    const props = {size: 20, color, filled: isActive};
+    switch (key) {
+      case 'home':
+        return <HomeIcon {...props} />;
+      case 'inventory':
+        return <CoffeeBeanIcon {...props} />;
+      case 'recipes':
+        return <CoffeeCupIcon {...props} />;
+      case 'profile':
+        return <ProfileIcon {...props} />;
+    }
+  };
 
   return (
     <View style={styles.bottomNav}>
@@ -42,59 +104,23 @@ function BottomNavBar() {
           <Pressable
             key={tab.key}
             style={[styles.navItem, isActive && styles.navItemActive]}
+            accessibilityRole="tab"
+            accessibilityLabel={tab.label}
+            accessibilityState={{selected: isActive}}
             onPress={() => {
               if (!isActive) {
                 navigation.navigate(tab.route as never);
               }
             }}>
-            <Text style={styles.navIcon}>{tab.icon}</Text>
-            <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
-              {tab.label}
-            </Text>
+            {renderIcon(tab.key, isActive)}
+            {isActive ? (
+              <Text style={[styles.navLabel, styles.navLabelActive]}>{tab.label}</Text>
+            ) : null}
           </Pressable>
         );
       })}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  bottomNav: {
-    position: 'absolute',
-    left: 14,
-    right: 14,
-    bottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#E3D5C8',
-    backgroundColor: '#FFFCF9',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-  },
-  navItem: {
-    flex: 1,
-    alignItems: 'center',
-    borderRadius: 16,
-    paddingVertical: 8,
-  },
-  navItemActive: {
-    backgroundColor: '#F1E6DB',
-  },
-  navIcon: {
-    fontSize: 17,
-  },
-  navLabel: {
-    marginTop: 4,
-    fontSize: 11,
-    color: '#6C5B4D',
-    fontWeight: '600',
-  },
-  navLabelActive: {
-    color: '#4B3325',
-  },
-});
 
 export default BottomNavBar;

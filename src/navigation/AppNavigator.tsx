@@ -16,7 +16,7 @@ import RegisterScreen from '../screens/RegisterScreen';
 import AuthLoadingScreen from '../screens/AuthLoadingScreen';
 import { AuthStackParamList, RootStackParamList } from './types';
 import { useAuth } from '../context/AuthContext';
-import { appTheme } from '../theme/theme';
+import { appTheme, palette } from '../theme/theme';
 
 const AppStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -27,7 +27,7 @@ function AuthNavigator() {
       screenOptions={{
         headerStyle: { backgroundColor: appTheme.colors.surface },
         headerTintColor: appTheme.colors.primary,
-        headerTitleStyle: { ...appTheme.typography.title, color: appTheme.colors.text },
+        headerTitleStyle: { ...appTheme.typography.title, color: palette.text },
         contentStyle: { backgroundColor: appTheme.colors.background },
       }}
     >
@@ -51,7 +51,7 @@ function MainNavigator() {
       screenOptions={{
         headerStyle: { backgroundColor: appTheme.colors.surface },
         headerTintColor: appTheme.colors.primary,
-        headerTitleStyle: { ...appTheme.typography.title, color: appTheme.colors.text },
+        headerTitleStyle: { ...appTheme.typography.title, color: palette.text },
         contentStyle: { backgroundColor: appTheme.colors.background },
       }}
     >
