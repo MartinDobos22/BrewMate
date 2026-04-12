@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +12,9 @@ import { RootStackParamList } from '../navigation/types';
 import { ensureQuestionnaireProfile } from '../utils/tasteVector';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import BottomNavBar from '../components/BottomNavBar';
+import { useTheme } from '../theme/useTheme';
+import { SparklesIcon } from '../components/icons';
+import { MD3Button } from '../components/md3';
 
 const QUESTIONNAIRE = [
   {
@@ -74,7 +76,7 @@ const QUESTIONNAIRE = [
   },
   {
     id: 'clarity',
-    title: 'Preferujete skôr “čistú” chuť alebo “divokejšiu” (výrazné arómy)?',
+    title: 'Preferujete skôr "čistú" chuť alebo "divokejšiu" (výrazné arómy)?',
     options: ['Čistú a jednoduchú', 'Niečo zaujímavejšie', 'Kľudne veľmi výraznú a netradičnú'],
   },
   {
@@ -197,137 +199,153 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
     }
   };
 
+  const { colors, typescale, shape, elevation: elev, spacing } = useTheme();
+
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        safeArea: {
+          flex: 1,
+          backgroundColor: colors.background,
+        },
+        container: {
+          paddingHorizontal: spacing.xl,
+          paddingTop: spacing.lg,
+          paddingBottom: 106,
+          gap: spacing.lg,
+        },
+        headerRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+        },
+        title: {
+          ...typescale.headlineSmall,
+          color: colors.onSurface,
+        },
+        subtitle: {
+          ...typescale.bodyMedium,
+          color: colors.onSurfaceVariant,
+        },
+        progressBar: {
+          height: 6,
+          borderRadius: 3,
+          backgroundColor: colors.outlineVariant,
+          overflow: 'hidden' as const,
+        },
+        progressFill: {
+          height: 6,
+          borderRadius: 3,
+          backgroundColor: colors.primary,
+        },
+        card: {
+          backgroundColor: colors.surfaceContainerLow,
+          borderRadius: shape.extraLarge,
+          padding: spacing.lg,
+          ...elev.level1.shadow,
+        },
+        question: {
+          ...typescale.titleSmall,
+          color: colors.onSurface,
+          marginBottom: spacing.md,
+        },
+        option: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingVertical: spacing.md,
+          paddingHorizontal: spacing.sm,
+          borderRadius: shape.medium,
+        },
+        optionSelected: {
+          backgroundColor: colors.primaryContainer,
+        },
+        radio: {
+          width: 20,
+          height: 20,
+          borderRadius: 10,
+          borderWidth: 2,
+          borderColor: colors.outline,
+          marginRight: spacing.md,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        radioSelected: {
+          borderColor: colors.primary,
+        },
+        radioInner: {
+          width: 10,
+          height: 10,
+          borderRadius: 5,
+          backgroundColor: colors.primary,
+        },
+        optionLabel: {
+          ...typescale.bodyMedium,
+          color: colors.onSurface,
+          flex: 1,
+        },
+        optionLabelSelected: {
+          color: colors.onPrimaryContainer,
+        },
+        error: {
+          ...typescale.bodySmall,
+          color: colors.error,
+          fontWeight: '600',
+        },
+      }),
+    [colors, typescale, shape, elev, spacing],
+  );
+
+  const progressPercent = (answeredCount / QUESTIONNAIRE.length) * 100;
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Chuťový dotazník</Text>
-        <Text style={styles.subtitle}>
+    <SafeAreaView style={s.safeArea} edges={['bottom']}>
+      <ScrollView contentContainerStyle={s.container}>
+        <View style={s.headerRow}>
+          <SparklesIcon size={22} color={colors.primary} />
+          <Text style={s.title}>Chuťový dotazník</Text>
+        </View>
+        <Text style={s.subtitle}>
           Vyplňte všetky otázky. Stav: {answeredCount} / {QUESTIONNAIRE.length}
         </Text>
+        <View style={s.progressBar}>
+          <View style={[s.progressFill, { width: `${progressPercent}%` }]} />
+        </View>
 
         {QUESTIONNAIRE.map((question) => (
-          <View key={question.id} style={styles.card}>
-            <Text style={styles.question}>{question.title}</Text>
+          <View key={question.id} style={s.card}>
+            <Text style={s.question}>{question.title}</Text>
             {question.options.map((option) => {
               const isSelected = answers[question.id] === option;
               return (
                 <Pressable
                   key={option}
-                  style={[styles.option, isSelected && styles.optionSelected]}
+                  style={[s.option, isSelected && s.optionSelected]}
                   onPress={() => handleSelect(question.id, option)}
                 >
-                  <View style={[styles.radio, isSelected && styles.radioSelected]} />
-                  <Text style={styles.optionLabel}>{option}</Text>
+                  <View style={[s.radio, isSelected && s.radioSelected]}>
+                    {isSelected ? <View style={s.radioInner} /> : null}
+                  </View>
+                  <Text style={[s.optionLabel, isSelected && s.optionLabelSelected]}>
+                    {option}
+                  </Text>
                 </Pressable>
               );
             })}
           </View>
         ))}
 
-        {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
+        {errorMessage ? <Text style={s.error}>{errorMessage}</Text> : null}
 
-        <Pressable
-          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+        <MD3Button
+          label={isSubmitting ? 'Vyhodnocujem...' : 'Vyhodnotiť dotazník'}
           onPress={handleSubmit}
           disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <View style={styles.submitRow}>
-              <ActivityIndicator color="#FFFFFF" />
-              <Text style={styles.submitText}>Vyhodnocujem...</Text>
-            </View>
-          ) : (
-            <Text style={styles.submitText}>Vyhodnotiť dotazník</Text>
-          )}
-        </Pressable>
+          loading={isSubmitting}
+        />
       </ScrollView>
       <BottomNavBar />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  container: {
-    padding: 20,
-    paddingBottom: 90,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6B5C52',
-    marginBottom: 16,
-  },
-  card: {
-    backgroundColor: '#F5F1EC',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#DDD3C9',
-  },
-  question: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  optionSelected: {
-    backgroundColor: '#D8ECBA',
-    borderRadius: 16,
-    paddingHorizontal: 8,
-  },
-  radio: {
-    width: 16,
-    height: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#6B5C52',
-    marginRight: 10,
-  },
-  radioSelected: {
-    borderColor: '#6B4F3A',
-    backgroundColor: '#6B4F3A',
-  },
-  optionLabel: {
-    flex: 1,
-    fontSize: 14,
-    color: '#271508',
-  },
-  error: {
-    color: '#BA1A1A',
-    marginBottom: 16,
-    fontWeight: '600',
-  },
-  submitButton: {
-    backgroundColor: '#6B4F3A',
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  submitButtonDisabled: {
-    opacity: 0.7,
-  },
-  submitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  submitText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-});
 
 export default CoffeeQuestionnaireScreen;
