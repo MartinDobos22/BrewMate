@@ -1,11 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../navigation/types';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import BottomNavBar from '../components/BottomNavBar';
+import { useTheme } from '../theme/useTheme';
+import { CoffeeCupIcon, SparklesIcon, PortafilterIcon } from '../components/icons';
+import { MD3Button } from '../components/md3';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeePhotoRecipeResult'>;
 
@@ -56,90 +59,228 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
     }
   };
 
-  return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.overline}>BrewMate Recipe AI</Text>
-        <Text style={styles.title}>{recipe.title}</Text>
+  const { colors, typescale, shape, elevation: elev, spacing } = useTheme();
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>AI predikcia chuti</Text>
-          <Text style={styles.highlight}>Pravdepodobnosť, že ti bude chutiť: {likePrediction.score}%</Text>
-          <Text style={styles.text}>{likePrediction.verdict}</Text>
-          <Text style={styles.text}>{likePrediction.reason}</Text>
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        safeArea: {
+          flex: 1,
+          backgroundColor: colors.background,
+        },
+        container: {
+          paddingHorizontal: spacing.xl,
+          paddingTop: spacing.lg,
+          paddingBottom: 106,
+          gap: spacing.md,
+        },
+        headerRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+        },
+        overline: {
+          ...typescale.labelMedium,
+          color: colors.onSurfaceVariant,
+          textTransform: 'uppercase',
+        },
+        title: {
+          ...typescale.headlineMedium,
+          color: colors.onSurface,
+        },
+        card: {
+          backgroundColor: colors.surfaceContainerLow,
+          borderRadius: shape.extraLarge,
+          padding: spacing.lg,
+          ...elev.level1.shadow,
+        },
+        cardHeader: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+          marginBottom: spacing.md,
+        },
+        cardTitle: {
+          ...typescale.titleSmall,
+          color: colors.onSurface,
+        },
+        highlight: {
+          ...typescale.titleSmall,
+          color: colors.primary,
+          marginBottom: spacing.sm,
+        },
+        bodyText: {
+          ...typescale.bodyMedium,
+          color: colors.onSurface,
+          marginBottom: spacing.xs,
+        },
+        warning: {
+          ...typescale.bodySmall,
+          color: colors.error,
+          fontWeight: '600',
+          marginTop: spacing.sm,
+        },
+        paramRow: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          paddingVertical: spacing.xs + 2,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.outlineVariant,
+        },
+        paramLabel: {
+          ...typescale.labelMedium,
+          color: colors.onSurfaceVariant,
+        },
+        paramValue: {
+          ...typescale.bodyMedium,
+          color: colors.onSurface,
+          fontWeight: '600',
+        },
+        stepRow: {
+          flexDirection: 'row',
+          gap: spacing.sm,
+          marginBottom: spacing.sm,
+        },
+        stepNumber: {
+          ...typescale.labelLarge,
+          color: colors.primary,
+          minWidth: 20,
+        },
+        stepText: {
+          ...typescale.bodyMedium,
+          color: colors.onSurface,
+          flex: 1,
+        },
+        tipText: {
+          ...typescale.bodyMedium,
+          color: colors.onSurface,
+          marginBottom: spacing.sm,
+          paddingLeft: spacing.sm,
+        },
+        tipBullet: {
+          ...typescale.bodyMedium,
+          color: colors.tertiary,
+        },
+        success: {
+          ...typescale.bodySmall,
+          color: colors.tertiary,
+          fontWeight: '600',
+        },
+        error: {
+          ...typescale.bodySmall,
+          color: colors.error,
+          fontWeight: '600',
+        },
+      }),
+    [colors, typescale, shape, elev, spacing],
+  );
+
+  return (
+    <SafeAreaView style={s.safeArea} edges={['bottom']}>
+      <ScrollView contentContainerStyle={s.container}>
+        <View style={s.headerRow}>
+          <CoffeeCupIcon size={20} color={colors.onSurfaceVariant} />
+          <Text style={s.overline}>BrewMate Recipe AI</Text>
+        </View>
+        <Text style={s.title}>{recipe.title}</Text>
+
+        <View style={s.card}>
+          <View style={s.cardHeader}>
+            <SparklesIcon size={20} color={colors.primary} />
+            <Text style={s.cardTitle}>AI predikcia chuti</Text>
+          </View>
+          <Text style={s.highlight}>
+            Pravdepodobnosť, že ti bude chutiť: {likePrediction.score}%
+          </Text>
+          <Text style={s.bodyText}>{likePrediction.verdict}</Text>
+          <Text style={s.bodyText}>{likePrediction.reason}</Text>
           {!canSave ? (
-            <Text style={styles.warning}>Recept sa dá uložiť až od {APPROVAL_THRESHOLD}%.</Text>
+            <Text style={s.warning}>
+              Recept sa dá uložiť až od {APPROVAL_THRESHOLD}%.
+            </Text>
           ) : null}
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Parametre</Text>
-          <Text style={styles.text}>Metóda: {selectedPreparation}</Text>
-          <Text style={styles.text}>Sila: {strengthPreference}</Text>
-          <Text style={styles.text}>Dávka: {recipe.dose}</Text>
-          <Text style={styles.text}>Voda: {recipe.water}</Text>
-          <Text style={styles.text}>Mletie: {recipe.grind}</Text>
-          <Text style={styles.text}>Teplota: {recipe.waterTemp}</Text>
-          <Text style={styles.text}>Čas: {recipe.totalTime}</Text>
+        <View style={s.card}>
+          <View style={s.cardHeader}>
+            <PortafilterIcon size={20} color={colors.primary} />
+            <Text style={s.cardTitle}>Parametre</Text>
+          </View>
+          <View style={s.paramRow}>
+            <Text style={s.paramLabel}>Metóda</Text>
+            <Text style={s.paramValue}>{selectedPreparation}</Text>
+          </View>
+          <View style={s.paramRow}>
+            <Text style={s.paramLabel}>Sila</Text>
+            <Text style={s.paramValue}>{strengthPreference}</Text>
+          </View>
+          <View style={s.paramRow}>
+            <Text style={s.paramLabel}>Dávka</Text>
+            <Text style={s.paramValue}>{recipe.dose}</Text>
+          </View>
+          <View style={s.paramRow}>
+            <Text style={s.paramLabel}>Voda</Text>
+            <Text style={s.paramValue}>{recipe.water}</Text>
+          </View>
+          <View style={s.paramRow}>
+            <Text style={s.paramLabel}>Mletie</Text>
+            <Text style={s.paramValue}>{recipe.grind}</Text>
+          </View>
+          <View style={s.paramRow}>
+            <Text style={s.paramLabel}>Teplota</Text>
+            <Text style={s.paramValue}>{recipe.waterTemp}</Text>
+          </View>
+          <View style={[s.paramRow, { borderBottomWidth: 0 }]}>
+            <Text style={s.paramLabel}>Čas</Text>
+            <Text style={s.paramValue}>{recipe.totalTime}</Text>
+          </View>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Postup</Text>
+        <View style={s.card}>
+          <View style={s.cardHeader}>
+            <CoffeeCupIcon size={20} color={colors.primary} />
+            <Text style={s.cardTitle}>Postup</Text>
+          </View>
           {recipe.steps.map((step: string, index: number) => (
-            <Text key={`${step}-${index}`} style={styles.text}>{index + 1}. {step}</Text>
+            <View key={`${step}-${index}`} style={s.stepRow}>
+              <Text style={s.stepNumber}>{index + 1}.</Text>
+              <Text style={s.stepText}>{step}</Text>
+            </View>
           ))}
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Barista tipy</Text>
+        <View style={s.card}>
+          <View style={s.cardHeader}>
+            <SparklesIcon size={20} color={colors.primary} />
+            <Text style={s.cardTitle}>Barista tipy</Text>
+          </View>
           {recipe.baristaTips.map((tip: string, index: number) => (
-            <Text key={`${tip}-${index}`} style={styles.text}>• {tip}</Text>
+            <View key={`${tip}-${index}`} style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}>
+              <Text style={s.tipBullet}>•</Text>
+              <Text style={[s.stepText]}>{tip}</Text>
+            </View>
           ))}
         </View>
 
-        <Pressable
-          style={[styles.primaryButton, (!canSave || saveState === 'saving') && styles.buttonDisabled]}
+        <MD3Button
+          label={saveState === 'saving' ? 'Ukladám…' : 'Uložiť recept'}
           onPress={handleSaveRecipe}
           disabled={!canSave || saveState === 'saving'}
-        >
-          <Text style={styles.primaryButtonText}>{saveState === 'saving' ? 'Ukladám…' : 'Uložiť recept'}</Text>
-        </Pressable>
+          loading={saveState === 'saving'}
+        />
 
-        <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('CoffeeRecipesSaved')}>
-          <Text style={styles.secondaryButtonText}>Prejsť na uložené recepty</Text>
-        </Pressable>
+        <MD3Button
+          label="Prejsť na uložené recepty"
+          variant="outlined"
+          onPress={() => navigation.navigate('CoffeeRecipesSaved')}
+        />
 
-        {saveState === 'saved' ? <Text style={styles.success}>Recept uložený.</Text> : null}
-        {saveState === 'error' ? <Text style={styles.error}>{errorMessage}</Text> : null}
+        {saveState === 'saved' ? <Text style={s.success}>Recept uložený.</Text> : null}
+        {saveState === 'error' ? <Text style={s.error}>{errorMessage}</Text> : null}
       </ScrollView>
       <BottomNavBar />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F6F1EB' },
-  container: { paddingHorizontal: 20, paddingVertical: 16, paddingBottom: 90, gap: 12 },
-  overline: {
-    fontSize: 12,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: '#6D5D4C',
-    fontWeight: '700',
-  },
-  title: { fontSize: 30, fontWeight: '700', color: '#23180E' },
-  card: { backgroundColor: '#FFFBFF', borderWidth: 1, borderColor: '#E7DCD1', borderRadius: 20, padding: 16 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8, color: '#271508' },
-  text: { fontSize: 14, color: '#6B5C52', marginBottom: 4 },
-  highlight: { fontWeight: '700', color: '#6B4F3A', marginBottom: 8 },
-  warning: { color: '#9B6F42', fontWeight: '600' },
-  primaryButton: { backgroundColor: '#6B4F3A', borderRadius: 18, alignItems: 'center', paddingVertical: 14 },
-  primaryButtonText: { color: '#FFFFFF', fontWeight: '600' },
-  secondaryButton: { borderWidth: 1, borderColor: '#D9C8B8', backgroundColor: '#FFF8F3', borderRadius: 18, alignItems: 'center', paddingVertical: 14 },
-  secondaryButtonText: { color: '#6B4F3A', fontWeight: '600' },
-  buttonDisabled: { opacity: 0.6 },
-  success: { color: '#7A9255', fontWeight: '600' },
-  error: { color: '#BA1A1A', fontWeight: '600' },
-});
 
 export default CoffeePhotoRecipeResultScreen;
