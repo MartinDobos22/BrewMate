@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -14,6 +13,9 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { AuthStackParamList } from '../navigation/types';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import { useTheme } from '../theme/useTheme';
+import { CoffeeBeanIcon } from '../components/icons';
+import { MD3Button } from '../components/md3';
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -25,6 +27,7 @@ function RegisterScreen({ navigation }: Props) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
   const getBackendErrorMessage = async (response: Response) => {
     try {
       const data = await response.json();
@@ -106,142 +109,142 @@ function RegisterScreen({ navigation }: Props) {
     }
   };
 
+  const { colors, typescale, shape, spacing } = useTheme();
+
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        root: {
+          flex: 1,
+          backgroundColor: colors.background,
+        },
+        container: {
+          flexGrow: 1,
+          paddingHorizontal: spacing.xxl,
+          paddingVertical: spacing.xxl,
+          justifyContent: 'center',
+          gap: spacing.lg,
+        },
+        logoRow: {
+          alignItems: 'center',
+          marginBottom: spacing.sm,
+        },
+        title: {
+          ...typescale.headlineLarge,
+          color: colors.onSurface,
+          textAlign: 'center',
+        },
+        subtitle: {
+          ...typescale.bodyLarge,
+          color: colors.onSurfaceVariant,
+          textAlign: 'center',
+        },
+        inputGroup: {
+          gap: spacing.xs + 2,
+        },
+        label: {
+          ...typescale.labelMedium,
+          color: colors.onSurfaceVariant,
+        },
+        input: {
+          backgroundColor: colors.surfaceContainerLowest,
+          borderRadius: shape.medium,
+          paddingHorizontal: spacing.lg,
+          paddingVertical: spacing.md,
+          ...typescale.bodyLarge,
+          color: colors.onSurface,
+          borderWidth: 1,
+          borderColor: colors.outlineVariant,
+        },
+        errorText: {
+          ...typescale.bodySmall,
+          color: colors.error,
+          fontWeight: '600',
+        },
+        footer: {
+          flexDirection: 'row',
+          justifyContent: 'center',
+          gap: spacing.xs + 2,
+        },
+        footerText: {
+          ...typescale.bodyMedium,
+          color: colors.onSurfaceVariant,
+        },
+        footerLink: {
+          ...typescale.labelLarge,
+          color: colors.primary,
+        },
+      }),
+    [colors, typescale, shape, spacing],
+  );
+
   return (
     <KeyboardAvoidingView
-      style={styles.safeArea}
+      style={s.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Registrácia</Text>
-        <Text style={styles.subtitle}>Začni s BrewMate ešte dnes.</Text>
+      <ScrollView contentContainerStyle={s.container} keyboardShouldPersistTaps="handled">
+        <View style={s.logoRow}>
+          <CoffeeBeanIcon size={48} color={colors.primary} />
+        </View>
+        <Text style={s.title}>Registrácia</Text>
+        <Text style={s.subtitle}>Začni s BrewMate ešte dnes.</Text>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Email</Text>
+        <View style={s.inputGroup}>
+          <Text style={s.label}>Email</Text>
           <TextInput
-            style={styles.input}
+            style={s.input}
             keyboardType="email-address"
             autoCapitalize="none"
             placeholder="name@example.com"
+            placeholderTextColor={colors.outline}
             value={email}
             onChangeText={setEmail}
           />
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Heslo</Text>
+        <View style={s.inputGroup}>
+          <Text style={s.label}>Heslo</Text>
           <TextInput
-            style={styles.input}
+            style={s.input}
             secureTextEntry
             placeholder="••••••••"
+            placeholderTextColor={colors.outline}
             value={password}
             onChangeText={setPassword}
           />
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Potvrď heslo</Text>
+        <View style={s.inputGroup}>
+          <Text style={s.label}>Potvrď heslo</Text>
           <TextInput
-            style={styles.input}
+            style={s.input}
             secureTextEntry
             placeholder="••••••••"
+            placeholderTextColor={colors.outline}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
           />
         </View>
 
-        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+        {errorMessage ? <Text style={s.errorText}>{errorMessage}</Text> : null}
 
-        <Pressable
-          style={[styles.primaryButton, loading && styles.disabledButton]}
+        <MD3Button
+          label="Vytvoriť účet"
           onPress={handleRegister}
           disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.primaryButtonText}>Vytvoriť účet</Text>
-          )}
-        </Pressable>
+          loading={loading}
+        />
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Už máš účet?</Text>
+        <View style={s.footer}>
+          <Text style={s.footerText}>Už máš účet?</Text>
           <Pressable onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.footerLink}>Prihlásiť sa</Text>
+            <Text style={s.footerLink}>Prihlásiť sa</Text>
           </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F5F1EC',
-  },
-  container: {
-    flexGrow: 1,
-    padding: 24,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B5C52',
-    marginBottom: 24,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    color: '#6B5C52',
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#271508',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#C8BAB0',
-  },
-  errorText: {
-    color: '#BA1A1A',
-    marginBottom: 12,
-  },
-  primaryButton: {
-    backgroundColor: '#6B4F3A',
-    paddingVertical: 14,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 16,
-  },
-  footerText: {
-    color: '#6B5C52',
-    marginRight: 6,
-  },
-  footerLink: {
-    color: '#6B4F3A',
-    fontWeight: '600',
-  },
-});
 
 export default RegisterScreen;
