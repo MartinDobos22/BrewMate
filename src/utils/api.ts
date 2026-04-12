@@ -55,7 +55,10 @@ const sanitizePayload = (payload: unknown): SanitizedPayload => {
   return payload as SanitizedPayload;
 };
 
-const getHeaderValue = (headers: HeadersInit | undefined, name: string): string | null => {
+type FetchHeaders = RequestInit['headers'];
+type FetchBody = RequestInit['body'];
+
+const getHeaderValue = (headers: FetchHeaders, name: string): string | null => {
   if (!headers) {
     return null;
   }
@@ -69,7 +72,7 @@ const getHeaderValue = (headers: HeadersInit | undefined, name: string): string 
   return (headers as Record<string, string>)[name] || null;
 };
 
-const summarizeBody = (body: BodyInit | null | undefined): SanitizedPayload | null => {
+const summarizeBody = (body: FetchBody): SanitizedPayload | null => {
   if (!body) {
     return null;
   }
@@ -87,7 +90,7 @@ const summarizeBody = (body: BodyInit | null | undefined): SanitizedPayload | nu
 
   if (body instanceof FormData) {
     return {
-      formDataKeys: Array.from(body.keys()),
+      bodyType: 'FormData',
     };
   }
 
