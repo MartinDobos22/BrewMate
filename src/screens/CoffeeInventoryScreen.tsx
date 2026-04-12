@@ -13,6 +13,11 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {apiFetch, DEFAULT_API_HOST} from '../utils/api';
 import BottomNavBar from '../components/BottomNavBar';
+import {useTheme} from '../theme/useTheme';
+import {elevation} from '../theme/theme';
+import {CoffeeBeanIcon, FlameIcon} from '../components/icons';
+import {Chip, MD3Button} from '../components/md3';
+import {BOTTOM_NAV_SAFE_PADDING} from '../constants/ui';
 
 type InventoryStatus = 'active' | 'empty' | 'archived';
 type TrackingMode = 'manual' | 'estimated';
@@ -47,13 +52,24 @@ type InventoryItem = {
 
 const QUICK_DOSES = [10, 15, 18, 20];
 
+const STATUS_CHIP_ROLE = {
+  active: 'primary',
+  empty: 'neutral',
+  archived: 'secondary',
+} as const;
+
 function CoffeeInventoryScreen() {
+  const {colors, typescale, shape, stateLayer} = useTheme();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [activeFilter, setActiveFilter] = useState<InventoryStatus>('active');
   const [customDoseById, setCustomDoseById] = useState<Record<string, string>>({});
   const [customRemainingById, setCustomRemainingById] = useState<Record<string, string>>({});
+
+  // ---------------------------------------------------------------------------
+  // Data loading & mutations (unchanged logic)
+  // ---------------------------------------------------------------------------
 
   const loadInventory = useCallback(async () => {
     setState('loading');
@@ -302,6 +318,10 @@ function CoffeeInventoryScreen() {
     [replaceItem],
   );
 
+  // ---------------------------------------------------------------------------
+  // Derived data
+  // ---------------------------------------------------------------------------
+
   const totalsByStatus = useMemo(
     () => ({
       active: items.filter(item => item.status === 'active').length,
@@ -317,12 +337,8 @@ function CoffeeInventoryScreen() {
   );
 
   const filterLabel = useMemo(() => {
-    if (activeFilter === 'active') {
-      return 'Aktívne';
-    }
-    if (activeFilter === 'empty') {
-      return 'Dopité';
-    }
+    if (activeFilter === 'active') return 'Aktívne';
+    if (activeFilter === 'empty') return 'Dopité';
     return 'Archivované';
   }, [activeFilter]);
 
@@ -342,89 +358,330 @@ function CoffeeInventoryScreen() {
     [items],
   );
 
+  // ---------------------------------------------------------------------------
+  // Styles
+  // ---------------------------------------------------------------------------
+
+  const s = useMemo(
+    () =>
+      StyleSheet.create({
+        safeArea: {
+          flex: 1,
+          backgroundColor: colors.background,
+        },
+        container: {
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: BOTTOM_NAV_SAFE_PADDING + 24,
+          backgroundColor: colors.background,
+        },
+        // Hero card
+        heroCard: {
+          borderRadius: shape.extraLarge,
+          padding: 20,
+          marginBottom: 14,
+          backgroundColor: colors.primaryContainer,
+          ...elevation.level1.shadow,
+        },
+        heroIconRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 10,
+        },
+        overline: {
+          ...typescale.labelMedium,
+          letterSpacing: 1,
+          textTransform: 'uppercase',
+          color: colors.onPrimaryContainer,
+          opacity: 0.85,
+        },
+        title: {
+          ...typescale.headlineMedium,
+          color: colors.onPrimaryContainer,
+        },
+        subtitle: {
+          ...typescale.bodyMedium,
+          marginTop: 8,
+          color: colors.onPrimaryContainer,
+          opacity: 0.82,
+          lineHeight: 22,
+        },
+        heroStatsRow: {
+          marginTop: 16,
+          flexDirection: 'row',
+          gap: 8,
+        },
+        heroStatPill: {
+          flex: 1,
+          borderRadius: shape.medium,
+          backgroundColor: colors.surfaceContainerLowest,
+          paddingVertical: 10,
+          paddingHorizontal: 8,
+          alignItems: 'center',
+        },
+        heroStatValue: {
+          ...typescale.titleMedium,
+          color: colors.onSurface,
+        },
+        heroStatLabel: {
+          ...typescale.labelSmall,
+          marginTop: 2,
+          color: colors.onSurfaceVariant,
+        },
+        // Section card / filter
+        sectionCard: {
+          borderRadius: shape.extraLarge,
+          padding: 16,
+          marginBottom: 14,
+          backgroundColor: colors.surfaceContainerLow,
+          ...elevation.level1.shadow,
+        },
+        sectionHeader: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 10,
+        },
+        sectionTitle: {
+          ...typescale.titleLarge,
+          color: colors.onSurface,
+        },
+        filterTabs: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 8,
+          marginBottom: 8,
+        },
+        filterButton: {
+          borderWidth: 1,
+          borderColor: colors.outline,
+          borderRadius: shape.full,
+          paddingVertical: 8,
+          paddingHorizontal: 14,
+          backgroundColor: colors.surfaceContainerLowest,
+        },
+        filterButtonActive: {
+          backgroundColor: colors.primary,
+          borderColor: colors.primary,
+        },
+        filterButtonText: {
+          ...typescale.labelLarge,
+          color: colors.onSurfaceVariant,
+        },
+        filterButtonTextActive: {
+          color: colors.onPrimary,
+        },
+        caption: {
+          ...typescale.bodySmall,
+          color: colors.onSurfaceVariant,
+        },
+        error: {
+          ...typescale.bodySmall,
+          color: colors.error,
+          marginTop: 8,
+        },
+        empty: {
+          ...typescale.bodyMedium,
+          color: colors.onSurfaceVariant,
+          lineHeight: 22,
+        },
+        // Item card
+        itemCard: {
+          borderRadius: shape.extraLarge,
+          padding: 16,
+          marginBottom: 12,
+          backgroundColor: colors.surfaceContainerLow,
+          ...elevation.level1.shadow,
+        },
+        itemHeader: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 10,
+          gap: 8,
+        },
+        itemTitleWrap: {
+          flex: 1,
+        },
+        itemTitle: {
+          ...typescale.titleMedium,
+          color: colors.onSurface,
+        },
+        date: {
+          ...typescale.bodySmall,
+          color: colors.onSurfaceVariant,
+          marginTop: 3,
+        },
+        // Meta grid
+        metaGrid: {
+          flexDirection: 'row',
+          gap: 8,
+          marginBottom: 8,
+        },
+        metaTile: {
+          flex: 1,
+          borderRadius: shape.medium,
+          backgroundColor: colors.surfaceContainerLowest,
+          paddingVertical: 8,
+          paddingHorizontal: 10,
+        },
+        metaLabel: {
+          ...typescale.labelSmall,
+          color: colors.onSurfaceVariant,
+        },
+        metaValue: {
+          ...typescale.labelLarge,
+          marginTop: 3,
+          color: colors.onSurface,
+        },
+        // Taste profile
+        label: {
+          ...typescale.labelLarge,
+          color: colors.primary,
+          marginTop: 10,
+        },
+        text: {
+          ...typescale.bodyMedium,
+          color: colors.onSurface,
+          marginTop: 4,
+        },
+        // Quick actions
+        quickActionsWrap: {
+          marginTop: 10,
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 8,
+        },
+        quickAction: {
+          borderRadius: shape.full,
+          paddingVertical: 8,
+          paddingHorizontal: 14,
+          backgroundColor: colors.secondaryContainer,
+        },
+        quickActionPressed: {
+          opacity: 1 - stateLayer.pressed,
+        },
+        quickActionText: {
+          ...typescale.labelLarge,
+          color: colors.onSecondaryContainer,
+        },
+        // Inline inputs
+        inlineRow: {
+          marginTop: 10,
+          flexDirection: 'row',
+          gap: 8,
+        },
+        input: {
+          flex: 1,
+          borderWidth: 1,
+          borderColor: colors.outlineVariant,
+          borderRadius: shape.large,
+          paddingHorizontal: 12,
+          paddingVertical: 10,
+          ...typescale.bodyMedium,
+          color: colors.onSurface,
+          backgroundColor: colors.surfaceContainerLowest,
+        },
+        // Actions
+        actions: {
+          marginTop: 14,
+          gap: 8,
+        },
+        badge: {
+          backgroundColor: colors.surfaceContainer,
+          paddingVertical: 10,
+          paddingHorizontal: 12,
+          borderRadius: shape.full,
+          alignItems: 'center',
+        },
+        badgeActive: {
+          backgroundColor: colors.tertiaryContainer,
+        },
+        badgeText: {
+          ...typescale.labelLarge,
+          color: colors.onSurface,
+        },
+        badgeTextActive: {
+          color: colors.onTertiaryContainer,
+        },
+      }),
+    [colors, shape, stateLayer.pressed, typescale],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.heroCard}>
-          <View style={styles.heroDecor}>
-            <Text style={styles.heroDecorIcon}>🧺</Text>
-            <Text style={styles.heroDecorIcon}>🫘</Text>
+    <SafeAreaView style={s.safeArea} edges={['bottom']}>
+      <ScrollView contentContainerStyle={s.container}>
+        {/* Hero card */}
+        <View style={s.heroCard}>
+          <View style={s.heroIconRow}>
+            <CoffeeBeanIcon size={22} color={colors.onPrimaryContainer} />
+            <Text style={s.overline}>BrewMate Inventory</Text>
           </View>
-          <Text style={styles.overline}>BrewMate Inventory</Text>
-          <Text style={styles.title}>Tvoj coffee inventár</Text>
-          <Text style={styles.subtitle}>Sleduj zásoby, dávkovanie a stav balíkov na jednom mieste.</Text>
+          <Text style={s.title}>Tvoj coffee inventár</Text>
+          <Text style={s.subtitle}>Sleduj zásoby, dávkovanie a stav balíkov na jednom mieste.</Text>
 
-          <View style={styles.heroStatsRow}>
-            <View style={styles.heroStatPill}>
-              <Text style={styles.heroStatValue}>{totalsByStatus.active}</Text>
-              <Text style={styles.heroStatLabel}>Aktívne</Text>
+          <View style={s.heroStatsRow}>
+            <View style={s.heroStatPill}>
+              <Text style={s.heroStatValue}>{totalsByStatus.active}</Text>
+              <Text style={s.heroStatLabel}>Aktívne</Text>
             </View>
-            <View style={styles.heroStatPill}>
-              <Text style={styles.heroStatValue}>{totalAvailableG} g</Text>
-              <Text style={styles.heroStatLabel}>Dostupné</Text>
+            <View style={s.heroStatPill}>
+              <Text style={s.heroStatValue}>{totalAvailableG} g</Text>
+              <Text style={s.heroStatLabel}>Dostupné</Text>
             </View>
-            <View style={styles.heroStatPill}>
-              <Text style={styles.heroStatValue}>{lowStockCount}</Text>
-              <Text style={styles.heroStatLabel}>Nízka zásoba</Text>
+            <View style={s.heroStatPill}>
+              <Text style={s.heroStatValue}>{lowStockCount}</Text>
+              <Text style={s.heroStatLabel}>Nízka zásoba</Text>
             </View>
           </View>
         </View>
 
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Filtre inventára</Text>
-            {state === 'loading' ? <ActivityIndicator color="#5B4332" /> : null}
+        {/* Filter section */}
+        <View style={s.sectionCard}>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>Filtre inventára</Text>
+            {state === 'loading' ? <ActivityIndicator color={colors.primary} /> : null}
           </View>
 
-          <View style={styles.filterTabs}>
-            <Pressable
-              style={[styles.filterButton, activeFilter === 'active' ? styles.filterButtonActive : null]}
-              onPress={() => setActiveFilter('active')}>
-              <Text
-                style={[
-                  styles.filterButtonText,
-                  activeFilter === 'active' ? styles.filterButtonTextActive : null,
-                ]}>
-                Aktívne ({totalsByStatus.active})
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.filterButton, activeFilter === 'empty' ? styles.filterButtonActive : null]}
-              onPress={() => setActiveFilter('empty')}>
-              <Text
-                style={[
-                  styles.filterButtonText,
-                  activeFilter === 'empty' ? styles.filterButtonTextActive : null,
-                ]}>
-                Dopité ({totalsByStatus.empty})
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[
-                styles.filterButton,
-                activeFilter === 'archived' ? styles.filterButtonActive : null,
-              ]}
-              onPress={() => setActiveFilter('archived')}>
-              <Text
-                style={[
-                  styles.filterButtonText,
-                  activeFilter === 'archived' ? styles.filterButtonTextActive : null,
-                ]}>
-                Archivované ({totalsByStatus.archived})
-              </Text>
-            </Pressable>
+          <View style={s.filterTabs}>
+            {(['active', 'empty', 'archived'] as const).map(filter => {
+              const isActive = activeFilter === filter;
+              const label =
+                filter === 'active'
+                  ? `Aktívne (${totalsByStatus.active})`
+                  : filter === 'empty'
+                  ? `Dopité (${totalsByStatus.empty})`
+                  : `Archivované (${totalsByStatus.archived})`;
+              return (
+                <Pressable
+                  key={filter}
+                  style={[s.filterButton, isActive && s.filterButtonActive]}
+                  onPress={() => setActiveFilter(filter)}>
+                  <Text style={[s.filterButtonText, isActive && s.filterButtonTextActive]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
-          <Text style={styles.caption}>Zobrazená kategória: {filterLabel}</Text>
-          {state === 'error' ? <Text style={styles.error}>{errorMessage}</Text> : null}
+          <Text style={s.caption}>Zobrazená kategória: {filterLabel}</Text>
+          {state === 'error' ? <Text style={s.error}>{errorMessage}</Text> : null}
         </View>
 
+        {/* Empty state */}
         {state === 'ready' && renderedItems.length === 0 ? (
-          <View style={styles.sectionCard}>
-            <Text style={styles.empty}>V kategórii {filterLabel.toLowerCase()} zatiaľ nemáš žiadne kávy.</Text>
+          <View style={s.sectionCard}>
+            <Text style={s.empty}>V kategórii {filterLabel.toLowerCase()} zatiaľ nemáš žiadne kávy.</Text>
           </View>
         ) : null}
 
+        {/* Item cards */}
         {renderedItems.map(item => {
           const remainingLabel = item.remainingG === null ? 'Odhad bez gramov' : `${item.remainingG} g`;
           const packageLabel = item.packageSizeG === null ? 'Nezadaná' : `${item.packageSizeG} g`;
@@ -433,42 +690,42 @@ function CoffeeInventoryScreen() {
           const itemName = item.correctedText || item.rawText || 'Neznáma káva';
 
           return (
-            <View key={item.id} style={styles.itemCard}>
-              <View style={styles.itemHeader}>
-                <View style={styles.itemTitleWrap}>
-                  <Text style={styles.itemTitle}>{itemName}</Text>
-                  <Text style={styles.date}>Uložené: {new Date(item.createdAt).toLocaleDateString('sk-SK')}</Text>
+            <View key={item.id} style={s.itemCard}>
+              <View style={s.itemHeader}>
+                <View style={s.itemTitleWrap}>
+                  <Text style={s.itemTitle}>{itemName}</Text>
+                  <Text style={s.date}>
+                    Uložené: {new Date(item.createdAt).toLocaleDateString('sk-SK')}
+                  </Text>
                 </View>
-                <View style={styles.statusChip}>
-                  <Text style={styles.statusChipText}>{statusLabel}</Text>
-                </View>
+                <Chip role={STATUS_CHIP_ROLE[item.status]} label={statusLabel} />
               </View>
 
-              <View style={styles.metaGrid}>
-                <View style={styles.metaTile}>
-                  <Text style={styles.metaLabel}>Balík</Text>
-                  <Text style={styles.metaValue}>{packageLabel}</Text>
+              <View style={s.metaGrid}>
+                <View style={s.metaTile}>
+                  <Text style={s.metaLabel}>Balík</Text>
+                  <Text style={s.metaValue}>{packageLabel}</Text>
                 </View>
-                <View style={styles.metaTile}>
-                  <Text style={styles.metaLabel}>Zostáva</Text>
-                  <Text style={styles.metaValue}>{remainingLabel}</Text>
+                <View style={s.metaTile}>
+                  <Text style={s.metaLabel}>Zostáva</Text>
+                  <Text style={s.metaValue}>{remainingLabel}</Text>
                 </View>
-                <View style={styles.metaTile}>
-                  <Text style={styles.metaLabel}>Tracking</Text>
-                  <Text style={styles.metaValue}>
+                <View style={s.metaTile}>
+                  <Text style={s.metaLabel}>Tracking</Text>
+                  <Text style={s.metaValue}>
                     {item.trackingMode === 'manual' ? 'Manuálny' : 'Odhadovaný'}
                   </Text>
                 </View>
               </View>
 
-              <Text style={styles.label}>Chuťový profil</Text>
-              <Text style={styles.text}>{item.coffeeProfile?.tasteProfile || 'Neuvedené'}</Text>
+              <Text style={s.label}>Chuťový profil</Text>
+              <Text style={s.text}>{item.coffeeProfile?.tasteProfile || 'Neuvedené'}</Text>
               {item.coffeeProfile?.flavorNotes?.length ? (
-                <Text style={styles.text}>Tóny: {item.coffeeProfile.flavorNotes.join(', ')}</Text>
+                <Text style={s.text}>Tóny: {item.coffeeProfile.flavorNotes.join(', ')}</Text>
               ) : null}
 
-              <Text style={styles.label}>Rýchle odpočítanie</Text>
-              <View style={styles.quickActionsWrap}>
+              <Text style={s.label}>Rýchle odpočítanie</Text>
+              <View style={s.quickActionsWrap}>
                 {[
                   item.preferredDoseG && !QUICK_DOSES.includes(item.preferredDoseG)
                     ? item.preferredDoseG
@@ -480,73 +737,84 @@ function CoffeeInventoryScreen() {
                   .map(dose => (
                     <Pressable
                       key={`${item.id}-${dose}`}
-                      style={styles.quickAction}
+                      style={({pressed}) => [s.quickAction, pressed && s.quickActionPressed]}
                       onPress={() => handleConsume(item, dose, 'quick_action')}>
-                      <Text style={styles.quickActionText}>-{dose} g</Text>
+                      <Text style={s.quickActionText}>-{dose} g</Text>
                     </Pressable>
                   ))}
               </View>
 
-              <View style={styles.inlineRow}>
+              <View style={s.inlineRow}>
                 <TextInput
-                  style={styles.input}
+                  style={s.input}
                   value={customDoseById[item.id] ?? ''}
                   onChangeText={value =>
                     setCustomDoseById(current => ({...current, [item.id]: value}))
                   }
                   placeholder="Custom minus g"
-                  placeholderTextColor="#7B6A5B"
+                  placeholderTextColor={colors.onSurfaceVariant}
                   keyboardType="number-pad"
                 />
-                <Pressable style={styles.inlineButton} onPress={() => handleCustomConsume(item)}>
-                  <Text style={styles.inlineButtonText}>Odpočítať</Text>
-                </Pressable>
+                <MD3Button
+                  label="Odpočítať"
+                  variant="tonal"
+                  onPress={() => handleCustomConsume(item)}
+                />
               </View>
 
-              <View style={styles.inlineRow}>
+              <View style={s.inlineRow}>
                 <TextInput
-                  style={styles.input}
+                  style={s.input}
                   value={customRemainingById[item.id] ?? ''}
                   onChangeText={value =>
                     setCustomRemainingById(current => ({...current, [item.id]: value}))
                   }
                   placeholder="Nastaviť zostávajúce g"
-                  placeholderTextColor="#7B6A5B"
+                  placeholderTextColor={colors.onSurfaceVariant}
                   keyboardType="number-pad"
                 />
-                <Pressable style={styles.inlineButton} onPress={() => handleRemainingUpdate(item)}>
-                  <Text style={styles.inlineButtonText}>Uložiť</Text>
-                </Pressable>
+                <MD3Button
+                  label="Uložiť"
+                  variant="tonal"
+                  onPress={() => handleRemainingUpdate(item)}
+                />
               </View>
 
-              <View style={styles.actions}>
+              <View style={s.actions}>
                 <Pressable
-                  style={[styles.badge, item.loved ? styles.badgeActive : null]}
+                  style={[s.badge, item.loved && s.badgeActive]}
                   onPress={() => handleLovedChange(item.id, !item.loved)}>
-                  <Text style={styles.badgeText}>
+                  <Text style={[s.badgeText, item.loved && s.badgeTextActive]}>
                     {item.loved ? 'Fantastická ⭐' : 'Označiť ako fantastickú'}
                   </Text>
                 </Pressable>
 
-                <Pressable style={styles.statusButton} onPress={() => handleStatusChange(item, 'empty')}>
-                  <Text style={styles.statusButtonText}>Balík je prázdny</Text>
-                </Pressable>
+                <MD3Button
+                  label="Balík je prázdny"
+                  variant="filled"
+                  onPress={() => handleStatusChange(item, 'empty')}
+                />
 
                 {item.status === 'archived' ? (
-                  <Pressable style={styles.statusButton} onPress={() => handleStatusChange(item, 'active')}>
-                    <Text style={styles.statusButtonText}>Vrátiť do aktívnych</Text>
-                  </Pressable>
+                  <MD3Button
+                    label="Vrátiť do aktívnych"
+                    variant="filled"
+                    onPress={() => handleStatusChange(item, 'active')}
+                  />
                 ) : (
-                  <Pressable
-                    style={[styles.statusButton, styles.statusButtonLight]}
-                    onPress={() => handleStatusChange(item, 'archived')}>
-                    <Text style={[styles.statusButtonText, styles.statusButtonTextLight]}>Archivovať</Text>
-                  </Pressable>
+                  <MD3Button
+                    label="Archivovať"
+                    variant="outlined"
+                    onPress={() => handleStatusChange(item, 'archived')}
+                  />
                 )}
 
-                <Pressable style={styles.deleteButton} onPress={() => handleDelete(item.id)}>
-                  <Text style={styles.deleteButtonText}>Vymazať natrvalo</Text>
-                </Pressable>
+                <MD3Button
+                  label="Vymazať natrvalo"
+                  variant="filled"
+                  style={{backgroundColor: colors.error}}
+                  onPress={() => handleDelete(item.id)}
+                />
               </View>
             </View>
           );
@@ -556,316 +824,5 @@ function CoffeeInventoryScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F6F1EB',
-  },
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 90,
-    backgroundColor: '#F6F1EB',
-  },
-  heroCard: {
-    borderRadius: 30,
-    padding: 20,
-    marginBottom: 14,
-    backgroundColor: '#EEDFCF',
-    borderWidth: 1,
-    borderColor: '#D7C2AB',
-  },
-  heroDecor: {
-    position: 'absolute',
-    right: 12,
-    top: 8,
-    flexDirection: 'row',
-    gap: 6,
-  },
-  heroDecorIcon: {
-    fontSize: 18,
-    opacity: 0.85,
-  },
-  overline: {
-    fontSize: 12,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: '#6D5D4C',
-    marginBottom: 8,
-    fontWeight: '700',
-  },
-  title: {
-    fontSize: 30,
-    lineHeight: 36,
-    color: '#23180E',
-    fontWeight: '700',
-  },
-  subtitle: {
-    marginTop: 8,
-    color: '#4C4137',
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  heroStatsRow: {
-    marginTop: 16,
-    flexDirection: 'row',
-    gap: 8,
-  },
-  heroStatPill: {
-    flex: 1,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFFB8',
-    borderWidth: 1,
-    borderColor: '#D5BDA9',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-  },
-  heroStatValue: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#2B1E12',
-  },
-  heroStatLabel: {
-    marginTop: 2,
-    fontSize: 11,
-    color: '#5D4B3C',
-    fontWeight: '600',
-  },
-  sectionCard: {
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 14,
-    backgroundColor: '#FFFBFF',
-    borderWidth: 1,
-    borderColor: '#E7DCD1',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    color: '#2C1F13',
-    fontWeight: '700',
-  },
-  filterTabs: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 8,
-  },
-  filterButton: {
-    borderWidth: 1,
-    borderColor: '#7A624D',
-    borderRadius: 16,
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    backgroundColor: '#FFF8F3',
-  },
-  filterButtonActive: {
-    backgroundColor: '#4B3325',
-    borderColor: '#4B3325',
-  },
-  filterButtonText: {
-    color: '#5A4433',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  filterButtonTextActive: {
-    color: '#FFFFFF',
-  },
-  caption: {
-    color: '#6A5B50',
-    fontSize: 13,
-  },
-  error: {
-    color: '#BA1A1A',
-    marginTop: 8,
-    fontSize: 13,
-  },
-  empty: {
-    color: '#6A5B50',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  itemCard: {
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#E7DCD1',
-    padding: 16,
-    marginBottom: 12,
-    backgroundColor: '#FFFBFF',
-  },
-  itemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-    gap: 8,
-  },
-  itemTitleWrap: {
-    flex: 1,
-  },
-  itemTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#2C1F13',
-  },
-  date: {
-    color: '#6B5C52',
-    fontSize: 12,
-    marginTop: 3,
-  },
-  statusChip: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#DCC9B8',
-    backgroundColor: '#F7EBDD',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  statusChipText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#5D4330',
-    textTransform: 'uppercase',
-  },
-  metaGrid: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
-  },
-  metaTile: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#E5D8CC',
-    borderRadius: 14,
-    backgroundColor: '#FFF8F3',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-  },
-  metaLabel: {
-    fontSize: 11,
-    color: '#7A6A5A',
-    fontWeight: '600',
-  },
-  metaValue: {
-    marginTop: 3,
-    fontSize: 13,
-    color: '#2E2116',
-    fontWeight: '700',
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#6B4F3A',
-    marginTop: 10,
-  },
-  text: {
-    fontSize: 14,
-    color: '#271508',
-    marginTop: 4,
-  },
-  quickActionsWrap: {
-    marginTop: 10,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  quickAction: {
-    borderRadius: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: '#E2D5C9',
-    backgroundColor: '#FFF5EC',
-  },
-  quickActionText: {
-    color: '#452D1B',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  inlineRow: {
-    marginTop: 10,
-    flexDirection: 'row',
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#DFD0C2',
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    color: '#271508',
-    backgroundColor: '#FFFFFF',
-  },
-  inlineButton: {
-    backgroundColor: '#2C2218',
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    justifyContent: 'center',
-  },
-  inlineButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  actions: {
-    marginTop: 12,
-    gap: 8,
-  },
-  badge: {
-    backgroundColor: '#EEE1D4',
-    borderWidth: 1,
-    borderColor: '#DECFBF',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  badgeActive: {
-    backgroundColor: '#F2DEC4',
-  },
-  badgeText: {
-    fontWeight: '700',
-    color: '#3A2719',
-  },
-  statusButton: {
-    backgroundColor: '#271508',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  statusButtonLight: {
-    backgroundColor: '#F5E7D9',
-    borderWidth: 1,
-    borderColor: '#D9C5B0',
-  },
-  statusButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  statusButtonTextLight: {
-    color: '#5C412E',
-  },
-  deleteButton: {
-    backgroundColor: '#BA1A1A',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  deleteButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-});
 
 export default CoffeeInventoryScreen;
