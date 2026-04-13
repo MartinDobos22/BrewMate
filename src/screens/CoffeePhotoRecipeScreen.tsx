@@ -411,7 +411,12 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     const parsedDose = parseOptionalNumber(targetDoseG);
     const parsedWater = parseOptionalNumber(targetWaterMl);
     const parsedRatio = parseOptionalNumber(targetRatio);
-    const computedRatio = parsedRatio ?? (parsedDose && parsedWater ? roundOneDecimal(parsedWater / parsedDose) : null);
+    const ratioForCalculation = parsedRatio ?? DEFAULT_BREW_RATIO;
+    const computedDose = parsedDose ?? (parsedWater ? roundOneDecimal(parsedWater / ratioForCalculation) : null);
+    const computedWater = parsedWater ?? (parsedDose ? roundOneDecimal(parsedDose * ratioForCalculation) : null);
+    const computedRatio = parsedRatio ?? (computedDose && computedWater
+      ? roundOneDecimal(computedWater / computedDose)
+      : ratioForCalculation);
     const finalPreparation = selectedPreparation === CUSTOM_PREPARATION_VALUE
       ? customPreparationText.trim()
       : selectedPreparation;
@@ -424,6 +429,12 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
 
     if (!grinderType) {
       setErrorMessage('Vyberte prosím typ mlynčeka.');
+      setIsGenerating(false);
+      return;
+    }
+
+    if (!parsedDose && !parsedWater) {
+      setErrorMessage('Zadaj aspoň množstvo kávy alebo vody.');
       setIsGenerating(false);
       return;
     }
@@ -452,8 +463,8 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
               grinderSettingScale: grinderSettingScale.trim() || null,
             },
             brewPreferences: {
-              targetDoseG: parsedDose,
-              targetWaterMl: parsedWater,
+              targetDoseG: computedDose,
+              targetWaterMl: computedWater,
               targetRatio: computedRatio,
               providedByUser: {
                 targetDoseG: Boolean(parsedDose),
@@ -977,13 +988,13 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
             <View style={s.card}>
               <View style={s.cardHeader}>
                 <CoffeeBeanIcon size={20} color={colors.primary} />
-                <Text style={s.cardTitle}>Voda, gramáž a pomer (voliteľné)</Text>
+                <Text style={s.cardTitle}>Voda, gramáž a pomer (aspoň 1 hodnota)</Text>
               </View>
               <Text style={s.helperText}>
-                Ideálny štart pre filter je pomer káva:voda 1:15,5.
+                Zadaj aspoň gramáž kávy alebo množstvo vody. Druhú hodnotu dopočítame automaticky.
               </Text>
               <Text style={s.helperText}>
-                Príklad: 20 g kávy → 310 g vody.
+                Ak nezadáš pomer, použijeme predvolený pomer 1:15,5.
               </Text>
               <MD3Button
                 label="Použiť odporúčaný pomer 1:15,5"
