@@ -341,47 +341,14 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
 
   const handleDoseChange = (value: string) => {
     setTargetDoseG(value);
-
-    const parsedDose = parseOptionalNumber(value);
-    const parsedWater = parseOptionalNumber(targetWaterMl);
-    const parsedRatio = parseOptionalNumber(targetRatio) ?? DEFAULT_BREW_RATIO;
-
-    if (parsedDose && !parsedWater) {
-      setTargetWaterMl(String(roundOneDecimal(parsedDose * parsedRatio)));
-    }
   };
 
   const handleWaterChange = (value: string) => {
     setTargetWaterMl(value);
-
-    const parsedWater = parseOptionalNumber(value);
-    const parsedDose = parseOptionalNumber(targetDoseG);
-    const parsedRatio = parseOptionalNumber(targetRatio) ?? DEFAULT_BREW_RATIO;
-
-    if (parsedWater && !parsedDose) {
-      setTargetDoseG(String(roundOneDecimal(parsedWater / parsedRatio)));
-    }
   };
 
   const handleRatioChange = (value: string) => {
     setTargetRatio(value);
-
-    const parsedRatio = parseOptionalNumber(value);
-    if (!parsedRatio) {
-      return;
-    }
-
-    const parsedDose = parseOptionalNumber(targetDoseG);
-    const parsedWater = parseOptionalNumber(targetWaterMl);
-
-    if (parsedDose && !parsedWater) {
-      setTargetWaterMl(String(roundOneDecimal(parsedDose * parsedRatio)));
-      return;
-    }
-
-    if (parsedWater && !parsedDose) {
-      setTargetDoseG(String(roundOneDecimal(parsedWater / parsedRatio)));
-    }
   };
 
   const handleGenerateRecipe = async () => {
