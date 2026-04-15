@@ -12,17 +12,26 @@ import { MD3Button } from '../components/md3';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeePhotoRecipeResult'>;
 
-const APPROVAL_THRESHOLD = 70;
-
 function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
-  const { analysis, selectedPreparation, strengthPreference, recipe, likePrediction } = route.params;
+  const {
+    analysis,
+    brewPath: rawBrewPath,
+    selectedPreparation,
+    strengthPreference,
+    drinkType,
+    machineType,
+    recipe,
+    likePrediction,
+  } = route.params;
+
+  // Backwards compatibility: old recipes without brewPath default to filter
+  const brewPath = rawBrewPath || 'filter';
+
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
 
-  const canSave = useMemo(() => likePrediction.score >= APPROVAL_THRESHOLD, [likePrediction.score]);
-
   const handleSaveRecipe = async () => {
-    if (!canSave || saveState === 'saving') {
+    if (saveState === 'saving') {
       return;
     }
 
@@ -38,9 +47,9 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           credentials: 'include',
           body: JSON.stringify({
             analysis,
-            recipe,
-            selectedPreparation,
-            strengthPreference,
+            recipe: { ...recipe, brewPath },
+            selectedPreparation: selectedPreparation || null,
+            strengthPreference: strengthPreference || null,
             likeScore: likePrediction.score,
             approved: true,
           }),
@@ -114,18 +123,15 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           color: colors.onSurface,
           marginBottom: spacing.xs,
         },
-        warning: {
-          ...typescale.bodySmall,
-          color: colors.error,
-          fontWeight: '600',
-          marginTop: spacing.sm,
-        },
         paramRow: {
           flexDirection: 'row',
           justifyContent: 'space-between',
           paddingVertical: spacing.xs + 2,
           borderBottomWidth: 1,
           borderBottomColor: colors.outlineVariant,
+        },
+        paramRowLast: {
+          borderBottomWidth: 0,
         },
         paramLabel: {
           ...typescale.labelMedium,
@@ -135,6 +141,9 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           ...typescale.bodyMedium,
           color: colors.onSurface,
           fontWeight: '600',
+          flexShrink: 1,
+          textAlign: 'right',
+          maxWidth: '60%',
         },
         stepRow: {
           flexDirection: 'row',
@@ -150,12 +159,6 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           ...typescale.bodyMedium,
           color: colors.onSurface,
           flex: 1,
-        },
-        tipText: {
-          ...typescale.bodyMedium,
-          color: colors.onSurface,
-          marginBottom: spacing.sm,
-          paddingLeft: spacing.sm,
         },
         tipBullet: {
           ...typescale.bodyMedium,
@@ -175,6 +178,18 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
     [colors, typescale, shape, elev, spacing],
   );
 
+  const renderParamRow = (label: string, value: string | undefined, isLast = false) => {
+    if (!value) {
+      return null;
+    }
+    return (
+      <View style={[s.paramRow, isLast && s.paramRowLast]} key={label}>
+        <Text style={s.paramLabel}>{label}</Text>
+        <Text style={s.paramValue}>{value}</Text>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={s.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={s.container}>
@@ -184,6 +199,7 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
         </View>
         <Text style={s.title}>{recipe.title}</Text>
 
+        {/* AI prediction card */}
         <View style={s.card}>
           <View style={s.cardHeader}>
             <SparklesIcon size={20} color={colors.primary} />
@@ -194,11 +210,6 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           </Text>
           <Text style={s.bodyText}>{likePrediction.verdict}</Text>
           <Text style={s.bodyText}>{likePrediction.reason}</Text>
-          {!canSave ? (
-            <Text style={s.warning}>
-              Recept sa dá uložiť až od {APPROVAL_THRESHOLD}%.
-            </Text>
-          ) : null}
           {recipe.whyThisRecipe ? (
             <>
               <Text style={s.highlight}>Prečo tento recept?</Text>
@@ -207,41 +218,41 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           ) : null}
         </View>
 
+        {/* Parameters card */}
         <View style={s.card}>
           <View style={s.cardHeader}>
             <PortafilterIcon size={20} color={colors.primary} />
             <Text style={s.cardTitle}>Parametre</Text>
           </View>
-          <View style={s.paramRow}>
-            <Text style={s.paramLabel}>Metóda</Text>
-            <Text style={s.paramValue}>{selectedPreparation}</Text>
-          </View>
-          <View style={s.paramRow}>
-            <Text style={s.paramLabel}>Sila</Text>
-            <Text style={s.paramValue}>{strengthPreference}</Text>
-          </View>
-          <View style={s.paramRow}>
-            <Text style={s.paramLabel}>Dávka</Text>
-            <Text style={s.paramValue}>{recipe.dose}</Text>
-          </View>
-          <View style={s.paramRow}>
-            <Text style={s.paramLabel}>Voda</Text>
-            <Text style={s.paramValue}>{recipe.water}</Text>
-          </View>
-          <View style={s.paramRow}>
-            <Text style={s.paramLabel}>Mletie</Text>
-            <Text style={s.paramValue}>{recipe.grind}</Text>
-          </View>
-          <View style={s.paramRow}>
-            <Text style={s.paramLabel}>Teplota</Text>
-            <Text style={s.paramValue}>{recipe.waterTemp}</Text>
-          </View>
-          <View style={[s.paramRow, { borderBottomWidth: 0 }]}>
-            <Text style={s.paramLabel}>Čas</Text>
-            <Text style={s.paramValue}>{recipe.totalTime}</Text>
-          </View>
+
+          {brewPath === 'espresso' ? (
+            <>
+              {renderParamRow('Typ nápoja', drinkType || recipe.drinkType)}
+              {renderParamRow('Stroj', machineType || recipe.machineType)}
+              {renderParamRow('Dávka', recipe.dose)}
+              {renderParamRow('Výťažok', recipe.yield)}
+              {renderParamRow('Pomer', recipe.ratio)}
+              {renderParamRow('Mletie', recipe.grind)}
+              {renderParamRow('Teplota', recipe.waterTemp)}
+              {renderParamRow('Čas extrakcie', recipe.extractionTime)}
+              {recipe.pressure && recipe.pressure !== 'N/A'
+                ? renderParamRow('Tlak', recipe.pressure, true)
+                : renderParamRow('Čas extrakcie', undefined, true)}
+            </>
+          ) : (
+            <>
+              {renderParamRow('Metóda', selectedPreparation || recipe.method)}
+              {renderParamRow('Sila', strengthPreference || recipe.strengthPreference)}
+              {renderParamRow('Dávka', recipe.dose)}
+              {renderParamRow('Voda', recipe.water)}
+              {renderParamRow('Mletie', recipe.grind)}
+              {renderParamRow('Teplota', recipe.waterTemp)}
+              {renderParamRow('Čas', recipe.totalTime, true)}
+            </>
+          )}
         </View>
 
+        {/* Steps card */}
         <View style={s.card}>
           <View style={s.cardHeader}>
             <CoffeeCupIcon size={20} color={colors.primary} />
@@ -255,6 +266,18 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           ))}
         </View>
 
+        {/* Milk instructions (espresso only) */}
+        {brewPath === 'espresso' && recipe.milkInstructions ? (
+          <View style={s.card}>
+            <View style={s.cardHeader}>
+              <CoffeeCupIcon size={20} color={colors.primary} />
+              <Text style={s.cardTitle}>Príprava mlieka</Text>
+            </View>
+            <Text style={s.bodyText}>{recipe.milkInstructions}</Text>
+          </View>
+        ) : null}
+
+        {/* Barista tips */}
         <View style={s.card}>
           <View style={s.cardHeader}>
             <SparklesIcon size={20} color={colors.primary} />
@@ -263,16 +286,23 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           {recipe.baristaTips.map((tip: string, index: number) => (
             <View key={`${tip}-${index}`} style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}>
               <Text style={s.tipBullet}>•</Text>
-              <Text style={[s.stepText]}>{tip}</Text>
+              <Text style={s.stepText}>{tip}</Text>
             </View>
           ))}
         </View>
 
+        {/* Action buttons */}
         <MD3Button
           label={saveState === 'saving' ? 'Ukladám…' : 'Uložiť recept'}
           onPress={handleSaveRecipe}
-          disabled={!canSave || saveState === 'saving'}
+          disabled={saveState === 'saving'}
           loading={saveState === 'saving'}
+        />
+
+        <MD3Button
+          label="Upraviť parametre"
+          variant="tonal"
+          onPress={() => navigation.goBack()}
         />
 
         <MD3Button
@@ -282,7 +312,16 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
         />
 
         {saveState === 'saved' ? <Text style={s.success}>Recept uložený.</Text> : null}
-        {saveState === 'error' ? <Text style={s.error}>{errorMessage}</Text> : null}
+        {saveState === 'error' ? (
+          <>
+            <Text style={s.error}>{errorMessage}</Text>
+            <MD3Button
+              label="Skúsiť znovu"
+              variant="outlined"
+              onPress={handleSaveRecipe}
+            />
+          </>
+        ) : null}
       </ScrollView>
       <BottomNavBar />
     </SafeAreaView>

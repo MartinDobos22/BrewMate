@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
@@ -12,20 +12,23 @@ import { RootStackParamList } from '../navigation/types';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import BottomNavBar from '../components/BottomNavBar';
 import { useTheme } from '../theme/useTheme';
-import { CoffeeBeanIcon, CoffeeCupIcon, FlameIcon, SparklesIcon } from '../components/icons';
-import { MD3Button, Chip } from '../components/md3';
+import { CoffeeBeanIcon, CoffeeCupIcon } from '../components/icons';
+import { MD3Button } from '../components/md3';
+
+import AnalysisResultCard from '../components/recipe/AnalysisResultCard';
+import BrewPathSelector from '../components/recipe/BrewPathSelector';
+import EspressoConfig from '../components/recipe/EspressoConfig';
+import FilterConfig, { CUSTOM_PREPARATION_VALUE } from '../components/recipe/FilterConfig';
+import GrinderConfig from '../components/recipe/GrinderConfig';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeePhotoRecipe'>;
-
-type PhotoPreparation = {
-  method: string;
-  description: string;
-};
 
 type PhotoAnalysis = {
   tasteProfile: string;
   flavorNotes: string[];
-  recommendedPreparations: PhotoPreparation[];
+  roastLevel: 'light' | 'medium' | 'medium-dark' | 'dark';
+  recommendedBrewPath: 'espresso' | 'filter' | 'both';
+  recommendedPreparations: Array<{ method: string; description: string }>;
   confidence: number;
   summary: string;
 };
@@ -38,12 +41,14 @@ type InventoryCoffee = {
   status: 'active' | 'empty' | 'archived';
 };
 
+type BrewPath = 'espresso' | 'filter';
+
 const PICKER_TIMEOUT_MS = 2000000;
 const MAX_IMAGE_DIMENSION = 1600;
 const IMAGE_QUALITY = 0.6;
 const MAX_BASE64_BYTES = 2_000_000;
 const DEFAULT_BREW_RATIO = 15.5;
-const CUSTOM_PREPARATION_VALUE = '__custom_preparation__';
+const DEFAULT_ESPRESSO_RATIO = 2;
 
 const estimateBase64Bytes = (base64: string) =>
   Math.ceil((base64.length * 3) / 4);
@@ -53,7 +58,6 @@ const parseOptionalNumber = (value: string) => {
   if (!value.trim()) {
     return null;
   }
-
   const normalized = value.replace(',', '.');
   const parsed = Number(normalized);
   if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -65,63 +69,64 @@ const parseOptionalNumber = (value: string) => {
 const roundOneDecimal = (value: number) => Math.round(value * 10) / 10;
 
 function CoffeePhotoRecipeScreen({ navigation }: Props) {
+  // --- Photo input state ---
   const [imageBase64, setImageBase64] = useState('');
-  const [analysis, setAnalysis] = useState<PhotoAnalysis | null>(null);
-  const [selectedPreparation, setSelectedPreparation] = useState<string | null>(null);
-  const [customPreparationText, setCustomPreparationText] = useState('');
-  const [strengthPreference, setStrengthPreference] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [infoMessage, setInfoMessage] = useState('');
   const [isPicking, setIsPicking] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [inventoryItems, setInventoryItems] = useState<InventoryCoffee[]>([]);
   const [isInventoryVisible, setIsInventoryVisible] = useState(false);
   const [isInventoryLoading, setIsInventoryLoading] = useState(false);
-  const [targetWaterMl, setTargetWaterMl] = useState('');
+
+  // --- Analysis state ---
+  const [analysis, setAnalysis] = useState<PhotoAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // --- Brew path state ---
+  const [brewPath, setBrewPath] = useState<BrewPath | null>(null);
+
+  // --- Espresso-specific state ---
+  const [drinkType, setDrinkType] = useState<string | null>(null);
+  const [machineType, setMachineType] = useState<string | null>(null);
+  const [targetYieldG, setTargetYieldG] = useState('');
+
+  // --- Filter-specific state ---
+  const [selectedPreparation, setSelectedPreparation] = useState<string | null>(null);
+  const [customPreparationText, setCustomPreparationText] = useState('');
+  const [strengthPreference, setStrengthPreference] = useState<string | null>('vyvážene');
+
+  // --- Shared state ---
   const [targetDoseG, setTargetDoseG] = useState('');
+  const [targetWaterMl, setTargetWaterMl] = useState('');
   const [targetRatio, setTargetRatio] = useState('');
   const [grinderType, setGrinderType] = useState<string | null>(null);
   const [grinderModel, setGrinderModel] = useState('');
   const [grinderSettingScale, setGrinderSettingScale] = useState('');
 
-  const strengthOptions = useMemo(
-    () => ['jemné chute', 'slabšie', 'výraznejšie'],
-    [],
-  );
-  const grinderTypes = useMemo(
-    () => ['elektrický', 'ručný', 'nemám mlynček'],
-    [],
-  );
+  // --- UI state ---
+  const [errorMessage, setErrorMessage] = useState('');
+  const [infoMessage, setInfoMessage] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
+  // --- Photo handlers ---
   const handlePickerResponse = (response: ImagePickerResponse) => {
     if (response.didCancel) {
       setErrorMessage('Výber bol zrušený.');
       return;
     }
-
     if (response.errorCode) {
-      setErrorMessage(
-        response.errorMessage || 'Nastala chyba pri výbere obrázka.',
-      );
+      setErrorMessage(response.errorMessage || 'Nastala chyba pri výbere obrázka.');
       return;
     }
-
     const asset: Asset | undefined = response.assets?.[0];
     if (!asset?.base64) {
       setErrorMessage('Nepodarilo sa načítať obrázok. Skúste znova.');
       return;
     }
-
     const normalizedImage = normalizeBase64(asset.base64);
     const base64Bytes = estimateBase64Bytes(normalizedImage);
     if (base64Bytes > MAX_BASE64_BYTES) {
-      setErrorMessage(
-        'Obrázok je stále príliš veľký. Skúste menší záber alebo iný súbor.',
-      );
+      setErrorMessage('Obrázok je stále príliš veľký. Skúste menší záber alebo iný súbor.');
       return;
     }
-
     setErrorMessage('');
     setInfoMessage('');
     setImageBase64(normalizedImage);
@@ -132,35 +137,24 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     if (isInventoryLoading) {
       return;
     }
-
     setIsInventoryLoading(true);
     setErrorMessage('');
     setInfoMessage('');
-
     try {
       const response = await apiFetch(
         `${DEFAULT_API_HOST}/api/user-coffee`,
-        {
-          method: 'GET',
-          credentials: 'include',
-        },
-        {
-          feature: 'PhotoRecipe',
-          action: 'inventory-load',
-        },
+        { method: 'GET', credentials: 'include' },
+        { feature: 'PhotoRecipe', action: 'inventory-load' },
       );
-
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
         throw new Error(payload?.error || 'Nepodarilo sa načítať inventár.');
       }
-
       const items = Array.isArray(payload?.items) ? payload.items : [];
       setInventoryItems(items.filter((item: InventoryCoffee) => item.status === 'active'));
       setIsInventoryVisible(true);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Nepodarilo sa načítať inventár.';
+      const message = error instanceof Error ? error.message : 'Nepodarilo sa načítať inventár.';
       setErrorMessage(message);
     } finally {
       setIsInventoryLoading(false);
@@ -172,29 +166,18 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
       setErrorMessage('Táto káva v inventári nemá uloženú fotku etikety.');
       return;
     }
-
     const normalizedImage = normalizeBase64(item.labelImageBase64);
     const base64Bytes = estimateBase64Bytes(normalizedImage);
     if (base64Bytes > MAX_BASE64_BYTES) {
       setErrorMessage('Fotka etikety tejto kávy je príliš veľká na analýzu.');
       return;
     }
-
     const coffeeName = item.correctedText || item.rawText || 'káva z inventára';
     setErrorMessage('');
     setInfoMessage(`Vybraná ${coffeeName}. Teraz môžeš spustiť analýzu.`);
     setImageBase64(normalizedImage);
     setIsInventoryVisible(false);
-    setAnalysis(null);
-    setSelectedPreparation(null);
-    setCustomPreparationText('');
-    setStrengthPreference(null);
-    setTargetWaterMl('');
-    setTargetDoseG('');
-    setTargetRatio('');
-    setGrinderType(null);
-    setGrinderModel('');
-    setGrinderSettingScale('');
+    resetAfterAnalysis();
   };
 
   const withPickerTimeout = async <T,>(promise: Promise<T>): Promise<T> =>
@@ -251,11 +234,40 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     }
   };
 
+  // --- Reset helpers ---
+  const resetAfterAnalysis = () => {
+    setAnalysis(null);
+    setBrewPath(null);
+    resetPathState();
+  };
+
+  const resetPathState = () => {
+    setDrinkType(null);
+    setMachineType(null);
+    setTargetYieldG('');
+    setSelectedPreparation(null);
+    setCustomPreparationText('');
+    setStrengthPreference('vyvážene');
+    setTargetDoseG('');
+    setTargetWaterMl('');
+    setTargetRatio('');
+    setGrinderType(null);
+    setGrinderModel('');
+    setGrinderSettingScale('');
+  };
+
+  // --- Brew path handler ---
+  const handleBrewPathSelect = (path: BrewPath) => {
+    setBrewPath(path);
+    resetPathState();
+    setErrorMessage('');
+  };
+
+  // --- Analysis ---
   const handleAnalyze = async () => {
     if (isAnalyzing) {
       return;
     }
-
     if (!imageBase64.trim()) {
       setErrorMessage('Najprv vyberte alebo odfoťte obrázok.');
       return;
@@ -264,208 +276,186 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     setErrorMessage('');
     setInfoMessage('');
     setIsAnalyzing(true);
-    setAnalysis(null);
-    setSelectedPreparation(null);
-    setCustomPreparationText('');
-    setStrengthPreference(null);
-    setTargetWaterMl('');
-    setTargetDoseG('');
-    setTargetRatio('');
-    setGrinderType(null);
-    setGrinderModel('');
-    setGrinderSettingScale('');
+    resetAfterAnalysis();
 
     try {
-      console.log('[PhotoRecipe] OpenAI photo analysis request via backend', {
-        endpoint: '/api/coffee-photo-analysis',
-      });
       const response = await apiFetch(
         `${DEFAULT_API_HOST}/api/coffee-photo-analysis`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             imageBase64: imageBase64.trim(),
             languageHints: ['sk', 'en'],
           }),
         },
-        {
-          feature: 'PhotoRecipe',
-          action: 'analyze',
-        },
+        { feature: 'PhotoRecipe', action: 'analyze' },
       );
-
       const payload = await response.json();
-      console.log('[PhotoRecipe] OpenAI photo analysis response content', {
-        payload,
-      });
 
       if (!response.ok) {
         const message = payload?.error || 'Analýza fotky zlyhala.';
-        console.error('[PhotoRecipe] Analysis failed', { message, payload });
         setErrorMessage(message);
         return;
       }
 
       setAnalysis(payload.analysis);
-      const firstMethod = payload.analysis?.recommendedPreparations?.[0]?.method;
-      setSelectedPreparation(firstMethod ?? null);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Analýza fotky zlyhala.';
-      console.error('[PhotoRecipe] Analysis failed', error);
+      const message = error instanceof Error ? error.message : 'Analýza fotky zlyhala.';
       setErrorMessage(message);
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  const applyRecommendedRatio = () => {
-    const recommendedRatio = DEFAULT_BREW_RATIO;
-    setTargetRatio(String(recommendedRatio));
-
-    const parsedDose = parseOptionalNumber(targetDoseG);
-    const parsedWater = parseOptionalNumber(targetWaterMl);
-
-    if (parsedDose && !parsedWater) {
-      setTargetWaterMl(String(roundOneDecimal(parsedDose * recommendedRatio)));
-      return;
-    }
-
-    if (parsedWater && !parsedDose) {
-      setTargetDoseG(String(roundOneDecimal(parsedWater / recommendedRatio)));
-    }
-  };
-
-  const handleDoseChange = (value: string) => {
-    setTargetDoseG(value);
-  };
-
-  const handleWaterChange = (value: string) => {
-    setTargetWaterMl(value);
-  };
-
-  const handleRatioChange = (value: string) => {
-    setTargetRatio(value);
-  };
-
+  // --- Recipe generation ---
   const handleGenerateRecipe = async () => {
-    if (isGenerating) {
-      return;
-    }
-
-    if (!analysis) {
-      setErrorMessage('Najprv analyzujte fotku.');
-      return;
-    }
-
-    if (!selectedPreparation) {
-      setErrorMessage('Vyberte spôsob prípravy.');
-      return;
-    }
-
-    if (!strengthPreference) {
-      setErrorMessage('Vyberte preferovanú silu kávy.');
+    if (isGenerating || !analysis || !brewPath) {
       return;
     }
 
     setErrorMessage('');
     setInfoMessage('');
-    setIsGenerating(true);
 
-    const parsedDose = parseOptionalNumber(targetDoseG);
-    const parsedWater = parseOptionalNumber(targetWaterMl);
-    const parsedRatio = parseOptionalNumber(targetRatio);
-    const ratioForCalculation = parsedRatio ?? DEFAULT_BREW_RATIO;
-    const computedDose = parsedDose ?? (parsedWater ? roundOneDecimal(parsedWater / ratioForCalculation) : null);
-    const computedWater = parsedWater ?? (parsedDose ? roundOneDecimal(parsedDose * ratioForCalculation) : null);
-    const computedRatio = parsedRatio ?? (computedDose && computedWater
-      ? roundOneDecimal(computedWater / computedDose)
-      : ratioForCalculation);
-    const finalPreparation = selectedPreparation === CUSTOM_PREPARATION_VALUE
-      ? customPreparationText.trim()
-      : selectedPreparation;
-
-    if (!finalPreparation) {
-      setErrorMessage('Vyberte spôsob prípravy alebo napíšte vlastný.');
-      setIsGenerating(false);
-      return;
-    }
-
+    // Common validation
     if (!grinderType) {
       setErrorMessage('Vyberte prosím typ mlynčeka.');
-      setIsGenerating(false);
       return;
     }
 
-    if (!parsedDose && !parsedWater) {
-      setErrorMessage('Zadaj aspoň množstvo kávy alebo vody.');
-      setIsGenerating(false);
-      return;
+    let requestBody: Record<string, unknown>;
+
+    if (brewPath === 'espresso') {
+      if (!drinkType) {
+        setErrorMessage('Vyber typ nápoja.');
+        return;
+      }
+      if (!machineType) {
+        setErrorMessage('Vyber typ kávovaru.');
+        return;
+      }
+
+      const parsedDose = parseOptionalNumber(targetDoseG);
+      const parsedYield = parseOptionalNumber(targetYieldG);
+      const parsedRatio = parseOptionalNumber(targetRatio);
+
+      if (!parsedDose && !parsedYield) {
+        setErrorMessage('Zadaj aspoň dávku alebo výťažok.');
+        return;
+      }
+
+      const ratioForCalc = parsedRatio ?? DEFAULT_ESPRESSO_RATIO;
+      const computedDose = parsedDose ?? (parsedYield ? roundOneDecimal(parsedYield / ratioForCalc) : null);
+      const computedYield = parsedYield ?? (parsedDose ? roundOneDecimal(parsedDose * ratioForCalc) : null);
+      const computedRatio = parsedRatio ?? (computedDose && computedYield
+        ? roundOneDecimal(computedYield / computedDose)
+        : ratioForCalc);
+
+      requestBody = {
+        brewPath: 'espresso',
+        analysis,
+        drinkType,
+        machineType,
+        grinderProfile: {
+          grinderType,
+          grinderModel: grinderModel.trim() || null,
+          grinderSettingScale: grinderSettingScale.trim() || null,
+        },
+        brewPreferences: {
+          targetDoseG: computedDose,
+          targetYieldG: computedYield,
+          targetRatio: computedRatio,
+        },
+      };
+    } else {
+      // Filter path
+      const finalPreparation = selectedPreparation === CUSTOM_PREPARATION_VALUE
+        ? customPreparationText.trim()
+        : selectedPreparation;
+
+      if (!finalPreparation) {
+        setErrorMessage('Vyberte spôsob prípravy alebo napíšte vlastný.');
+        return;
+      }
+      if (!strengthPreference) {
+        setErrorMessage('Vyberte preferovanú silu kávy.');
+        return;
+      }
+
+      const parsedDose = parseOptionalNumber(targetDoseG);
+      const parsedWater = parseOptionalNumber(targetWaterMl);
+      const parsedRatio = parseOptionalNumber(targetRatio);
+
+      if (!parsedDose && !parsedWater) {
+        setErrorMessage('Zadaj aspoň množstvo kávy alebo vody.');
+        return;
+      }
+
+      const ratioForCalc = parsedRatio ?? DEFAULT_BREW_RATIO;
+      const computedDose = parsedDose ?? (parsedWater ? roundOneDecimal(parsedWater / ratioForCalc) : null);
+      const computedWater = parsedWater ?? (parsedDose ? roundOneDecimal(parsedDose * ratioForCalc) : null);
+      const computedRatio = parsedRatio ?? (computedDose && computedWater
+        ? roundOneDecimal(computedWater / computedDose)
+        : ratioForCalc);
+
+      requestBody = {
+        brewPath: 'filter',
+        analysis,
+        selectedPreparation: finalPreparation,
+        customPreparationText: selectedPreparation === CUSTOM_PREPARATION_VALUE
+          ? customPreparationText.trim()
+          : null,
+        strengthPreference,
+        grinderProfile: {
+          grinderType,
+          grinderModel: grinderModel.trim() || null,
+          grinderSettingScale: grinderSettingScale.trim() || null,
+        },
+        brewPreferences: {
+          targetDoseG: computedDose,
+          targetWaterMl: computedWater,
+          targetRatio: computedRatio,
+          providedByUser: {
+            targetDoseG: Boolean(parsedDose),
+            targetWaterMl: Boolean(parsedWater),
+            targetRatio: Boolean(parsedRatio),
+          },
+        },
+      };
     }
+
+    setIsGenerating(true);
 
     try {
-      console.log('[PhotoRecipe] OpenAI photo recipe request via backend', {
-        endpoint: '/api/coffee-photo-recipe',
-      });
       const response = await apiFetch(
         `${DEFAULT_API_HOST}/api/coffee-photo-recipe`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            analysis,
-            selectedPreparation: finalPreparation,
-            customPreparationText: selectedPreparation === CUSTOM_PREPARATION_VALUE
-              ? customPreparationText.trim()
-              : null,
-            strengthPreference,
-            grinderProfile: {
-              grinderType,
-              grinderModel: grinderModel.trim() || null,
-              grinderSettingScale: grinderSettingScale.trim() || null,
-            },
-            brewPreferences: {
-              targetDoseG: computedDose,
-              targetWaterMl: computedWater,
-              targetRatio: computedRatio,
-              providedByUser: {
-                targetDoseG: Boolean(parsedDose),
-                targetWaterMl: Boolean(parsedWater),
-                targetRatio: Boolean(parsedRatio),
-              },
-            },
-          }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
         },
-        {
-          feature: 'PhotoRecipe',
-          action: 'generate',
-        },
+        { feature: 'PhotoRecipe', action: 'generate' },
       );
 
       const payload = await response.json();
-      console.log('[PhotoRecipe] OpenAI photo recipe response content', {
-        payload,
-      });
 
       if (!response.ok) {
         const message = payload?.error || 'Generovanie receptu zlyhalo.';
-        console.error('[PhotoRecipe] Recipe generation failed', {
-          message,
-          payload,
-        });
         setErrorMessage(message);
         return;
       }
 
       navigation.navigate('CoffeePhotoRecipeResult', {
         analysis,
-        selectedPreparation: finalPreparation,
-        strengthPreference,
+        brewPath,
+        ...(brewPath === 'espresso'
+          ? { drinkType: drinkType!, machineType: machineType! }
+          : {
+              selectedPreparation: (selectedPreparation === CUSTOM_PREPARATION_VALUE
+                ? customPreparationText.trim()
+                : selectedPreparation) || undefined,
+              strengthPreference: strengthPreference || undefined,
+            }),
         recipe: payload.recipe,
         likePrediction: payload.likePrediction || {
           score: 50,
@@ -474,15 +464,14 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
         },
       });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Generovanie receptu zlyhalo.';
-      console.error('[PhotoRecipe] Recipe generation failed', error);
+      const message = error instanceof Error ? error.message : 'Generovanie receptu zlyhalo.';
       setErrorMessage(message);
     } finally {
       setIsGenerating(false);
     }
   };
 
+  // --- Styles ---
   const { colors, typescale, shape, elevation: elev, spacing } = useTheme();
 
   const s = useMemo(
@@ -533,21 +522,6 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
           ...typescale.titleSmall,
           color: colors.onSurface,
         },
-        subsectionTitle: {
-          ...typescale.labelLarge,
-          color: colors.primary,
-          marginTop: spacing.md,
-          marginBottom: spacing.xs,
-        },
-        bodyText: {
-          ...typescale.bodyMedium,
-          color: colors.onSurface,
-        },
-        helperText: {
-          ...typescale.bodySmall,
-          color: colors.onSurfaceVariant,
-          marginTop: spacing.sm,
-        },
         buttonRow: {
           flexDirection: 'row',
           gap: spacing.md,
@@ -575,120 +549,10 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
           color: colors.onSurfaceVariant,
           marginTop: spacing.xs,
         },
-        flavorRow: {
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          gap: spacing.sm,
-        },
-        optionCard: {
-          borderWidth: 1,
-          borderColor: colors.outlineVariant,
-          backgroundColor: colors.surfaceContainerLowest,
-          borderRadius: shape.medium,
-          padding: spacing.md,
-          marginBottom: spacing.sm,
-        },
-        optionCardActive: {
-          borderColor: colors.primary,
-          backgroundColor: colors.primaryContainer,
-        },
-        optionTitle: {
-          ...typescale.titleSmall,
-          color: colors.onSurface,
-          marginBottom: spacing.xs,
-        },
-        optionTitleActive: {
-          color: colors.onPrimaryContainer,
-        },
-        optionText: {
+        helperText: {
           ...typescale.bodySmall,
           color: colors.onSurfaceVariant,
-        },
-        optionTextActive: {
-          color: colors.onPrimaryContainer,
-        },
-        radioGroup: {
-          gap: spacing.md,
-        },
-        radioRow: {
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: spacing.md,
-        },
-        radioOuter: {
-          width: 20,
-          height: 20,
-          borderRadius: 10,
-          borderWidth: 2,
-          borderColor: colors.outline,
-          alignItems: 'center',
-          justifyContent: 'center',
-        },
-        radioOuterActive: {
-          borderColor: colors.primary,
-        },
-        radioInner: {
-          width: 10,
-          height: 10,
-          borderRadius: 5,
-          backgroundColor: colors.primary,
-        },
-        radioLabel: {
-          ...typescale.bodyMedium,
-          color: colors.onSurface,
-        },
-        inputGroup: {
           marginTop: spacing.sm,
-          gap: spacing.sm,
-        },
-        inputLabel: {
-          ...typescale.labelMedium,
-          color: colors.onSurfaceVariant,
-        },
-        input: {
-          ...typescale.bodyMedium,
-          color: colors.onSurface,
-          borderWidth: 1,
-          borderColor: colors.outlineVariant,
-          borderRadius: shape.medium,
-          backgroundColor: colors.surfaceContainerLowest,
-          paddingHorizontal: spacing.md,
-          paddingVertical: spacing.sm,
-        },
-        ratioHintCard: {
-          marginTop: spacing.sm,
-          borderRadius: shape.medium,
-          borderWidth: 1,
-          borderColor: colors.outlineVariant,
-          backgroundColor: colors.surfaceContainerLowest,
-          padding: spacing.md,
-          gap: spacing.xs,
-        },
-        chipsRow: {
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          gap: spacing.sm,
-          marginTop: spacing.sm,
-        },
-        chipButton: {
-          borderWidth: 1,
-          borderColor: colors.outlineVariant,
-          borderRadius: shape.large,
-          paddingVertical: spacing.xs,
-          paddingHorizontal: spacing.md,
-          backgroundColor: colors.surfaceContainerLowest,
-        },
-        chipButtonActive: {
-          borderColor: colors.primary,
-          backgroundColor: colors.primaryContainer,
-        },
-        chipButtonText: {
-          ...typescale.bodySmall,
-          color: colors.onSurface,
-        },
-        chipButtonTextActive: {
-          color: colors.onPrimaryContainer,
-          fontWeight: '600',
         },
         errorText: {
           ...typescale.bodySmall,
@@ -717,6 +581,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
           metódy prípravy podľa jej profilu.
         </Text>
 
+        {/* Photo input card */}
         <View style={s.card}>
           <View style={s.cardHeader}>
             <CoffeeBeanIcon size={20} color={colors.primary} />
@@ -753,7 +618,6 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
                 inventoryItems.map((item) => {
                   const coffeeName = item.correctedText || item.rawText || 'Neznáma káva';
                   const hasImage = Boolean(item.labelImageBase64);
-
                   return (
                     <Pressable
                       key={item.id}
@@ -763,9 +627,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
                     >
                       <Text style={s.inventoryItemTitle}>{coffeeName}</Text>
                       <Text style={s.inventoryItemMeta}>
-                        {hasImage
-                          ? 'Použiť fotku etikety z inventára'
-                          : 'Bez fotky etikety'}
+                        {hasImage ? 'Použiť fotku etikety z inventára' : 'Bez fotky etikety'}
                       </Text>
                     </Pressable>
                   );
@@ -776,9 +638,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
             </View>
           ) : null}
           <Text style={s.helperText}>
-            {imageBase64
-              ? 'Fotka je pripravená.'
-              : 'Zatiaľ nie je vybraná žiadna fotka.'}
+            {imageBase64 ? 'Fotka je pripravená.' : 'Zatiaľ nie je vybraná žiadna fotka.'}
           </Text>
         </View>
 
@@ -789,238 +649,67 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
           loading={isAnalyzing}
         />
 
+        {/* Post-analysis flow */}
         {analysis ? (
           <>
-            <View style={s.card}>
-              <View style={s.cardHeader}>
-                <SparklesIcon size={20} color={colors.primary} />
-                <Text style={s.cardTitle}>Chuť kávy podľa AI</Text>
-              </View>
-              <Text style={s.subsectionTitle}>Chuťové tóny</Text>
-              {analysis.flavorNotes.length > 0 ? (
-                <View style={s.flavorRow}>
-                  {analysis.flavorNotes.map((note: string, i: number) => (
-                    <Chip key={i} label={note} role="tertiary" />
-                  ))}
-                </View>
-              ) : (
-                <Text style={s.bodyText}>Neurčené</Text>
-              )}
-              <Text style={s.subsectionTitle}>Profil chuti</Text>
-              <Text style={s.bodyText}>{analysis.tasteProfile}</Text>
-              <Text style={s.subsectionTitle}>Krátke zhrnutie</Text>
-              <Text style={s.bodyText}>{analysis.summary}</Text>
-              <Text style={s.subsectionTitle}>Istota</Text>
-              <Text style={s.bodyText}>
-                {Math.round(analysis.confidence * 100)}%
-              </Text>
-            </View>
+            <AnalysisResultCard analysis={analysis} />
 
-            <View style={s.card}>
-              <View style={s.cardHeader}>
-                <CoffeeCupIcon size={20} color={colors.primary} />
-                <Text style={s.cardTitle}>Najvhodnejšia príprava</Text>
-              </View>
-              {analysis.recommendedPreparations.map((prep) => {
-                const isActive = selectedPreparation === prep.method;
-                return (
-                  <Pressable
-                    key={prep.method}
-                    style={[s.optionCard, isActive && s.optionCardActive]}
-                    onPress={() => setSelectedPreparation(prep.method)}
-                  >
-                    <Text style={[s.optionTitle, isActive && s.optionTitleActive]}>
-                      {prep.method}
-                    </Text>
-                    <Text style={[s.optionText, isActive && s.optionTextActive]}>
-                      {prep.description}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-              <Pressable
-                style={[
-                  s.optionCard,
-                  selectedPreparation === CUSTOM_PREPARATION_VALUE && s.optionCardActive,
-                ]}
-                onPress={() => setSelectedPreparation(CUSTOM_PREPARATION_VALUE)}
-              >
-                <Text
-                  style={[
-                    s.optionTitle,
-                    selectedPreparation === CUSTOM_PREPARATION_VALUE && s.optionTitleActive,
-                  ]}
-                >
-                  Chcem vlastnú prípravu
-                </Text>
-                <Text
-                  style={[
-                    s.optionText,
-                    selectedPreparation === CUSTOM_PREPARATION_VALUE && s.optionTextActive,
-                  ]}
-                >
-                  Napr. Origami, Kalita, experimentálny recept.
-                </Text>
-              </Pressable>
-              {selectedPreparation === CUSTOM_PREPARATION_VALUE ? (
-                <View style={s.inputGroup}>
-                  <Text style={s.inputLabel}>Zadaj vlastný spôsob prípravy</Text>
-                  <TextInput
-                    style={s.input}
-                    value={customPreparationText}
-                    onChangeText={setCustomPreparationText}
-                    placeholder="napr. V60 s jemnejším mletím"
-                    placeholderTextColor={colors.onSurfaceVariant}
-                  />
-                </View>
-              ) : null}
-            </View>
-
-            <View style={s.card}>
-              <View style={s.cardHeader}>
-                <FlameIcon size={20} color={colors.primary} />
-                <Text style={s.cardTitle}>
-                  Aké chute chceš?
-                </Text>
-              </View>
-              <View style={s.radioGroup}>
-                {strengthOptions.map((option) => (
-                  <Pressable
-                    key={option}
-                    style={s.radioRow}
-                    onPress={() => setStrengthPreference(option)}
-                  >
-                    <View
-                      style={[
-                        s.radioOuter,
-                        strengthPreference === option && s.radioOuterActive,
-                      ]}
-                    >
-                      {strengthPreference === option ? (
-                        <View style={s.radioInner} />
-                      ) : null}
-                    </View>
-                    <Text style={s.radioLabel}>{option}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-
-            <View style={s.card}>
-              <View style={s.cardHeader}>
-                <CoffeeBeanIcon size={20} color={colors.primary} />
-                <Text style={s.cardTitle}>Tvoj mlynček</Text>
-              </View>
-              <Text style={s.helperText}>
-                Vyber typ mlynčeka, aby AI vedela lepšie odhadnúť hrubosť mletia.
-              </Text>
-              <View style={s.chipsRow}>
-                {grinderTypes.map((type) => {
-                  const isActive = grinderType === type;
-                  return (
-                    <Pressable
-                      key={type}
-                      onPress={() => setGrinderType(type)}
-                      style={[s.chipButton, isActive && s.chipButtonActive]}
-                    >
-                      <Text style={[s.chipButtonText, isActive && s.chipButtonTextActive]}>
-                        {type}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              <View style={s.inputGroup}>
-                <Text style={s.inputLabel}>Model mlynčeka (voliteľné)</Text>
-                <TextInput
-                  style={s.input}
-                  value={grinderModel}
-                  onChangeText={setGrinderModel}
-                  placeholder="napr. Comandante C40"
-                  placeholderTextColor={colors.onSurfaceVariant}
-                />
-              </View>
-              <View style={s.inputGroup}>
-                <Text style={s.inputLabel}>Škála nastavenia (voliteľné)</Text>
-                <TextInput
-                  style={s.input}
-                  value={grinderSettingScale}
-                  onChangeText={setGrinderSettingScale}
-                  placeholder="napr. kliky 1-30 alebo čísla 1-40"
-                  placeholderTextColor={colors.onSurfaceVariant}
-                />
-              </View>
-            </View>
-
-            <View style={s.card}>
-              <View style={s.cardHeader}>
-                <CoffeeBeanIcon size={20} color={colors.primary} />
-                <Text style={s.cardTitle}>Voda, gramáž a pomer (aspoň 1 hodnota)</Text>
-              </View>
-              <Text style={s.helperText}>
-                Zadaj aspoň gramáž kávy alebo množstvo vody. Druhú hodnotu dopočítame automaticky.
-              </Text>
-              <Text style={s.helperText}>
-                Ak nezadáš pomer, použijeme predvolený pomer 1:15,5.
-              </Text>
-              <MD3Button
-                label="Použiť odporúčaný pomer 1:15,5"
-                variant="outlined"
-                onPress={applyRecommendedRatio}
-                style={{ marginTop: spacing.md }}
-              />
-              <View style={s.inputGroup}>
-                <Text style={s.inputLabel}>Gramáž kávy (g)</Text>
-                <TextInput
-                  style={s.input}
-                  value={targetDoseG}
-                  onChangeText={handleDoseChange}
-                  keyboardType="decimal-pad"
-                  placeholder="napr. 20"
-                  placeholderTextColor={colors.onSurfaceVariant}
-                />
-              </View>
-              <View style={s.inputGroup}>
-                <Text style={s.inputLabel}>Množstvo vody (g / ml)</Text>
-                <TextInput
-                  style={s.input}
-                  value={targetWaterMl}
-                  onChangeText={handleWaterChange}
-                  keyboardType="decimal-pad"
-                  placeholder="napr. 310"
-                  placeholderTextColor={colors.onSurfaceVariant}
-                />
-              </View>
-              <View style={s.inputGroup}>
-                <Text style={s.inputLabel}>Pomer vody ku káve</Text>
-                <TextInput
-                  style={s.input}
-                  value={targetRatio}
-                  onChangeText={handleRatioChange}
-                  keyboardType="decimal-pad"
-                  placeholder="napr. 15.5"
-                  placeholderTextColor={colors.onSurfaceVariant}
-                />
-              </View>
-              <View style={s.ratioHintCard}>
-                <Text style={s.bodyText}>
-                  Živý náhľad: {targetDoseG || '—'} g kávy • {targetWaterMl || '—'} g vody • 1:{targetRatio || '15.5'}
-                </Text>
-                <Text style={s.helperText}>
-                  Keď zadáš jednu hodnotu + pomer, ostatné dopočítame automaticky.
-                </Text>
-                <Text style={s.helperText}>
-                  Transparentnosť: AI berie do úvahy iba to, čo zadáš. Chýbajúce hodnoty dopočíta.
-                </Text>
-              </View>
-            </View>
-
-            <MD3Button
-              label={isGenerating ? 'Generujem recept…' : 'Generovať recept'}
-              onPress={handleGenerateRecipe}
-              disabled={isGenerating}
-              loading={isGenerating}
+            <BrewPathSelector
+              recommendedBrewPath={analysis.recommendedBrewPath}
+              roastLevel={analysis.roastLevel}
+              selectedPath={brewPath}
+              onSelect={handleBrewPathSelect}
             />
+
+            {brewPath === 'espresso' ? (
+              <EspressoConfig
+                drinkType={drinkType}
+                onDrinkTypeChange={setDrinkType}
+                machineType={machineType}
+                onMachineTypeChange={setMachineType}
+                targetDoseG={targetDoseG}
+                onDoseChange={setTargetDoseG}
+                targetYieldG={targetYieldG}
+                onYieldChange={setTargetYieldG}
+                targetRatio={targetRatio}
+                onRatioChange={setTargetRatio}
+              />
+            ) : brewPath === 'filter' ? (
+              <FilterConfig
+                preparations={analysis.recommendedPreparations}
+                selectedPreparation={selectedPreparation}
+                onPreparationChange={setSelectedPreparation}
+                customPreparationText={customPreparationText}
+                onCustomPreparationTextChange={setCustomPreparationText}
+                strengthPreference={strengthPreference}
+                onStrengthChange={setStrengthPreference}
+                targetDoseG={targetDoseG}
+                onDoseChange={setTargetDoseG}
+                targetWaterMl={targetWaterMl}
+                onWaterChange={setTargetWaterMl}
+                targetRatio={targetRatio}
+                onRatioChange={setTargetRatio}
+              />
+            ) : null}
+
+            {brewPath ? (
+              <>
+                <GrinderConfig
+                  grinderType={grinderType}
+                  onGrinderTypeChange={setGrinderType}
+                  grinderModel={grinderModel}
+                  onGrinderModelChange={setGrinderModel}
+                  grinderSettingScale={grinderSettingScale}
+                  onGrinderSettingScaleChange={setGrinderSettingScale}
+                />
+                <MD3Button
+                  label={isGenerating ? 'Generujem recept…' : 'Generovať recept'}
+                  onPress={handleGenerateRecipe}
+                  disabled={isGenerating}
+                  loading={isGenerating}
+                />
+              </>
+            ) : null}
           </>
         ) : null}
 

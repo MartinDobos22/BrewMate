@@ -9,6 +9,8 @@ export type RootStackParamList = {
     analysis: {
       tasteProfile: string;
       flavorNotes: string[];
+      roastLevel: 'light' | 'medium' | 'medium-dark' | 'dark';
+      recommendedBrewPath: 'espresso' | 'filter' | 'both';
       recommendedPreparations: Array<{
         method: string;
         description: string;
@@ -16,20 +18,35 @@ export type RootStackParamList = {
       confidence: number;
       summary: string;
     };
-    selectedPreparation: string;
-    strengthPreference: string;
+    brewPath: 'espresso' | 'filter';
+    // Filter-specific
+    selectedPreparation?: string;
+    strengthPreference?: string;
+    // Espresso-specific
+    drinkType?: string;
+    machineType?: string;
     recipe: {
       title: string;
-      method: string;
-      strengthPreference: string;
+      // Shared
       dose: string;
-      water: string;
       grind: string;
       waterTemp: string;
-      totalTime: string;
       steps: string[];
       baristaTips: string[];
       whyThisRecipe?: string;
+      // Filter fields
+      method?: string;
+      strengthPreference?: string;
+      water?: string;
+      totalTime?: string;
+      // Espresso fields
+      drinkType?: string;
+      machineType?: string;
+      yield?: string;
+      ratio?: string;
+      extractionTime?: string;
+      pressure?: string;
+      milkInstructions?: string;
     };
     likePrediction: {
       score: number;

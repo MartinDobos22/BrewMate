@@ -12,79 +12,7 @@ const toNumberOrNull = (value) => {
   return numeric;
 };
 
-const GRINDER_MODEL_GUIDES = [
-  {
-    match: /(comandante|c40)/i,
-    name: 'Comandante C40',
-    ranges: {
-      espresso: '10–15 klikov',
-      moka: '16–22 klikov',
-      pourover: '22–30 klikov',
-      filter: '22–30 klikov',
-      aeropress: '18–25 klikov',
-      frenchpress: '30–38 klikov',
-    },
-  },
-  {
-    match: /(1zpresso|k-ultra|j-ultra|x-pro|q2)/i,
-    name: '1Zpresso',
-    ranges: {
-      espresso: '2.0.0–3.0.0',
-      moka: '3.0.0–4.0.0',
-      pourover: '4.0.0–6.0.0',
-      filter: '4.0.0–6.0.0',
-      aeropress: '3.5.0–5.0.0',
-      frenchpress: '6.0.0–8.0.0',
-    },
-  },
-  {
-    match: /(timemore|chestnut|c2|c3)/i,
-    name: 'Timemore Chestnut',
-    ranges: {
-      espresso: '8–12 klikov',
-      moka: '12–15 klikov',
-      pourover: '15–22 klikov',
-      filter: '15–22 klikov',
-      aeropress: '12–18 klikov',
-      frenchpress: '22–28 klikov',
-    },
-  },
-];
-
-const normalizeMethodKey = (value) => {
-  const text = String(value || '').toLowerCase();
-  if (text.includes('espresso')) return 'espresso';
-  if (text.includes('moka')) return 'moka';
-  if (text.includes('french')) return 'frenchpress';
-  if (text.includes('aeropress')) return 'aeropress';
-  if (text.includes('v60') || text.includes('origami') || text.includes('kalita')
-    || text.includes('chemex') || text.includes('pour') || text.includes('filter')) return 'pourover';
-  return 'filter';
-};
-
-const buildGrinderGuidance = (grinderProfile, selectedPreparation) => {
-  if (!grinderProfile || typeof grinderProfile !== 'object') {
-    return null;
-  }
-
-  const grinderModel = String(grinderProfile.grinderModel || '');
-  const methodKey = normalizeMethodKey(selectedPreparation);
-  const modelGuide = GRINDER_MODEL_GUIDES.find((guide) => guide.match.test(grinderModel));
-  if (!modelGuide) {
-    return {
-      matchedModel: null,
-      targetRange: null,
-      instruction: 'Ak model nie je známy, nepoužívaj náhodné čísla. Uveď relatívne mletie (jemné/stredné/hrubé) a prispôsob ho škále, ktorú zadal používateľ.',
-    };
-  }
-
-  const range = modelGuide.ranges[methodKey] || modelGuide.ranges.filter;
-  return {
-    matchedModel: modelGuide.name,
-    targetRange: range,
-    instruction: `Preferuj rozpätie ${range} pre metódu ${selectedPreparation}. Ak zadaná škála používa iné značky, mapuj odporúčanie do tejto škály a vysvetli to priamo v poli grind.`,
-  };
-};
+const DEFAULT_ESPRESSO_RATIO = 2;
 
 const extractVisionText = (visionResponse) => {
   const response = visionResponse?.responses?.[0];
@@ -378,6 +306,8 @@ const buildPhotoCoffeeAnalysisPayload = (text) => ({
         required: [
           'tasteProfile',
           'flavorNotes',
+          'roastLevel',
+          'recommendedBrewPath',
           'recommendedPreparations',
           'confidence',
           'summary',
@@ -387,6 +317,14 @@ const buildPhotoCoffeeAnalysisPayload = (text) => ({
           flavorNotes: {
             type: 'array',
             items: { type: 'string' },
+          },
+          roastLevel: {
+            type: 'string',
+            enum: ['light', 'medium', 'medium-dark', 'dark'],
+          },
+          recommendedBrewPath: {
+            type: 'string',
+            enum: ['espresso', 'filter', 'both'],
           },
           recommendedPreparations: {
             type: 'array',
@@ -413,7 +351,11 @@ const buildPhotoCoffeeAnalysisPayload = (text) => ({
       role: 'system',
       content:
         'Si profesionálny barista a senzorický analytik. Na základe textu z etikety kávy odhadni chuťový profil '
-        + 'a navrhni 3-4 najvhodnejšie spôsoby prípravy. Odpovedaj po slovensky, stručne, bez marketingových fráz. '
+        + 'a navrhni 3-4 najvhodnejšie spôsoby prípravy. '
+        + 'Odhadni úroveň praženia (roastLevel) z informácií na etikete — ak nie je explicitne uvedená, odhadni ju z chuťových tónov, pôvodu a spracovania. '
+        + 'Odporúč cestu prípravy (recommendedBrewPath): "espresso" ak je káva tmavšie pražená alebo vhodná na espresso, '
+        + '"filter" ak je svetlejšie pražená alebo single-origin vhodná na filter, "both" ak je univerzálna. '
+        + 'Odpovedaj po slovensky, stručne, bez marketingových fráz. '
         + 'Výstup musí presne sedieť na JSON schému.',
     },
     {
@@ -423,22 +365,20 @@ const buildPhotoCoffeeAnalysisPayload = (text) => ({
   ],
 });
 
-const buildPhotoCoffeeRecipePayload = (
+const buildFilterRecipePayload = (
   analysis,
   strengthPreference,
   selectedPreparation,
   brewPreferences = null,
   grinderProfile = null,
   customPreparationText = null,
-) => {
-  const grinderGuidance = buildGrinderGuidance(grinderProfile, selectedPreparation);
-  return {
+) => ({
   model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
   temperature: 0.35,
   response_format: {
     type: 'json_schema',
     json_schema: {
-      name: 'photo_coffee_recipe',
+      name: 'filter_coffee_recipe',
       strict: true,
       schema: {
         type: 'object',
@@ -484,10 +424,13 @@ const buildPhotoCoffeeRecipePayload = (
     {
       role: 'system',
       content:
-        'Si profesionálny barista. Vytvor krok za krokom recept pre vybraný spôsob prípravy. '
+        'Si profesionálny barista špecializovaný na filter kávu. Vytvor krok za krokom recept pre vybraný spôsob prípravy. '
         + 'Recept má byť konkrétny (gramy, teplota, čas) a prispôsobený chuťovému profilu a sile kávy. '
         + 'Nikdy negeneruj náhodné dávky vody/kávy: rešpektuj používateľský vstup a dopočítaj chýbajúce hodnoty konzistentne. '
-        + 'Odporúčanie mletia musí rešpektovať model mlynčeka používateľa, ak bol zadaný. '
+        + 'Ak používateľ zadal model mlynčeka, rozpoznaj ho (Comandante, 1Zpresso, Timemore, Baratza, Eureka, Niche, Wilfa, Hario, Fellow, Lagom atď.) '
+        + 'a odporúč konkrétne nastavenie mletia pre danú metódu prípravy. '
+        + 'Ak model nepoznáš, použi typ mlynčeka (ručný/elektrický) a škálu používateľa na relatívne odporúčanie (jemné/stredné/hrubé). '
+        + 'Ak používateľ nemá mlynček, odporúč hrubosť mletia slovne a navrhni kúpu predmletej kávy v správnej hrubosti. '
         + 'Odpovedaj po slovensky a drž sa JSON schémy.',
     },
     {
@@ -498,40 +441,141 @@ const buildPhotoCoffeeRecipePayload = (
         2,
       )}\n\nVybraný spôsob prípravy: ${selectedPreparation}\nVlastná príprava od používateľa: ${customPreparationText || 'nie'}\nPožadovaná sila: ${strengthPreference}\nProfil mlynčeka používateľa: ${JSON.stringify(
         grinderProfile || {},
-      )}\nKalibrácia mlynčeka podľa známych modelov: ${JSON.stringify(
-        grinderGuidance || {},
       )}\nPreferencie používateľa pre výpočet dávky/vody/pomeru: ${JSON.stringify(
         brewPreferences || {},
       )}\n\nAk používateľ zadal len vodu alebo len gramáž, dopočítaj druhú hodnotu podľa pomeru.
 Ak používateľ nezadal pomer, použi predvolený pomer 1:15.5.
 Ak používateľ zadal pomer, použi ho na prepočet chýbajúcej dávky alebo vody.
-Ak používateľ zadal profil mlynčeka alebo model, odporuč mletie podľa kalibrácie modelu a škály používateľa; nepíš extrémne čísla mimo rozsahu danej metódy.
 Pole whyThisRecipe napíš v 1-2 vetách veľmi zrozumiteľne.\nVytvor detailný recept.`,
     },
   ],
-};
-};
+});
+
+const buildEspressoRecipePayload = (
+  analysis,
+  drinkType,
+  machineType,
+  brewPreferences = null,
+  grinderProfile = null,
+) => ({
+  model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  temperature: 0.35,
+  response_format: {
+    type: 'json_schema',
+    json_schema: {
+      name: 'espresso_coffee_recipe',
+      strict: true,
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        required: [
+          'title',
+          'drinkType',
+          'machineType',
+          'dose',
+          'yield',
+          'ratio',
+          'grind',
+          'waterTemp',
+          'extractionTime',
+          'pressure',
+          'steps',
+          'baristaTips',
+          'milkInstructions',
+          'whyThisRecipe',
+        ],
+        properties: {
+          title: { type: 'string' },
+          drinkType: { type: 'string' },
+          machineType: { type: 'string' },
+          dose: { type: 'string' },
+          yield: { type: 'string' },
+          ratio: { type: 'string' },
+          grind: { type: 'string' },
+          waterTemp: { type: 'string' },
+          extractionTime: { type: 'string' },
+          pressure: { type: 'string' },
+          steps: {
+            type: 'array',
+            minItems: 3,
+            items: { type: 'string' },
+          },
+          baristaTips: {
+            type: 'array',
+            minItems: 2,
+            items: { type: 'string' },
+          },
+          milkInstructions: { type: 'string' },
+          whyThisRecipe: { type: 'string' },
+        },
+      },
+    },
+  },
+  messages: [
+    {
+      role: 'system',
+      content:
+        'Si profesionálny barista špecializovaný na espresso. Vytvor detailný recept pre espresso nápoj. '
+        + 'Recept má byť konkrétny (gramy, teplota, čas extrakcie, tlak) a prispôsobený chuťovému profilu kávy. '
+        + 'Pre typ nápoja prispôsob pomer: espresso 1:2, ristretto 1:1.5, lungo 1:3, doppio 1:2 s dvojitou dávkou. '
+        + 'Pre mliečne nápoje (latte, cappuccino, flat white, cortado, macchiato) zahrň detailné inštrukcie '
+        + 'k príprave mlieka v poli milkInstructions — teplota, technika napenenia, pomer mlieka k espressu. '
+        + 'Ak nejde o mliečny nápoj, vráť v milkInstructions prázdny reťazec. '
+        + 'Ak používateľ zadal model mlynčeka, rozpoznaj ho a odporúč konkrétne nastavenie mletia pre espresso. '
+        + 'Ak model nepoznáš, použi typ mlynčeka a škálu na relatívne odporúčanie (veľmi jemné mletie, takmer prášok). '
+        + 'Pre pákový stroj odporúč 9 bar tlak a prispôsob teplotu (90-94°C). '
+        + 'Pre automatický kávovar nastav pressure na "automatický" a zameraj sa na mletie a dávku. '
+        + 'Odpovedaj po slovensky a drž sa JSON schémy.',
+    },
+    {
+      role: 'user',
+      content: `Chuťový profil kávy:\n${JSON.stringify(
+        analysis,
+        null,
+        2,
+      )}\n\nTyp nápoja: ${drinkType}\nTyp stroja: ${machineType}\nProfil mlynčeka: ${JSON.stringify(
+        grinderProfile || {},
+      )}\nPreferencie dávkovania: ${JSON.stringify(
+        brewPreferences || {},
+      )}\n\nAk používateľ zadal len dávku alebo len výťažok, dopočítaj druhú hodnotu podľa pomeru.
+Ak používateľ nezadal pomer, použi predvolený pomer pre daný typ nápoja.
+Pole whyThisRecipe napíš v 1-2 vetách veľmi zrozumiteľne.\nVytvor detailný espresso recept.`,
+    },
+  ],
+});
 
 
-const buildLikePrediction = ({ analysis, selectedPreparation, strengthPreference }) => {
+const buildLikePrediction = ({ analysis, selectedPreparation, strengthPreference, brewPath }) => {
   const baseFromAnalysis = Math.round(Math.min(1, Math.max(0, Number(analysis?.confidence) || 0.5)) * 100);
-  const preferredMethods = Array.isArray(analysis?.recommendedPreparations)
-    ? analysis.recommendedPreparations.map((item) => String(item?.method || '').toLowerCase())
-    : [];
-  const selected = String(selectedPreparation || '').toLowerCase();
-  const inTopRecommendations = preferredMethods.slice(0, 2).includes(selected);
-  const strengthBonus = ['jemné chute', 'slabšie', 'výraznejšie'].includes(String(strengthPreference)) ? 4 : 0;
-  const methodBonus = inTopRecommendations ? 8 : 0;
-  const score = Math.max(0, Math.min(99, baseFromAnalysis + methodBonus + strengthBonus));
+  const recommendedPath = String(analysis?.recommendedBrewPath || 'both').toLowerCase();
+
+  let pathBonus = 0;
+  if (brewPath === 'espresso' && (recommendedPath === 'espresso' || recommendedPath === 'both')) {
+    pathBonus = 8;
+  } else if (brewPath === 'filter') {
+    const preferredMethods = Array.isArray(analysis?.recommendedPreparations)
+      ? analysis.recommendedPreparations.map((item) => String(item?.method || '').toLowerCase())
+      : [];
+    const selected = String(selectedPreparation || '').toLowerCase();
+    const inTopRecommendations = preferredMethods.slice(0, 2).includes(selected);
+    pathBonus = inTopRecommendations ? 8 : 0;
+  }
+
+  const strengthBonus = strengthPreference === 'vyvážene' ? 4 : 0;
+  const score = Math.max(0, Math.min(99, baseFromAnalysis + pathBonus + strengthBonus));
 
   return {
     score,
     verdict: score >= 70
       ? 'Tento recept má vysokú šancu, že ti bude chutiť.'
       : 'Tento recept ešte nemusí sadnúť tvojmu profilu.',
-    reason: inTopRecommendations
-      ? 'Vybraná metóda patrí medzi najlepšie odporúčania pre túto kávu.'
-      : 'Vybraná metóda nie je medzi top odporúčaniami, skús prvé návrhy od AI.',
+    reason: brewPath === 'espresso'
+      ? (pathBonus > 0
+        ? 'Táto káva je vhodná na espresso prípravu.'
+        : 'Táto káva je primárne odporúčaná na filter, espresso môže byť experiment.')
+      : (pathBonus > 0
+        ? 'Vybraná metóda patrí medzi najlepšie odporúčania pre túto kávu.'
+        : 'Vybraná metóda nie je medzi top odporúčaniami, skús prvé návrhy od AI.'),
   };
 };
 
@@ -776,54 +820,25 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
   try {
     const {
       analysis,
+      brewPath,
+      // Filter-specific
       strengthPreference,
       selectedPreparation,
       customPreparationText,
+      // Espresso-specific
+      drinkType,
+      machineType,
+      // Shared
       grinderProfile,
       brewPreferences,
     } = req.body || {};
-    const effectivePreparation = typeof selectedPreparation === 'string' && selectedPreparation.trim()
-      ? selectedPreparation.trim()
-      : typeof customPreparationText === 'string' && customPreparationText.trim()
-        ? customPreparationText.trim()
-        : '';
-    const sanitizedBrewPreferences = {
-      targetDoseG: toNumberOrNull(brewPreferences?.targetDoseG),
-      targetWaterMl: toNumberOrNull(brewPreferences?.targetWaterMl),
-      targetRatio: toNumberOrNull(brewPreferences?.targetRatio),
-      providedByUser: {
-        targetDoseG: Boolean(brewPreferences?.providedByUser?.targetDoseG),
-        targetWaterMl: Boolean(brewPreferences?.providedByUser?.targetWaterMl),
-        targetRatio: Boolean(brewPreferences?.providedByUser?.targetRatio),
-      },
-    };
 
-    if (!analysis || !strengthPreference || !effectivePreparation) {
-      return res.status(400).json({
-        error: 'analysis, strengthPreference, and selectedPreparation/customPreparationText are required.',
-      });
-    }
-    if (!sanitizedBrewPreferences.targetDoseG && !sanitizedBrewPreferences.targetWaterMl) {
-      return res.status(400).json({
-        error: 'At least one of targetDoseG or targetWaterMl is required.',
-      });
+    if (!analysis || typeof analysis !== 'object') {
+      return res.status(400).json({ error: 'analysis is required.' });
     }
 
-    const ratioForCalculation = sanitizedBrewPreferences.targetRatio || DEFAULT_BREW_RATIO;
-    if (!sanitizedBrewPreferences.targetDoseG && sanitizedBrewPreferences.targetWaterMl) {
-      sanitizedBrewPreferences.targetDoseG = toNumberOrNull(
-        sanitizedBrewPreferences.targetWaterMl / ratioForCalculation,
-      );
-    }
-    if (!sanitizedBrewPreferences.targetWaterMl && sanitizedBrewPreferences.targetDoseG) {
-      sanitizedBrewPreferences.targetWaterMl = toNumberOrNull(
-        sanitizedBrewPreferences.targetDoseG * ratioForCalculation,
-      );
-    }
-    if (!sanitizedBrewPreferences.targetRatio && sanitizedBrewPreferences.targetDoseG && sanitizedBrewPreferences.targetWaterMl) {
-      sanitizedBrewPreferences.targetRatio = toNumberOrNull(
-        sanitizedBrewPreferences.targetWaterMl / sanitizedBrewPreferences.targetDoseG,
-      );
+    if (brewPath !== 'espresso' && brewPath !== 'filter') {
+      return res.status(400).json({ error: 'brewPath must be "espresso" or "filter".' });
     }
 
     const openAiApiKey = process.env.OPENAI_API_KEY;
@@ -832,12 +847,124 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
       return res.status(500).json({ error: 'OpenAI API key is not configured.' });
     }
 
-    console.log('[PhotoRecipe] OpenAI request started', {
-      selectedPreparation: effectivePreparation,
-      strengthPreference,
-      brewPreferences: sanitizedBrewPreferences,
-      grinderProfile: grinderProfile || null,
-    });
+    let aiPayload;
+    let effectivePreparation = '';
+
+    if (brewPath === 'espresso') {
+      // --- ESPRESSO PATH ---
+      if (!drinkType || typeof drinkType !== 'string') {
+        return res.status(400).json({ error: 'drinkType is required for espresso path.' });
+      }
+      if (!machineType || typeof machineType !== 'string') {
+        return res.status(400).json({ error: 'machineType is required for espresso path.' });
+      }
+
+      const sanitizedBrewPreferences = {
+        targetDoseG: toNumberOrNull(brewPreferences?.targetDoseG),
+        targetYieldG: toNumberOrNull(brewPreferences?.targetYieldG),
+        targetRatio: toNumberOrNull(brewPreferences?.targetRatio),
+      };
+
+      if (!sanitizedBrewPreferences.targetDoseG && !sanitizedBrewPreferences.targetYieldG) {
+        return res.status(400).json({ error: 'At least one of targetDoseG or targetYieldG is required.' });
+      }
+
+      const ratioForCalculation = sanitizedBrewPreferences.targetRatio || DEFAULT_ESPRESSO_RATIO;
+      if (!sanitizedBrewPreferences.targetDoseG && sanitizedBrewPreferences.targetYieldG) {
+        sanitizedBrewPreferences.targetDoseG = toNumberOrNull(
+          sanitizedBrewPreferences.targetYieldG / ratioForCalculation,
+        );
+      }
+      if (!sanitizedBrewPreferences.targetYieldG && sanitizedBrewPreferences.targetDoseG) {
+        sanitizedBrewPreferences.targetYieldG = toNumberOrNull(
+          sanitizedBrewPreferences.targetDoseG * ratioForCalculation,
+        );
+      }
+      if (!sanitizedBrewPreferences.targetRatio && sanitizedBrewPreferences.targetDoseG && sanitizedBrewPreferences.targetYieldG) {
+        sanitizedBrewPreferences.targetRatio = toNumberOrNull(
+          sanitizedBrewPreferences.targetYieldG / sanitizedBrewPreferences.targetDoseG,
+        );
+      }
+
+      effectivePreparation = drinkType;
+
+      console.log('[PhotoRecipe] Espresso request started', {
+        drinkType,
+        machineType,
+        brewPreferences: sanitizedBrewPreferences,
+        grinderProfile: grinderProfile || null,
+      });
+
+      aiPayload = buildEspressoRecipePayload(
+        analysis,
+        drinkType,
+        machineType,
+        sanitizedBrewPreferences,
+        grinderProfile || null,
+      );
+    } else {
+      // --- FILTER PATH ---
+      effectivePreparation = typeof selectedPreparation === 'string' && selectedPreparation.trim()
+        ? selectedPreparation.trim()
+        : typeof customPreparationText === 'string' && customPreparationText.trim()
+          ? customPreparationText.trim()
+          : '';
+
+      if (!strengthPreference || !effectivePreparation) {
+        return res.status(400).json({
+          error: 'strengthPreference and selectedPreparation/customPreparationText are required for filter path.',
+        });
+      }
+
+      const sanitizedBrewPreferences = {
+        targetDoseG: toNumberOrNull(brewPreferences?.targetDoseG),
+        targetWaterMl: toNumberOrNull(brewPreferences?.targetWaterMl),
+        targetRatio: toNumberOrNull(brewPreferences?.targetRatio),
+        providedByUser: {
+          targetDoseG: Boolean(brewPreferences?.providedByUser?.targetDoseG),
+          targetWaterMl: Boolean(brewPreferences?.providedByUser?.targetWaterMl),
+          targetRatio: Boolean(brewPreferences?.providedByUser?.targetRatio),
+        },
+      };
+
+      if (!sanitizedBrewPreferences.targetDoseG && !sanitizedBrewPreferences.targetWaterMl) {
+        return res.status(400).json({ error: 'At least one of targetDoseG or targetWaterMl is required.' });
+      }
+
+      const ratioForCalculation = sanitizedBrewPreferences.targetRatio || DEFAULT_BREW_RATIO;
+      if (!sanitizedBrewPreferences.targetDoseG && sanitizedBrewPreferences.targetWaterMl) {
+        sanitizedBrewPreferences.targetDoseG = toNumberOrNull(
+          sanitizedBrewPreferences.targetWaterMl / ratioForCalculation,
+        );
+      }
+      if (!sanitizedBrewPreferences.targetWaterMl && sanitizedBrewPreferences.targetDoseG) {
+        sanitizedBrewPreferences.targetWaterMl = toNumberOrNull(
+          sanitizedBrewPreferences.targetDoseG * ratioForCalculation,
+        );
+      }
+      if (!sanitizedBrewPreferences.targetRatio && sanitizedBrewPreferences.targetDoseG && sanitizedBrewPreferences.targetWaterMl) {
+        sanitizedBrewPreferences.targetRatio = toNumberOrNull(
+          sanitizedBrewPreferences.targetWaterMl / sanitizedBrewPreferences.targetDoseG,
+        );
+      }
+
+      console.log('[PhotoRecipe] Filter request started', {
+        selectedPreparation: effectivePreparation,
+        strengthPreference,
+        brewPreferences: sanitizedBrewPreferences,
+        grinderProfile: grinderProfile || null,
+      });
+
+      aiPayload = buildFilterRecipePayload(
+        analysis,
+        strengthPreference,
+        effectivePreparation,
+        sanitizedBrewPreferences,
+        grinderProfile || null,
+        customPreparationText || null,
+      );
+    }
+
     const openAiRequestStart = Date.now();
     const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -845,20 +972,12 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
         Authorization: `Bearer ${openAiApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(
-        buildPhotoCoffeeRecipePayload(
-          analysis,
-          strengthPreference,
-          effectivePreparation,
-          sanitizedBrewPreferences,
-          grinderProfile,
-          customPreparationText || null,
-        ),
-      ),
+      body: JSON.stringify(aiPayload),
     });
 
     const openAiData = await openAiResponse.json();
     console.log('[PhotoRecipe] OpenAI response received', {
+      brewPath,
       status: openAiResponse.status,
       durationMs: Date.now() - openAiRequestStart,
     });
@@ -902,7 +1021,8 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
     const likePrediction = buildLikePrediction({
       analysis,
       selectedPreparation: effectivePreparation,
-      strengthPreference,
+      strengthPreference: strengthPreference || null,
+      brewPath,
     });
 
     return res.status(200).json({ recipe, likePrediction });
