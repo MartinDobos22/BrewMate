@@ -103,10 +103,10 @@ function GrinderConfig({
     <View style={s.card}>
       <View style={s.cardHeader}>
         <CoffeeBeanIcon size={20} color={colors.primary} />
-        <Text style={s.cardTitle}>Tvoj mlynček</Text>
+        <Text style={s.cardTitle}>Tvoj mlynček (voliteľné)</Text>
       </View>
       <Text style={s.helperText}>
-        AI rozpozná stovky modelov mlynčekov a odporúči presné nastavenie mletia.
+        Ak zadáš mlynček, AI rozpozná model a odporúči presné nastavenie mletia. Inak odporúči mletie slovne.
       </Text>
       <View style={s.chipsRow}>
         {GRINDER_TYPES.map((type) => {

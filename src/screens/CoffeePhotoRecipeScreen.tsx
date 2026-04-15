@@ -31,6 +31,14 @@ type PhotoAnalysis = {
   recommendedPreparations: Array<{ method: string; description: string }>;
   confidence: number;
   summary: string;
+  tasteVector?: {
+    acidity: number;
+    sweetness: number;
+    bitterness: number;
+    body: number;
+    fruity: number;
+    roast: number;
+  };
 };
 
 type InventoryCoffee = {
@@ -261,6 +269,11 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     setBrewPath(path);
     resetPathState();
     setErrorMessage('');
+
+    // Auto-select first recommended preparation for filter path
+    if (path === 'filter' && analysis?.recommendedPreparations?.length) {
+      setSelectedPreparation(analysis.recommendedPreparations[0].method);
+    }
   };
 
   // --- Analysis ---
@@ -317,12 +330,6 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     setErrorMessage('');
     setInfoMessage('');
 
-    // Common validation
-    if (!grinderType) {
-      setErrorMessage('Vyberte prosím typ mlynčeka.');
-      return;
-    }
-
     let requestBody: Record<string, unknown>;
 
     if (brewPath === 'espresso') {
@@ -356,11 +363,13 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
         analysis,
         drinkType,
         machineType,
-        grinderProfile: {
-          grinderType,
-          grinderModel: grinderModel.trim() || null,
-          grinderSettingScale: grinderSettingScale.trim() || null,
-        },
+        grinderProfile: grinderType
+          ? {
+              grinderType,
+              grinderModel: grinderModel.trim() || null,
+              grinderSettingScale: grinderSettingScale.trim() || null,
+            }
+          : null,
         brewPreferences: {
           targetDoseG: computedDose,
           targetYieldG: computedYield,
@@ -406,11 +415,13 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
           ? customPreparationText.trim()
           : null,
         strengthPreference,
-        grinderProfile: {
-          grinderType,
-          grinderModel: grinderModel.trim() || null,
-          grinderSettingScale: grinderSettingScale.trim() || null,
-        },
+        grinderProfile: grinderType
+          ? {
+              grinderType,
+              grinderModel: grinderModel.trim() || null,
+              grinderSettingScale: grinderSettingScale.trim() || null,
+            }
+          : null,
         brewPreferences: {
           targetDoseG: computedDose,
           targetWaterMl: computedWater,

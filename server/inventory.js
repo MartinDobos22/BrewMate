@@ -101,8 +101,6 @@ const buildLocalSummary = ({ days, totals }) => {
   return parts.join(' ');
 };
 
-const RECIPE_APPROVAL_THRESHOLD = 70;
-
 const mapSavedRecipeRow = (row) => ({
   id: row.id,
   title: row.title,
@@ -990,10 +988,6 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
     const normalizedLikeScore = toNonNegativeInteger(likeScore);
     if (normalizedLikeScore === null || normalizedLikeScore > 100) {
       return res.status(400).json({ error: 'likeScore must be integer between 0 and 100.' });
-    }
-
-    if (normalizedLikeScore < RECIPE_APPROVAL_THRESHOLD) {
-      return res.status(400).json({ error: `Recipe can be saved only if likeScore is at least ${RECIPE_APPROVAL_THRESHOLD}.` });
     }
 
     try {

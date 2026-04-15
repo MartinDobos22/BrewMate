@@ -1,5 +1,8 @@
 import express from 'express';
 
+import { db } from './db.js';
+import { requireSession } from './session.js';
+
 const router = express.Router();
 
 const stripDataUrlPrefix = (value) => value.replace(/^data:.*;base64,/, '');
@@ -311,6 +314,7 @@ const buildPhotoCoffeeAnalysisPayload = (text) => ({
           'recommendedPreparations',
           'confidence',
           'summary',
+          'tasteVector',
         ],
         properties: {
           tasteProfile: { type: 'string' },
@@ -342,6 +346,19 @@ const buildPhotoCoffeeAnalysisPayload = (text) => ({
           },
           confidence: { type: 'number', minimum: 0, maximum: 1 },
           summary: { type: 'string' },
+          tasteVector: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['acidity', 'sweetness', 'bitterness', 'body', 'fruity', 'roast'],
+            properties: {
+              acidity: { type: 'number', enum: [0, 25, 50, 75, 100] },
+              sweetness: { type: 'number', enum: [0, 25, 50, 75, 100] },
+              bitterness: { type: 'number', enum: [0, 25, 50, 75, 100] },
+              body: { type: 'number', enum: [0, 25, 50, 75, 100] },
+              fruity: { type: 'number', enum: [0, 25, 50, 75, 100] },
+              roast: { type: 'number', enum: [0, 25, 50, 75, 100] },
+            },
+          },
         },
       },
     },
@@ -355,6 +372,8 @@ const buildPhotoCoffeeAnalysisPayload = (text) => ({
         + 'Odhadni úroveň praženia (roastLevel) z informácií na etikete — ak nie je explicitne uvedená, odhadni ju z chuťových tónov, pôvodu a spracovania. '
         + 'Odporúč cestu prípravy (recommendedBrewPath): "espresso" ak je káva tmavšie pražená alebo vhodná na espresso, '
         + '"filter" ak je svetlejšie pražená alebo single-origin vhodná na filter, "both" ak je univerzálna. '
+        + 'Zahrň tasteVector — číselný profil (0, 25, 50, 75, 100) pre acidity, sweetness, bitterness, body, fruity, roast. '
+        + 'Ak informácia nie je jasná, nastav 50 a zníž confidence. '
         + 'Odpovedaj po slovensky, stručne, bez marketingových fráz. '
         + 'Výstup musí presne sedieť na JSON schému.',
     },
@@ -545,7 +564,112 @@ Pole whyThisRecipe napíš v 1-2 vetách veľmi zrozumiteľne.\nVytvor detailný
 });
 
 
-const buildLikePrediction = ({ analysis, selectedPreparation, strengthPreference, brewPath }) => {
+const TASTE_AXES = ['acidity', 'sweetness', 'bitterness', 'body', 'fruity', 'roast'];
+const TOLERANCE_WEIGHTS = { tolerant: 0.4, neutral: 0.7, dislike: 1.0 };
+const MATCH_TIER_THRESHOLDS = { perfect: 85, great: 70, worthTrying: 50, experiment: 30 };
+
+const clampAxis = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 50;
+};
+
+const matchScoreToTier = (score) => {
+  if (score >= MATCH_TIER_THRESHOLDS.perfect) { return 'perfect_match'; }
+  if (score >= MATCH_TIER_THRESHOLDS.great) { return 'great_choice'; }
+  if (score >= MATCH_TIER_THRESHOLDS.worthTrying) { return 'worth_trying'; }
+  if (score >= MATCH_TIER_THRESHOLDS.experiment) { return 'interesting_experiment'; }
+  return 'not_for_you';
+};
+
+const TIER_VERDICTS = {
+  perfect_match: 'Tento recept je presne tvoj štýl!',
+  great_choice: 'Veľmi dobrá voľba pre tvoj profil.',
+  worth_trying: 'Stojí za vyskúšanie — môže ťa príjemne prekvapiť.',
+  interesting_experiment: 'Zaujímavý experiment mimo tvoju komfortnú zónu.',
+  not_for_you: 'Táto kombinácia asi nie je pre teba.',
+};
+
+const AXIS_LABELS = {
+  acidity: 'kyslosť',
+  sweetness: 'sladkosť',
+  bitterness: 'horkosť',
+  body: 'telo',
+  fruity: 'ovocnosť',
+  roast: 'praženie',
+};
+
+const buildVectorMatchReason = (coffeeVector, userVector, tolerance) => {
+  const matches = [];
+  const conflicts = [];
+
+  for (const axis of TASTE_AXES) {
+    const diff = Math.abs(clampAxis(userVector[axis]) - clampAxis(coffeeVector[axis]));
+    const label = AXIS_LABELS[axis];
+    if (diff <= 15) {
+      matches.push(label);
+    } else if (diff >= 40 && (tolerance[axis] === 'dislike' || tolerance[axis] === 'neutral')) {
+      conflicts.push(label);
+    }
+  }
+
+  const parts = [];
+  if (matches.length > 0) {
+    parts.push(`Zhoda v: ${matches.slice(0, 3).join(', ')}.`);
+  }
+  if (conflicts.length > 0) {
+    parts.push(`Väčší rozdiel v: ${conflicts.slice(0, 2).join(', ')}.`);
+  }
+
+  return parts.join(' ') || 'Predikcia je založená na porovnaní tvojho chuťového profilu s touto kávou.';
+};
+
+const computeMatchPrediction = ({ analysis, selectedPreparation, strengthPreference, brewPath, userQuestionnaire }) => {
+  const hasQuestionnaire = Boolean(userQuestionnaire?.tasteVector);
+  const coffeeVector = analysis?.tasteVector;
+
+  if (hasQuestionnaire && coffeeVector) {
+    const userVector = userQuestionnaire.tasteVector;
+    const tolerance = userQuestionnaire.toleranceVector || {};
+
+    let totalWeight = 0;
+    let weightedDistance = 0;
+    for (const axis of TASTE_AXES) {
+      const toleranceLevel = tolerance[axis] || 'neutral';
+      const weight = TOLERANCE_WEIGHTS[toleranceLevel] || TOLERANCE_WEIGHTS.neutral;
+      totalWeight += weight;
+      weightedDistance += Math.abs(clampAxis(userVector[axis]) - clampAxis(coffeeVector[axis])) * weight;
+    }
+
+    const normalizedDistance = totalWeight > 0 ? weightedDistance / totalWeight : 0;
+    let vectorScore = Math.round(100 - normalizedDistance);
+
+    // Small bonus for brew path alignment
+    const recommendedPath = String(analysis?.recommendedBrewPath || 'both').toLowerCase();
+    if (brewPath === 'espresso' && (recommendedPath === 'espresso' || recommendedPath === 'both')) {
+      vectorScore += 3;
+    } else if (brewPath === 'filter') {
+      const preferredMethods = Array.isArray(analysis?.recommendedPreparations)
+        ? analysis.recommendedPreparations.map((item) => String(item?.method || '').toLowerCase())
+        : [];
+      const selected = String(selectedPreparation || '').toLowerCase();
+      if (preferredMethods.slice(0, 2).includes(selected)) {
+        vectorScore += 3;
+      }
+    }
+
+    const score = Math.max(0, Math.min(99, vectorScore));
+    const tier = matchScoreToTier(score);
+
+    return {
+      score,
+      matchTier: tier,
+      verdict: TIER_VERDICTS[tier],
+      reason: buildVectorMatchReason(coffeeVector, userVector, tolerance),
+      hasQuestionnaire: true,
+    };
+  }
+
+  // Fallback heuristic when no questionnaire data is available
   const baseFromAnalysis = Math.round(Math.min(1, Math.max(0, Number(analysis?.confidence) || 0.5)) * 100);
   const recommendedPath = String(analysis?.recommendedBrewPath || 'both').toLowerCase();
 
@@ -557,18 +681,17 @@ const buildLikePrediction = ({ analysis, selectedPreparation, strengthPreference
       ? analysis.recommendedPreparations.map((item) => String(item?.method || '').toLowerCase())
       : [];
     const selected = String(selectedPreparation || '').toLowerCase();
-    const inTopRecommendations = preferredMethods.slice(0, 2).includes(selected);
-    pathBonus = inTopRecommendations ? 8 : 0;
+    pathBonus = preferredMethods.slice(0, 2).includes(selected) ? 8 : 0;
   }
 
   const strengthBonus = strengthPreference === 'vyvážene' ? 4 : 0;
   const score = Math.max(0, Math.min(99, baseFromAnalysis + pathBonus + strengthBonus));
+  const tier = matchScoreToTier(score);
 
   return {
     score,
-    verdict: score >= 70
-      ? 'Tento recept má vysokú šancu, že ti bude chutiť.'
-      : 'Tento recept ešte nemusí sadnúť tvojmu profilu.',
+    matchTier: tier,
+    verdict: TIER_VERDICTS[tier],
     reason: brewPath === 'espresso'
       ? (pathBonus > 0
         ? 'Táto káva je vhodná na espresso prípravu.'
@@ -576,6 +699,7 @@ const buildLikePrediction = ({ analysis, selectedPreparation, strengthPreference
       : (pathBonus > 0
         ? 'Vybraná metóda patrí medzi najlepšie odporúčania pre túto kávu.'
         : 'Vybraná metóda nie je medzi top odporúčaniami, skús prvé návrhy od AI.'),
+    hasQuestionnaire: false,
   };
 };
 
@@ -1018,11 +1142,32 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
       });
     }
 
-    const likePrediction = buildLikePrediction({
+    // Optionally load user's questionnaire for personalized match prediction
+    let userQuestionnaire = null;
+    try {
+      const session = await requireSession(req);
+      const qResult = await db.query(
+        `SELECT questionnaire_profile
+         FROM user_questionnaires
+         WHERE user_id = $1
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [session.uid],
+      );
+      if (qResult.rows.length > 0) {
+        const raw = qResult.rows[0].questionnaire_profile;
+        userQuestionnaire = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      }
+    } catch {
+      // No session or DB error — proceed without questionnaire data
+    }
+
+    const likePrediction = computeMatchPrediction({
       analysis,
       selectedPreparation: effectivePreparation,
       strengthPreference: strengthPreference || null,
       brewPath,
+      userQuestionnaire,
     });
 
     return res.status(200).json({ recipe, likePrediction });
