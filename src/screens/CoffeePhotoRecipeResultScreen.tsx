@@ -9,6 +9,12 @@ import BottomNavBar from '../components/BottomNavBar';
 import { useTheme } from '../theme/useTheme';
 import { CoffeeCupIcon, SparklesIcon, PortafilterIcon } from '../components/icons';
 import { MD3Button } from '../components/md3';
+import {
+  MATCH_TIER_LABELS,
+  MATCH_TIER_COLORS,
+  matchScoreToTier,
+} from '../utils/tasteVector';
+import type { MatchTier } from '../utils/tasteVector';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeePhotoRecipeResult'>;
 
@@ -26,6 +32,12 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
 
   // Backwards compatibility: old recipes without brewPath default to filter
   const brewPath = rawBrewPath || 'filter';
+
+  // Resolve match tier — prefer backend value, fall back to local computation
+  const matchTier: MatchTier = (likePrediction.matchTier as MatchTier) || matchScoreToTier(likePrediction.score);
+  const tierColors = MATCH_TIER_COLORS[matchTier];
+  const tierLabel = MATCH_TIER_LABELS[matchTier];
+  const hasQuestionnaire = likePrediction.hasQuestionnaire !== false;
 
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -174,6 +186,31 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           color: colors.error,
           fontWeight: '600',
         },
+        tierBadge: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          alignSelf: 'flex-start',
+          borderWidth: 1,
+          borderRadius: shape.large,
+          paddingVertical: spacing.xs,
+          paddingHorizontal: spacing.md,
+          marginBottom: spacing.sm,
+          gap: spacing.sm,
+        },
+        tierScore: {
+          ...typescale.titleMedium,
+          fontWeight: '700',
+        },
+        tierLabel: {
+          ...typescale.labelLarge,
+          fontWeight: '600',
+        },
+        noQuestionnaireHint: {
+          ...typescale.bodySmall,
+          color: colors.onSurfaceVariant,
+          fontStyle: 'italic',
+          marginTop: spacing.xs,
+        },
       }),
     [colors, typescale, shape, elev, spacing],
   );
@@ -205,11 +242,26 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
             <SparklesIcon size={20} color={colors.primary} />
             <Text style={s.cardTitle}>AI predikcia chuti</Text>
           </View>
-          <Text style={s.highlight}>
-            Pravdepodobnosť, že ti bude chutiť: {likePrediction.score}%
-          </Text>
+          <View
+            style={[
+              s.tierBadge,
+              { backgroundColor: tierColors.bg, borderColor: tierColors.border },
+            ]}
+          >
+            <Text style={[s.tierScore, { color: tierColors.border }]}>
+              {likePrediction.score}%
+            </Text>
+            <Text style={[s.tierLabel, { color: tierColors.border }]}>
+              {tierLabel}
+            </Text>
+          </View>
           <Text style={s.bodyText}>{likePrediction.verdict}</Text>
           <Text style={s.bodyText}>{likePrediction.reason}</Text>
+          {!hasQuestionnaire ? (
+            <Text style={s.noQuestionnaireHint}>
+              Pre presnejšiu predikciu vyplň chuťový dotazník v profile.
+            </Text>
+          ) : null}
           {recipe.whyThisRecipe ? (
             <>
               <Text style={s.highlight}>Prečo tento recept?</Text>
@@ -304,6 +356,14 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           variant="tonal"
           onPress={() => navigation.goBack()}
         />
+
+        {!hasQuestionnaire ? (
+          <MD3Button
+            label="Vyplniť chuťový dotazník"
+            variant="tonal"
+            onPress={() => navigation.navigate('CoffeeQuestionnaire')}
+          />
+        ) : null}
 
         <MD3Button
           label="Prejsť na uložené recepty"

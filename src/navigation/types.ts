@@ -17,6 +17,14 @@ export type RootStackParamList = {
       }>;
       confidence: number;
       summary: string;
+      tasteVector?: {
+        acidity: number;
+        sweetness: number;
+        bitterness: number;
+        body: number;
+        fruity: number;
+        roast: number;
+      };
     };
     brewPath: 'espresso' | 'filter';
     // Filter-specific
@@ -52,6 +60,8 @@ export type RootStackParamList = {
       score: number;
       verdict: string;
       reason: string;
+      matchTier?: 'perfect_match' | 'great_choice' | 'worth_trying' | 'interesting_experiment' | 'not_for_you';
+      hasQuestionnaire?: boolean;
     };
   };
   CoffeeQuestionnaire: undefined;
