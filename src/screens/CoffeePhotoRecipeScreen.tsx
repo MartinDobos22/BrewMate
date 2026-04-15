@@ -20,6 +20,7 @@ import BrewPathSelector from '../components/recipe/BrewPathSelector';
 import EspressoConfig from '../components/recipe/EspressoConfig';
 import FilterConfig, { CUSTOM_PREPARATION_VALUE } from '../components/recipe/FilterConfig';
 import GrinderConfig from '../components/recipe/GrinderConfig';
+import StepIndicator from '../components/recipe/StepIndicator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeePhotoRecipe'>;
 
@@ -113,6 +114,18 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
   const [errorMessage, setErrorMessage] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // --- Step computation ---
+  const steps = useMemo(() => {
+    const hasPhoto = Boolean(imageBase64);
+    const hasAnalysis = Boolean(analysis);
+    const hasPath = Boolean(brewPath);
+    return [
+      { label: 'Fotka', status: hasPhoto ? 'completed' as const : 'active' as const },
+      { label: 'Analýza', status: hasAnalysis ? 'completed' as const : hasPhoto ? 'active' as const : 'upcoming' as const },
+      { label: 'Nastavenia', status: hasPath ? 'active' as const : hasAnalysis ? 'active' as const : 'upcoming' as const },
+    ];
+  }, [imageBase64, analysis, brewPath]);
 
   // --- Photo handlers ---
   const handlePickerResponse = (response: ImagePickerResponse) => {
@@ -262,6 +275,20 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     setGrinderType(null);
     setGrinderModel('');
     setGrinderSettingScale('');
+  };
+
+  // --- Inline change handlers ---
+  const handleChangePhoto = () => {
+    setImageBase64('');
+    resetAfterAnalysis();
+    setErrorMessage('');
+    setInfoMessage('');
+  };
+
+  const handleChangeBrewPath = () => {
+    setBrewPath(null);
+    resetPathState();
+    setErrorMessage('');
   };
 
   // --- Brew path handler ---
@@ -575,6 +602,16 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
           color: colors.tertiary,
           fontWeight: '600',
         },
+        changeRow: {
+          flexDirection: 'row',
+          justifyContent: 'flex-end',
+        },
+        changeLink: {
+          ...typescale.labelMedium,
+          color: colors.primary,
+          fontWeight: '600',
+          paddingVertical: spacing.xs,
+        },
       }),
     [colors, typescale, shape, elev, spacing],
   );
@@ -587,6 +624,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
           <Text style={s.overline}>BrewMate Recipe AI</Text>
         </View>
         <Text style={s.title}>Coffee recipe scanner</Text>
+        <StepIndicator steps={steps} />
         <Text style={s.description}>
           Vyber kávu z inventára alebo ju naskenuj a AI ti navrhne najlepšie
           metódy prípravy podľa jej profilu.
@@ -664,6 +702,11 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
         {analysis ? (
           <>
             <AnalysisResultCard analysis={analysis} />
+            <View style={s.changeRow}>
+              <Text style={s.changeLink} onPress={handleChangePhoto}>
+                Zmeniť fotku
+              </Text>
+            </View>
 
             <BrewPathSelector
               recommendedBrewPath={analysis.recommendedBrewPath}
@@ -671,6 +714,14 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
               selectedPath={brewPath}
               onSelect={handleBrewPathSelect}
             />
+
+            {brewPath ? (
+              <View style={s.changeRow}>
+                <Text style={s.changeLink} onPress={handleChangeBrewPath}>
+                  Zmeniť cestu prípravy
+                </Text>
+              </View>
+            ) : null}
 
             {brewPath === 'espresso' ? (
               <EspressoConfig
