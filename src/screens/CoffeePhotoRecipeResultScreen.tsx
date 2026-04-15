@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -41,6 +41,41 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
 
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Warn user before leaving if recipe is not saved
+  const handleBeforeRemove = useCallback(
+    (e: { data: { action: { type: string } }; preventDefault: () => void }) => {
+      if (saveState === 'saved' || saveState === 'saving') {
+        return;
+      }
+
+      // Allow explicit "Upraviť parametre" (goBack) without blocking
+      if (e.data.action.type === 'GO_BACK') {
+        return;
+      }
+
+      e.preventDefault();
+
+      Alert.alert(
+        'Neuložený recept',
+        'Recept ešte nie je uložený. Naozaj chceš odísť?',
+        [
+          { text: 'Zostať', style: 'cancel' },
+          {
+            text: 'Odísť',
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ],
+      );
+    },
+    [saveState, navigation],
+  );
+
+  useEffect(
+    () => navigation.addListener('beforeRemove', handleBeforeRemove),
+    [navigation, handleBeforeRemove],
+  );
 
   const handleSaveRecipe = async () => {
     if (saveState === 'saving') {
@@ -371,7 +406,21 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           onPress={() => navigation.navigate('CoffeeRecipesSaved')}
         />
 
-        {saveState === 'saved' ? <Text style={s.success}>Recept uložený.</Text> : null}
+        {saveState === 'saved' ? (
+          <>
+            <Text style={s.success}>Recept uložený.</Text>
+            <MD3Button
+              label="Nový recept"
+              variant="tonal"
+              onPress={() =>
+                navigation.reset({
+                  index: 1,
+                  routes: [{ name: 'Home' }, { name: 'CoffeePhotoRecipe' }],
+                })
+              }
+            />
+          </>
+        ) : null}
         {saveState === 'error' ? (
           <>
             <Text style={s.error}>{errorMessage}</Text>
