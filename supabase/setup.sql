@@ -40,11 +40,27 @@ create table if not exists public.user_saved_coffee_recipes (
   strength_preference text,
   like_score integer not null check (like_score between 0 and 100),
   approved boolean not null default true,
+  prediction_metadata jsonb,
   created_at timestamptz not null default now()
 );
 
 create index if not exists user_saved_coffee_recipes_user_id_idx
   on public.user_saved_coffee_recipes (user_id, created_at desc);
+
+create table if not exists public.user_recipe_feedback (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null references public.app_users (id) on delete cascade,
+  recipe_id uuid not null references public.user_saved_coffee_recipes (id) on delete cascade,
+  predicted_score integer not null check (predicted_score between 0 and 100),
+  actual_rating integer not null check (actual_rating between 1 and 5),
+  notes text,
+  algorithm_version text,
+  created_at timestamptz not null default now(),
+  unique (user_id, recipe_id)
+);
+
+create index if not exists user_recipe_feedback_user_id_idx
+  on public.user_recipe_feedback (user_id, created_at desc);
 
 create table if not exists public.user_questionnaires (
   id uuid primary key default gen_random_uuid(),
@@ -106,6 +122,7 @@ alter table public.user_statistics enable row level security;
 alter table public.user_coffee enable row level security;
 alter table public.user_questionnaires enable row level security;
 alter table public.user_saved_coffee_recipes enable row level security;
+alter table public.user_recipe_feedback enable row level security;
 
 create policy "Users can insert their own profile"
   on public.app_users
@@ -189,5 +206,26 @@ create policy "Users can update their saved recipes"
 
 create policy "Users can delete their saved recipes"
   on public.user_saved_coffee_recipes
+  for delete
+  using (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
+
+create policy "Users can read their recipe feedback"
+  on public.user_recipe_feedback
+  for select
+  using (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
+
+create policy "Users can insert their recipe feedback"
+  on public.user_recipe_feedback
+  for insert
+  with check (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
+
+create policy "Users can update their recipe feedback"
+  on public.user_recipe_feedback
+  for update
+  using (auth.uid()::text = user_id and public.is_valid_firebase_jwt())
+  with check (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
+
+create policy "Users can delete their recipe feedback"
+  on public.user_recipe_feedback
   for delete
   using (auth.uid()::text = user_id and public.is_valid_firebase_jwt());

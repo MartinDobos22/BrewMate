@@ -114,6 +114,8 @@ const mapSavedRecipeRow = (row) => ({
   likeScore: row.like_score,
   approved: Boolean(row.approved),
   createdAt: row.created_at,
+  actualRating: row.actual_rating ?? null,
+  feedbackNotes: row.feedback_notes ?? null,
 });
 
 const buildRecipeInsightsSummary = ({ days, totals }) => {
@@ -943,23 +945,27 @@ router.get('/api/coffee-recipes', async (req, res, next) => {
     const days = Math.min(toPositiveInteger(req.query.days) ?? 30, 90);
 
     const result = await db.query(
-      `SELECT id,
-              coalesce(recipe->>'title', 'Recipe') as title,
-              coalesce(recipe->>'method', selected_preparation, 'unknown') as method,
-              coalesce(strength_preference, recipe->>'strengthPreference', 'neuvedené') as strength_preference,
-              coalesce(recipe->>'dose', '-') as dose,
-              coalesce(recipe->>'water', '-') as water,
-              coalesce(recipe->>'totalTime', '-') as total_time,
-              coalesce(analysis->>'tasteProfile', 'Neznámy profil') as taste_profile,
-              coalesce((analysis->'flavorNotes')::jsonb, '[]'::jsonb) as flavor_notes,
-              like_score,
-              approved,
-              created_at
-       FROM user_saved_coffee_recipes
-       WHERE user_id = $1
-         AND approved = true
-         AND created_at >= now() - ($2::int || ' days')::interval
-       ORDER BY created_at DESC`,
+      `SELECT r.id,
+              coalesce(r.recipe->>'title', 'Recipe') as title,
+              coalesce(r.recipe->>'method', r.selected_preparation, 'unknown') as method,
+              coalesce(r.strength_preference, r.recipe->>'strengthPreference', 'neuvedené') as strength_preference,
+              coalesce(r.recipe->>'dose', '-') as dose,
+              coalesce(r.recipe->>'water', '-') as water,
+              coalesce(r.recipe->>'totalTime', '-') as total_time,
+              coalesce(r.analysis->>'tasteProfile', 'Neznámy profil') as taste_profile,
+              coalesce((r.analysis->'flavorNotes')::jsonb, '[]'::jsonb) as flavor_notes,
+              r.like_score,
+              r.approved,
+              r.created_at,
+              f.actual_rating,
+              f.notes as feedback_notes
+       FROM user_saved_coffee_recipes r
+       LEFT JOIN user_recipe_feedback f
+         ON f.recipe_id = r.id AND f.user_id = r.user_id
+       WHERE r.user_id = $1
+         AND r.approved = true
+         AND r.created_at >= now() - ($2::int || ' days')::interval
+       ORDER BY r.created_at DESC`,
       [session.uid, days],
     );
 
@@ -976,7 +982,15 @@ router.get('/api/coffee-recipes', async (req, res, next) => {
 router.post('/api/coffee-recipes', async (req, res, next) => {
   try {
     const session = await requireSession(req);
-    const { analysis, recipe, selectedPreparation, strengthPreference, likeScore, approved } = req.body || {};
+    const {
+      analysis,
+      recipe,
+      selectedPreparation,
+      strengthPreference,
+      likeScore,
+      approved,
+      predictionMetadata,
+    } = req.body || {};
 
     if (!analysis || typeof analysis !== 'object') {
       return res.status(400).json({ error: 'analysis is required.' });
@@ -990,6 +1004,9 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
       return res.status(400).json({ error: 'likeScore must be integer between 0 and 100.' });
     }
 
+    const sanitizedPredictionMetadata =
+      predictionMetadata && typeof predictionMetadata === 'object' ? predictionMetadata : null;
+
     try {
       await ensureAppUserExists(session.uid, session.email ?? null);
     } catch (dbError) {
@@ -999,9 +1016,10 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
 
     const insertResult = await db.query(
       `INSERT INTO user_saved_coffee_recipes (
-         user_id, analysis, recipe, selected_preparation, strength_preference, like_score, approved
+         user_id, analysis, recipe, selected_preparation, strength_preference,
+         like_score, approved, prediction_metadata
        )
-       VALUES ($1, $2::jsonb, $3::jsonb, $4, $5, $6, $7)
+       VALUES ($1, $2::jsonb, $3::jsonb, $4, $5, $6, $7, $8::jsonb)
        RETURNING id,
                  coalesce(recipe->>'title', 'Recipe') as title,
                  coalesce(recipe->>'method', selected_preparation, 'unknown') as method,
@@ -1022,6 +1040,7 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
         typeof strengthPreference === 'string' ? strengthPreference : null,
         normalizedLikeScore,
         approved !== false,
+        sanitizedPredictionMetadata ? JSON.stringify(sanitizedPredictionMetadata) : null,
       ],
     );
 
@@ -1031,6 +1050,81 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
       return res.status(error.status).json({ error: error.message });
     }
     console.error('[CoffeeRecipes] Failed to save recipe', error);
+    return next(error);
+  }
+});
+
+const RECIPE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+router.post('/api/coffee-recipes/:id/feedback', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+    const recipeId = String(req.params.id || '').trim();
+    if (!RECIPE_ID_PATTERN.test(recipeId)) {
+      return res.status(400).json({ error: 'Invalid recipe id.' });
+    }
+
+    const { actualRating, notes } = req.body || {};
+    const rating = Number(actualRating);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'actualRating must be integer between 1 and 5.' });
+    }
+
+    const sanitizedNotes = typeof notes === 'string' ? notes.trim().slice(0, 500) : null;
+
+    const recipeRow = await db.query(
+      `SELECT like_score, prediction_metadata
+       FROM user_saved_coffee_recipes
+       WHERE id = $1 AND user_id = $2`,
+      [recipeId, session.uid],
+    );
+    if (recipeRow.rows.length === 0) {
+      return res.status(404).json({ error: 'Recipe not found.' });
+    }
+
+    const predictedScore = Number(recipeRow.rows[0].like_score) || 0;
+    const metadata = recipeRow.rows[0].prediction_metadata;
+    const parsedMetadata = typeof metadata === 'string' ? (() => {
+      try { return JSON.parse(metadata); } catch { return null; }
+    })() : metadata;
+    const algorithmVersion =
+      (parsedMetadata && typeof parsedMetadata.algorithmVersion === 'string'
+        ? parsedMetadata.algorithmVersion
+        : null) || 'legacy';
+
+    const result = await db.query(
+      `INSERT INTO user_recipe_feedback (
+         user_id, recipe_id, predicted_score, actual_rating, notes, algorithm_version
+       )
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (user_id, recipe_id)
+       DO UPDATE SET
+         actual_rating = excluded.actual_rating,
+         notes = excluded.notes,
+         predicted_score = excluded.predicted_score,
+         algorithm_version = excluded.algorithm_version,
+         created_at = now()
+       RETURNING id, recipe_id, predicted_score, actual_rating, notes, algorithm_version, created_at`,
+      [session.uid, recipeId, predictedScore, rating, sanitizedNotes, algorithmVersion],
+    );
+
+    const row = result.rows[0];
+    return res.status(201).json({
+      feedback: {
+        id: row.id,
+        recipeId: row.recipe_id,
+        predictedScore: row.predicted_score,
+        actualRating: row.actual_rating,
+        notes: row.notes,
+        algorithmVersion: row.algorithm_version,
+        createdAt: row.created_at,
+      },
+    });
+  } catch (error) {
+    if (error?.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('[CoffeeRecipes] Failed to save feedback', error);
     return next(error);
   }
 });

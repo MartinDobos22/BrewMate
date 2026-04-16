@@ -567,6 +567,9 @@ Pole whyThisRecipe napíš v 1-2 vetách veľmi zrozumiteľne.\nVytvor detailný
 const TASTE_AXES = ['acidity', 'sweetness', 'bitterness', 'body', 'fruity', 'roast'];
 const TOLERANCE_WEIGHTS = { tolerant: 0.4, neutral: 0.7, dislike: 1.0 };
 const MATCH_TIER_THRESHOLDS = { perfect: 85, great: 70, worthTrying: 50, experiment: 30 };
+const MATCH_ALGORITHM_VERSION = 'vector-v1';
+const CALIBRATION_RATING_MAP = { 1: 10, 2: 35, 3: 60, 3.5: 70, 4: 80, 5: 95 };
+const CALIBRATION_MAX_OFFSET = 15;
 
 const clampAxis = (v) => {
   const n = Number(v);
@@ -623,9 +626,46 @@ const buildVectorMatchReason = (coffeeVector, userVector, tolerance) => {
   return parts.join(' ') || 'Predikcia je založená na porovnaní tvojho chuťového profilu s touto kávou.';
 };
 
-const computeMatchPrediction = ({ analysis, selectedPreparation, strengthPreference, brewPath, userQuestionnaire }) => {
+// Compute a calibration offset from a user's past feedback rows.
+// Positive offset means past predictions were higher than actual ratings
+// (the algorithm is over-confident for this user) — we subtract it from new scores.
+const computeCalibrationOffset = (feedbackRows) => {
+  if (!Array.isArray(feedbackRows) || feedbackRows.length < 2) {
+    return { offset: 0, sampleSize: feedbackRows?.length || 0 };
+  }
+
+  let totalDiff = 0;
+  let count = 0;
+  for (const row of feedbackRows) {
+    const predicted = Number(row?.predicted_score);
+    const actualMapped = CALIBRATION_RATING_MAP[Number(row?.actual_rating)];
+    if (Number.isFinite(predicted) && Number.isFinite(actualMapped)) {
+      totalDiff += predicted - actualMapped;
+      count += 1;
+    }
+  }
+
+  if (count === 0) {
+    return { offset: 0, sampleSize: 0 };
+  }
+
+  const rawOffset = totalDiff / count;
+  const clamped = Math.max(-CALIBRATION_MAX_OFFSET, Math.min(CALIBRATION_MAX_OFFSET, rawOffset));
+  return { offset: Math.round(clamped), sampleSize: count };
+};
+
+const computeMatchPrediction = ({
+  analysis,
+  selectedPreparation,
+  strengthPreference,
+  brewPath,
+  userQuestionnaire,
+  calibration,
+}) => {
   const hasQuestionnaire = Boolean(userQuestionnaire?.tasteVector);
   const coffeeVector = analysis?.tasteVector;
+  const calibrationOffset = Number(calibration?.offset) || 0;
+  const calibrationSample = Number(calibration?.sampleSize) || 0;
 
   if (hasQuestionnaire && coffeeVector) {
     const userVector = userQuestionnaire.tasteVector;
@@ -633,31 +673,51 @@ const computeMatchPrediction = ({ analysis, selectedPreparation, strengthPrefere
 
     let totalWeight = 0;
     let weightedDistance = 0;
+    const axes = [];
     for (const axis of TASTE_AXES) {
       const toleranceLevel = tolerance[axis] || 'neutral';
       const weight = TOLERANCE_WEIGHTS[toleranceLevel] || TOLERANCE_WEIGHTS.neutral;
+      const coffeeValue = clampAxis(coffeeVector[axis]);
+      const userValue = clampAxis(userVector[axis]);
+      const diff = Math.abs(userValue - coffeeValue);
       totalWeight += weight;
-      weightedDistance += Math.abs(clampAxis(userVector[axis]) - clampAxis(coffeeVector[axis])) * weight;
+      weightedDistance += diff * weight;
+      let status = 'neutral';
+      if (diff <= 15) { status = 'match'; }
+      else if (diff >= 40 && (toleranceLevel === 'dislike' || toleranceLevel === 'neutral')) {
+        status = 'conflict';
+      }
+      axes.push({
+        axis,
+        label: AXIS_LABELS[axis],
+        coffeeValue,
+        userValue,
+        diff: Math.round(diff),
+        tolerance: toleranceLevel,
+        weight,
+        status,
+      });
     }
 
     const normalizedDistance = totalWeight > 0 ? weightedDistance / totalWeight : 0;
-    let vectorScore = Math.round(100 - normalizedDistance);
+    const baseScore = Math.round(100 - normalizedDistance);
 
-    // Small bonus for brew path alignment
+    let pathBonus = 0;
     const recommendedPath = String(analysis?.recommendedBrewPath || 'both').toLowerCase();
     if (brewPath === 'espresso' && (recommendedPath === 'espresso' || recommendedPath === 'both')) {
-      vectorScore += 3;
+      pathBonus = 3;
     } else if (brewPath === 'filter') {
       const preferredMethods = Array.isArray(analysis?.recommendedPreparations)
         ? analysis.recommendedPreparations.map((item) => String(item?.method || '').toLowerCase())
         : [];
       const selected = String(selectedPreparation || '').toLowerCase();
       if (preferredMethods.slice(0, 2).includes(selected)) {
-        vectorScore += 3;
+        pathBonus = 3;
       }
     }
 
-    const score = Math.max(0, Math.min(99, vectorScore));
+    const preCalibrationScore = baseScore + pathBonus;
+    const score = Math.max(0, Math.min(99, preCalibrationScore - calibrationOffset));
     const tier = matchScoreToTier(score);
 
     return {
@@ -666,11 +726,22 @@ const computeMatchPrediction = ({ analysis, selectedPreparation, strengthPrefere
       verdict: TIER_VERDICTS[tier],
       reason: buildVectorMatchReason(coffeeVector, userVector, tolerance),
       hasQuestionnaire: true,
+      algorithmVersion: MATCH_ALGORITHM_VERSION,
+      breakdown: {
+        mode: 'vector',
+        baseScore,
+        pathBonus,
+        calibrationOffset,
+        calibrationSampleSize: calibrationSample,
+        confidence: Number(analysis?.confidence) || null,
+        axes,
+      },
     };
   }
 
   // Fallback heuristic when no questionnaire data is available
-  const baseFromAnalysis = Math.round(Math.min(1, Math.max(0, Number(analysis?.confidence) || 0.5)) * 100);
+  const confidence = Math.min(1, Math.max(0, Number(analysis?.confidence) || 0.5));
+  const baseScore = Math.round(confidence * 100);
   const recommendedPath = String(analysis?.recommendedBrewPath || 'both').toLowerCase();
 
   let pathBonus = 0;
@@ -685,7 +756,8 @@ const computeMatchPrediction = ({ analysis, selectedPreparation, strengthPrefere
   }
 
   const strengthBonus = strengthPreference === 'vyvážene' ? 4 : 0;
-  const score = Math.max(0, Math.min(99, baseFromAnalysis + pathBonus + strengthBonus));
+  const preCalibrationScore = baseScore + pathBonus + strengthBonus;
+  const score = Math.max(0, Math.min(99, preCalibrationScore - calibrationOffset));
   const tier = matchScoreToTier(score);
 
   return {
@@ -700,6 +772,17 @@ const computeMatchPrediction = ({ analysis, selectedPreparation, strengthPrefere
         ? 'Vybraná metóda patrí medzi najlepšie odporúčania pre túto kávu.'
         : 'Vybraná metóda nie je medzi top odporúčaniami, skús prvé návrhy od AI.'),
     hasQuestionnaire: false,
+    algorithmVersion: MATCH_ALGORITHM_VERSION,
+    breakdown: {
+      mode: 'heuristic',
+      baseScore,
+      pathBonus,
+      strengthBonus,
+      calibrationOffset,
+      calibrationSampleSize: calibrationSample,
+      confidence,
+      axes: [],
+    },
   };
 };
 
@@ -1142,8 +1225,9 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
       });
     }
 
-    // Optionally load user's questionnaire for personalized match prediction
+    // Optionally load user's questionnaire + feedback history for personalized, calibrated prediction
     let userQuestionnaire = null;
+    let calibration = { offset: 0, sampleSize: 0 };
     try {
       const session = await requireSession(req);
       const qResult = await db.query(
@@ -1158,8 +1242,23 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
         const raw = qResult.rows[0].questionnaire_profile;
         userQuestionnaire = typeof raw === 'string' ? JSON.parse(raw) : raw;
       }
+
+      try {
+        const feedbackResult = await db.query(
+          `SELECT predicted_score, actual_rating
+           FROM user_recipe_feedback
+           WHERE user_id = $1
+             AND algorithm_version = $2
+           ORDER BY created_at DESC
+           LIMIT 20`,
+          [session.uid, MATCH_ALGORITHM_VERSION],
+        );
+        calibration = computeCalibrationOffset(feedbackResult.rows);
+      } catch (feedbackError) {
+        console.warn('[PhotoRecipe] Failed to load feedback history for calibration', feedbackError?.message);
+      }
     } catch {
-      // No session or DB error — proceed without questionnaire data
+      // No session or DB error — proceed without questionnaire / calibration data
     }
 
     const likePrediction = computeMatchPrediction({
@@ -1168,6 +1267,7 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
       strengthPreference: strengthPreference || null,
       brewPath,
       userQuestionnaire,
+      calibration,
     });
 
     return res.status(200).json({ recipe, likePrediction });
