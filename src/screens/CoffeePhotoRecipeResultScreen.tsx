@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -38,9 +38,12 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
   const tierColors = MATCH_TIER_COLORS[matchTier];
   const tierLabel = MATCH_TIER_LABELS[matchTier];
   const hasQuestionnaire = likePrediction.hasQuestionnaire !== false;
+  const breakdown = likePrediction.breakdown;
+  const algorithmVersion = likePrediction.algorithmVersion;
 
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   // Warn user before leaving if recipe is not saved
   const handleBeforeRemove = useCallback(
@@ -99,6 +102,12 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
             strengthPreference: strengthPreference || null,
             likeScore: likePrediction.score,
             approved: true,
+            predictionMetadata: {
+              algorithmVersion: algorithmVersion || null,
+              matchTier,
+              hasQuestionnaire,
+              breakdown: breakdown || null,
+            },
           }),
         },
       );
@@ -246,6 +255,54 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           fontStyle: 'italic',
           marginTop: spacing.xs,
         },
+        breakdownToggle: {
+          marginTop: spacing.sm,
+          alignSelf: 'flex-start',
+        },
+        breakdownToggleText: {
+          ...typescale.labelLarge,
+          color: colors.primary,
+          fontWeight: '600',
+        },
+        breakdownContainer: {
+          marginTop: spacing.sm,
+          paddingTop: spacing.sm,
+          borderTopWidth: 1,
+          borderTopColor: colors.outlineVariant,
+          gap: spacing.xs,
+        },
+        breakdownSummary: {
+          ...typescale.bodySmall,
+          color: colors.onSurfaceVariant,
+        },
+        breakdownAxisRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingVertical: spacing.xs,
+        },
+        breakdownAxisLabel: {
+          ...typescale.labelMedium,
+          color: colors.onSurface,
+          flex: 1,
+        },
+        breakdownAxisValues: {
+          ...typescale.bodySmall,
+          color: colors.onSurfaceVariant,
+          marginRight: spacing.sm,
+        },
+        breakdownStatusDot: {
+          width: 10,
+          height: 10,
+          borderRadius: 5,
+        },
+        algorithmFooter: {
+          ...typescale.labelSmall,
+          color: colors.onSurfaceVariant,
+          textAlign: 'center',
+          marginTop: spacing.sm,
+          opacity: 0.7,
+        },
       }),
     [colors, typescale, shape, elev, spacing],
   );
@@ -297,11 +354,69 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
               Pre presnejšiu predikciu vyplň chuťový dotazník v profile.
             </Text>
           ) : null}
+          {breakdown ? (
+            <>
+              <Pressable
+                style={s.breakdownToggle}
+                onPress={() => setShowBreakdown(prev => !prev)}
+                accessibilityRole="button"
+                accessibilityLabel={showBreakdown ? 'Skryť detaily predikcie' : 'Zobraziť detaily predikcie'}
+              >
+                <Text style={s.breakdownToggleText}>
+                  {showBreakdown ? 'Skryť detaily predikcie' : 'Zobraziť detaily predikcie'}
+                </Text>
+              </Pressable>
+              {showBreakdown ? (
+                <View style={s.breakdownContainer}>
+                  <Text style={s.breakdownSummary}>
+                    Základné skóre: {breakdown.baseScore}
+                    {breakdown.pathBonus ? ` · bonus za metódu: +${breakdown.pathBonus}` : ''}
+                    {breakdown.strengthBonus ? ` · bonus za silu: +${breakdown.strengthBonus}` : ''}
+                    {breakdown.calibrationOffset
+                      ? ` · kalibrácia: ${breakdown.calibrationOffset > 0 ? '-' : '+'}${Math.abs(breakdown.calibrationOffset)}`
+                      : ''}
+                  </Text>
+                  {breakdown.calibrationSampleSize > 0 ? (
+                    <Text style={s.breakdownSummary}>
+                      Kalibrované podľa {breakdown.calibrationSampleSize} tvojich hodnotení.
+                    </Text>
+                  ) : null}
+                  {breakdown.axes.length > 0 ? (
+                    <>
+                      <Text style={[s.breakdownSummary, { marginTop: spacing.xs }]}>
+                        Porovnanie chuťových osí (ty vs. káva):
+                      </Text>
+                      {breakdown.axes.map(axis => {
+                        const dotColor =
+                          axis.status === 'match'
+                            ? colors.tertiary
+                            : axis.status === 'conflict'
+                              ? colors.error
+                              : colors.outlineVariant;
+                        return (
+                          <View key={axis.axis} style={s.breakdownAxisRow}>
+                            <Text style={s.breakdownAxisLabel}>{axis.label}</Text>
+                            <Text style={s.breakdownAxisValues}>
+                              {axis.userValue} → {axis.coffeeValue} (Δ {axis.diff})
+                            </Text>
+                            <View style={[s.breakdownStatusDot, { backgroundColor: dotColor }]} />
+                          </View>
+                        );
+                      })}
+                    </>
+                  ) : null}
+                </View>
+              ) : null}
+            </>
+          ) : null}
           {recipe.whyThisRecipe ? (
             <>
               <Text style={s.highlight}>Prečo tento recept?</Text>
               <Text style={s.bodyText}>{recipe.whyThisRecipe}</Text>
             </>
+          ) : null}
+          {algorithmVersion ? (
+            <Text style={s.algorithmFooter}>Algoritmus: {algorithmVersion}</Text>
           ) : null}
         </View>
 

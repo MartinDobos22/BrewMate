@@ -62,6 +62,26 @@ export type RootStackParamList = {
       reason: string;
       matchTier?: 'perfect_match' | 'great_choice' | 'worth_trying' | 'interesting_experiment' | 'not_for_you';
       hasQuestionnaire?: boolean;
+      algorithmVersion?: string;
+      breakdown?: {
+        mode: 'vector' | 'heuristic';
+        baseScore: number;
+        pathBonus: number;
+        strengthBonus?: number;
+        calibrationOffset: number;
+        calibrationSampleSize: number;
+        confidence?: number | null;
+        axes: Array<{
+          axis: string;
+          label: string;
+          coffeeValue: number;
+          userValue: number;
+          diff: number;
+          tolerance: string;
+          weight: number;
+          status: 'match' | 'conflict' | 'neutral';
+        }>;
+      };
     };
   };
   CoffeeQuestionnaire: undefined;
