@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { RootStackParamList } from '../navigation/types';
-import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import { apiFetch, ApiError, parseApiError, DEFAULT_API_HOST } from '../utils/api';
 import BottomNavBar from '../components/BottomNavBar';
 import { useTheme } from '../theme/useTheme';
 import { CoffeeCupIcon, SparklesIcon, PortafilterIcon } from '../components/icons';
@@ -17,6 +18,18 @@ import {
 import type { MatchTier } from '../utils/tasteVector';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeePhotoRecipeResult'>;
+
+const PENDING_RECIPE_KEY = 'pendingRecipeSave';
+
+const generateIdempotencyKey = () =>
+  `recipe_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
+const ERROR_MESSAGES: Record<string, string> = {
+  auth_error: 'Relácia vypršala. Prihlás sa znova.',
+  validation_error: 'Neplatné dáta receptu.',
+  db_error: 'Chyba databázy. Skús to znova.',
+  rate_limited: 'Príliš veľa požiadaviek. Počkaj chvíľu.',
+};
 
 function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
   const {
@@ -32,10 +45,8 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
     likePrediction,
   } = route.params;
 
-  // Backwards compatibility: old recipes without brewPath default to filter
   const brewPath = rawBrewPath || 'filter';
 
-  // Resolve match tier — prefer backend value, fall back to local computation
   const matchTier: MatchTier = (likePrediction.matchTier as MatchTier) || matchScoreToTier(likePrediction.score);
   const tierColors = MATCH_TIER_COLORS[matchTier];
   const tierLabel = MATCH_TIER_LABELS[matchTier];
@@ -45,16 +56,56 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
 
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [errorCode, setErrorCode] = useState('');
+  const [isRetryable, setIsRetryable] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [hasPendingBackup, setHasPendingBackup] = useState(false);
 
-  // Warn user before leaving if recipe is not saved
+  const idempotencyKeyRef = useRef(generateIdempotencyKey());
+
+  // Check for pending backup on mount
+  useEffect(() => {
+    AsyncStorage.getItem(PENDING_RECIPE_KEY)
+      .then((data) => {
+        if (data) {
+          setHasPendingBackup(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Clear backup after successful save
+  const clearPendingBackup = useCallback(async () => {
+    try {
+      await AsyncStorage.removeItem(PENDING_RECIPE_KEY);
+      setHasPendingBackup(false);
+    } catch {
+      // non-critical
+    }
+  }, []);
+
+  // Save recipe data locally as backup
+  const savePendingBackup = useCallback(async () => {
+    try {
+      await AsyncStorage.setItem(
+        PENDING_RECIPE_KEY,
+        JSON.stringify({
+          params: route.params,
+          idempotencyKey: idempotencyKeyRef.current,
+          savedAt: new Date().toISOString(),
+        }),
+      );
+    } catch {
+      // non-critical
+    }
+  }, [route.params]);
+
   const handleBeforeRemove = useCallback(
     (e: { data: { action: { type: string } }; preventDefault: () => void }) => {
       if (saveState === 'saved' || saveState === 'saving') {
         return;
       }
 
-      // Allow explicit "Upraviť parametre" (goBack) without blocking
       if (e.data.action.type === 'GO_BACK') {
         return;
       }
@@ -67,14 +118,17 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
         [
           { text: 'Zostať', style: 'cancel' },
           {
-            text: 'Odísť',
+            text: 'Odísť bez uloženia',
             style: 'destructive',
-            onPress: () => navigation.dispatch(e.data.action),
+            onPress: () => {
+              savePendingBackup();
+              navigation.dispatch(e.data.action);
+            },
           },
         ],
       );
     },
-    [saveState, navigation],
+    [saveState, navigation, savePendingBackup],
   );
 
   useEffect(
@@ -82,7 +136,7 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
     [navigation, handleBeforeRemove],
   );
 
-  const handleSaveRecipe = async () => {
+  const handleSaveRecipe = useCallback(async () => {
     if (saveState === 'saving') {
       return;
     }
@@ -90,6 +144,8 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
     try {
       setSaveState('saving');
       setErrorMessage('');
+      setErrorCode('');
+      setIsRetryable(false);
 
       const response = await apiFetch(
         `${DEFAULT_API_HOST}/api/coffee-recipes`,
@@ -111,21 +167,47 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
               hasQuestionnaire,
               breakdown: breakdown || null,
             },
+            idempotencyKey: idempotencyKeyRef.current,
           }),
         },
       );
 
-      const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(payload.error || 'Nepodarilo sa uložiť recept.');
+        throw await parseApiError(response);
       }
 
       setSaveState('saved');
+      await clearPendingBackup();
     } catch (error) {
       setSaveState('error');
-      setErrorMessage(error instanceof Error ? error.message : 'Nepodarilo sa uložiť recept.');
+
+      if (error instanceof ApiError) {
+        const friendlyMessage = ERROR_MESSAGES[error.code] || error.message;
+        setErrorMessage(friendlyMessage);
+        setErrorCode(error.code);
+        setIsRetryable(error.retryable || error.code === 'db_error');
+
+        if (error.code === 'auth_error' || error.status === 401 || error.status === 403) {
+          await savePendingBackup();
+        }
+      } else {
+        setErrorMessage((error as Error).message || 'Nepodarilo sa uložiť recept.');
+        setIsRetryable(true);
+        await savePendingBackup();
+      }
     }
-  };
+  }, [
+    saveState, analysis, recipe, brewPath, selectedPreparation, strengthPreference,
+    likePrediction.score, brewPreferences, algorithmVersion, matchTier,
+    hasQuestionnaire, breakdown, clearPendingBackup, savePendingBackup,
+  ]);
+
+  const handleRetry = useCallback(() => {
+    setErrorMessage('');
+    setErrorCode('');
+    setIsRetryable(false);
+    handleSaveRecipe();
+  }, [handleSaveRecipe]);
 
   const { colors, typescale, shape, elevation: elev, spacing } = useTheme();
 
@@ -228,10 +310,21 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           color: colors.tertiary,
           fontWeight: '600',
         },
-        error: {
+        errorContainer: {
+          backgroundColor: colors.errorContainer,
+          borderRadius: shape.large,
+          padding: spacing.md,
+          gap: spacing.sm,
+        },
+        errorText: {
           ...typescale.bodySmall,
-          color: colors.error,
+          color: colors.onErrorContainer,
           fontWeight: '600',
+        },
+        errorHint: {
+          ...typescale.bodySmall,
+          color: colors.onErrorContainer,
+          opacity: 0.8,
         },
         tierBadge: {
           flexDirection: 'row',
@@ -321,6 +414,16 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           marginTop: spacing.sm,
           opacity: 0.7,
         },
+        pendingBackupBanner: {
+          backgroundColor: colors.tertiaryContainer,
+          borderRadius: shape.large,
+          padding: spacing.md,
+          gap: spacing.xs,
+        },
+        pendingBackupText: {
+          ...typescale.bodySmall,
+          color: colors.onTertiaryContainer,
+        },
       }),
     [colors, typescale, shape, elev, spacing],
   );
@@ -349,6 +452,19 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           <View style={s.personalizedBadge}>
             <SparklesIcon size={14} color={colors.primary} />
             <Text style={s.personalizedText}>Prispôsobené tvojmu chuťovému profilu</Text>
+          </View>
+        ) : null}
+
+        {hasPendingBackup && saveState === 'idle' ? (
+          <View style={s.pendingBackupBanner}>
+            <Text style={s.pendingBackupText}>
+              Máš neuložený recept z predchádzajúcej relácie.
+            </Text>
+            <MD3Button
+              label="Uložiť teraz"
+              onPress={handleSaveRecipe}
+              variant="tonal"
+            />
           </View>
         ) : null}
 
@@ -518,12 +634,14 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
         </View>
 
         {/* Action buttons */}
-        <MD3Button
-          label={saveState === 'saving' ? 'Ukladám…' : 'Uložiť recept'}
-          onPress={handleSaveRecipe}
-          disabled={saveState === 'saving'}
-          loading={saveState === 'saving'}
-        />
+        {saveState !== 'saved' ? (
+          <MD3Button
+            label={saveState === 'saving' ? 'Ukladám…' : 'Uložiť recept'}
+            onPress={handleSaveRecipe}
+            disabled={saveState === 'saving'}
+            loading={saveState === 'saving'}
+          />
+        ) : null}
 
         <MD3Button
           label="Upraviť parametre"
@@ -561,14 +679,28 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           </>
         ) : null}
         {saveState === 'error' ? (
-          <>
-            <Text style={s.error}>{errorMessage}</Text>
-            <MD3Button
-              label="Skúsiť znovu"
-              variant="outlined"
-              onPress={handleSaveRecipe}
-            />
-          </>
+          <View style={s.errorContainer}>
+            <Text style={s.errorText}>{errorMessage}</Text>
+            {errorCode === 'auth_error' ? (
+              <Text style={s.errorHint}>
+                Recept bol zálohovaný lokálne. Po prihlásení ho môžeš uložiť znova.
+              </Text>
+            ) : null}
+            {isRetryable ? (
+              <MD3Button
+                label="Skúsiť znova"
+                variant="outlined"
+                onPress={handleRetry}
+              />
+            ) : null}
+            {errorCode === 'auth_error' ? (
+              <MD3Button
+                label="Prihlásiť sa"
+                variant="tonal"
+                onPress={() => navigation.navigate('Login' as never)}
+              />
+            ) : null}
+          </View>
         ) : null}
       </ScrollView>
       <BottomNavBar />
