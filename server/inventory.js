@@ -991,18 +991,45 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
       approved,
       predictionMetadata,
       brewPreferences,
+      idempotencyKey,
     } = req.body || {};
 
     if (!analysis || typeof analysis !== 'object') {
-      return res.status(400).json({ error: 'analysis is required.' });
+      return res.status(400).json({ error: 'analysis is required.', code: 'validation_error', retryable: false });
     }
     if (!recipe || typeof recipe !== 'object') {
-      return res.status(400).json({ error: 'recipe is required.' });
+      return res.status(400).json({ error: 'recipe is required.', code: 'validation_error', retryable: false });
     }
 
     const normalizedLikeScore = toNonNegativeInteger(likeScore);
     if (normalizedLikeScore === null || normalizedLikeScore > 100) {
-      return res.status(400).json({ error: 'likeScore must be integer between 0 and 100.' });
+      return res.status(400).json({ error: 'likeScore must be integer between 0 and 100.', code: 'validation_error', retryable: false });
+    }
+
+    // Idempotency: if the client sends the same key twice, return the existing record
+    if (typeof idempotencyKey === 'string' && idempotencyKey.trim()) {
+      const existing = await db.query(
+        `SELECT id,
+                coalesce(recipe->>'title', 'Recipe') as title,
+                coalesce(recipe->>'method', selected_preparation, 'unknown') as method,
+                coalesce(strength_preference, recipe->>'strengthPreference', 'neuvedené') as strength_preference,
+                coalesce(recipe->>'dose', '-') as dose,
+                coalesce(recipe->>'water', '-') as water,
+                coalesce(recipe->>'totalTime', '-') as total_time,
+                coalesce(analysis->>'tasteProfile', 'Neznámy profil') as taste_profile,
+                coalesce((analysis->'flavorNotes')::jsonb, '[]'::jsonb) as flavor_notes,
+                like_score,
+                approved,
+                created_at
+         FROM user_saved_coffee_recipes
+         WHERE user_id = $1 AND idempotency_key = $2
+         LIMIT 1`,
+        [session.uid, idempotencyKey.trim()],
+      );
+      if (existing.rows.length > 0) {
+        console.log('[CoffeeRecipes] Idempotent duplicate detected', { idempotencyKey });
+        return res.status(200).json({ item: mapSavedRecipeRow(existing.rows[0]), duplicate: true });
+      }
     }
 
     const sanitizedPredictionMetadata =
@@ -1014,15 +1041,15 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
       await ensureAppUserExists(session.uid, session.email ?? null);
     } catch (dbError) {
       console.error('[CoffeeRecipes] Failed to ensure user in DB', dbError);
-      return res.status(500).json({ error: 'Nepodarilo sa uložiť používateľa do databázy.' });
+      return res.status(500).json({ error: 'Nepodarilo sa uložiť používateľa do databázy.', code: 'db_error', retryable: true });
     }
 
     const insertResult = await db.query(
       `INSERT INTO user_saved_coffee_recipes (
          user_id, analysis, recipe, selected_preparation, strength_preference,
-         like_score, approved, prediction_metadata, brew_preferences
+         like_score, approved, prediction_metadata, brew_preferences, idempotency_key
        )
-       VALUES ($1, $2::jsonb, $3::jsonb, $4, $5, $6, $7, $8::jsonb, $9::jsonb)
+       VALUES ($1, $2::jsonb, $3::jsonb, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10)
        RETURNING id,
                  coalesce(recipe->>'title', 'Recipe') as title,
                  coalesce(recipe->>'method', selected_preparation, 'unknown') as method,
@@ -1045,13 +1072,14 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
         approved !== false,
         sanitizedPredictionMetadata ? JSON.stringify(sanitizedPredictionMetadata) : null,
         sanitizedBrewPreferences ? JSON.stringify(sanitizedBrewPreferences) : null,
+        typeof idempotencyKey === 'string' && idempotencyKey.trim() ? idempotencyKey.trim() : null,
       ],
     );
 
     return res.status(201).json({ item: mapSavedRecipeRow(insertResult.rows[0]) });
   } catch (error) {
     if (error?.status) {
-      return res.status(error.status).json({ error: error.message });
+      return res.status(error.status).json({ error: error.message, code: 'auth_error', retryable: false });
     }
     console.error('[CoffeeRecipes] Failed to save recipe', error);
     return next(error);
