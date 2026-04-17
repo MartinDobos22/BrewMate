@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import { apiFetch, ApiError, parseApiError, DEFAULT_API_HOST } from '../utils/api';
 import {
   hasAnyEspressoInput,
   hasAnyFilterInput,
@@ -40,6 +40,7 @@ type RecipeResult = RootStackParamList['CoffeePhotoRecipeResult'];
 
 type UseRecipeGeneratorReturn = {
   isGenerating: boolean;
+  canRetry: boolean;
   generate: (
     analysis: PhotoAnalysis,
     brewPath: BrewPath,
@@ -62,6 +63,7 @@ const buildGrinderProfile = (
 
 export function useRecipeGenerator(): UseRecipeGeneratorReturn {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [canRetry, setCanRetry] = useState(false);
 
   const generate = useCallback(
     async (
@@ -140,6 +142,7 @@ export function useRecipeGenerator(): UseRecipeGeneratorReturn {
       }
 
       setIsGenerating(true);
+      setCanRetry(false);
 
       try {
         const response = await apiFetch(
@@ -152,11 +155,11 @@ export function useRecipeGenerator(): UseRecipeGeneratorReturn {
           { feature: 'PhotoRecipe', action: 'generate' },
         );
 
-        const payload = await response.json();
-
         if (!response.ok) {
-          throw new Error(payload?.error || 'Generovanie receptu zlyhalo.');
+          throw await parseApiError(response);
         }
+
+        const payload = await response.json();
 
         const result: RecipeResult = {
           analysis,
@@ -183,6 +186,13 @@ export function useRecipeGenerator(): UseRecipeGeneratorReturn {
         };
 
         return result;
+      } catch (error) {
+        if (error instanceof ApiError && error.retryable) {
+          setCanRetry(true);
+        }
+        throw error instanceof ApiError
+          ? error
+          : new Error((error as Error).message || 'Generovanie receptu zlyhalo.');
       } finally {
         setIsGenerating(false);
       }
@@ -190,5 +200,5 @@ export function useRecipeGenerator(): UseRecipeGeneratorReturn {
     [isGenerating],
   );
 
-  return { isGenerating, generate };
+  return { isGenerating, canRetry, generate };
 }

@@ -99,6 +99,47 @@ const summarizeBody = (body: FetchBody): SanitizedPayload | null => {
   };
 };
 
+export type ApiErrorBody = {
+  error: string;
+  code?: string;
+  retryable?: boolean;
+  details?: unknown;
+};
+
+export class ApiError extends Error {
+  code: string;
+  retryable: boolean;
+  status: number;
+  details: unknown;
+
+  constructor(body: ApiErrorBody, status: number) {
+    super(body.error);
+    this.name = 'ApiError';
+    this.code = body.code || 'unknown';
+    this.retryable = Boolean(body.retryable);
+    this.status = status;
+    this.details = body.details || null;
+  }
+}
+
+export const parseApiError = async (response: Response): Promise<ApiError> => {
+  let body: ApiErrorBody;
+  try {
+    body = await response.json();
+  } catch {
+    body = { error: `Request failed with status ${response.status}.` };
+  }
+  return new ApiError(
+    {
+      error: body?.error || `Request failed with status ${response.status}.`,
+      code: body?.code,
+      retryable: body?.retryable,
+      details: body?.details,
+    },
+    response.status,
+  );
+};
+
 export const apiFetch = async (
   input: RequestInfo,
   init: RequestInit = {},
