@@ -26,8 +26,8 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
   const [imageBase64, setImageBase64] = useState('');
 
   // --- Hooks ---
-  const { analysis, isAnalyzing, analyze, resetAnalysis } = usePhotoAnalysis();
-  const { isGenerating, generate } = useRecipeGenerator();
+  const { analysis, isAnalyzing, canRetry: canRetryAnalysis, analyze, resetAnalysis } = usePhotoAnalysis();
+  const { isGenerating, canRetry: canRetryGenerate, generate } = useRecipeGenerator();
 
   // --- Brew path state ---
   const [brewPath, setBrewPath] = useState<BrewPath | null>(null);
@@ -333,7 +333,27 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
         ) : null}
 
         {infoMessage ? <Text style={s.infoText}>{infoMessage}</Text> : null}
-        {errorMessage ? <Text style={s.errorText}>{errorMessage}</Text> : null}
+        {errorMessage ? (
+          <View>
+            <Text style={s.errorText}>{errorMessage}</Text>
+            {canRetryAnalysis && !analysis ? (
+              <MD3Button
+                label="Skúsiť znova analýzu"
+                onPress={handleAnalyze}
+                disabled={isAnalyzing}
+                variant="outlined"
+              />
+            ) : null}
+            {canRetryGenerate && brewPath ? (
+              <MD3Button
+                label="Skúsiť znova generovanie"
+                onPress={handleGenerateRecipe}
+                disabled={isGenerating}
+                variant="outlined"
+              />
+            ) : null}
+          </View>
+        ) : null}
       </ScrollView>
       <BottomNavBar />
     </SafeAreaView>

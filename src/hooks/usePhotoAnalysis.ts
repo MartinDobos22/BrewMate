@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import { apiFetch, ApiError, parseApiError, DEFAULT_API_HOST } from '../utils/api';
 
 type PhotoAnalysis = {
   tasteProfile: string;
@@ -23,6 +23,7 @@ type PhotoAnalysis = {
 type UsePhotoAnalysisReturn = {
   analysis: PhotoAnalysis | null;
   isAnalyzing: boolean;
+  canRetry: boolean;
   analyze: (imageBase64: string) => Promise<void>;
   resetAnalysis: () => void;
 };
@@ -30,11 +31,11 @@ type UsePhotoAnalysisReturn = {
 export function usePhotoAnalysis(): UsePhotoAnalysisReturn {
   const [analysis, setAnalysis] = useState<PhotoAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [, setError] = useState('');
+  const [canRetry, setCanRetry] = useState(false);
 
   const resetAnalysis = useCallback(() => {
     setAnalysis(null);
-    setError('');
+    setCanRetry(false);
   }, []);
 
   const analyze = useCallback(async (imageBase64: string) => {
@@ -46,7 +47,7 @@ export function usePhotoAnalysis(): UsePhotoAnalysisReturn {
     }
 
     setIsAnalyzing(true);
-    setError('');
+    setCanRetry(false);
 
     try {
       const response = await apiFetch(
@@ -61,19 +62,26 @@ export function usePhotoAnalysis(): UsePhotoAnalysisReturn {
         },
         { feature: 'PhotoRecipe', action: 'analyze' },
       );
-      const payload = await response.json();
 
       if (!response.ok) {
-        throw new Error(payload?.error || 'Analýza fotky zlyhala.');
+        throw await parseApiError(response);
       }
 
+      const payload = await response.json();
       setAnalysis(payload.analysis);
+    } catch (error) {
+      if (error instanceof ApiError && error.retryable) {
+        setCanRetry(true);
+      }
+      throw error instanceof ApiError
+        ? error
+        : new Error((error as Error).message || 'Analýza fotky zlyhala.');
     } finally {
       setIsAnalyzing(false);
     }
   }, [isAnalyzing]);
 
-  return { analysis, isAnalyzing, analyze, resetAnalysis };
+  return { analysis, isAnalyzing, canRetry, analyze, resetAnalysis };
 }
 
 export type { PhotoAnalysis };

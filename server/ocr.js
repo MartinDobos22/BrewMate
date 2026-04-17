@@ -2,6 +2,7 @@ import express from 'express';
 
 import { db } from './db.js';
 import { requireSession } from './session.js';
+import { AIError, callOpenAI, parseAIJson, validateAISchema, aiErrorToResponse } from './aiFetch.js';
 import {
   DEFAULT_ESPRESSO_RATIO,
   DEFAULT_FILTER_RATIO,
@@ -865,44 +866,10 @@ const runOcr = async ({ imageBase64, languageHints }) => {
     rawTextLength: rawText.length,
   });
 
-  console.log('[OCR] OpenAI correction request started', {
-    rawTextLength: rawText.length,
-  });
-  const openAiRequestStart = Date.now();
-  const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${openAiApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(buildOpenAiPayload(rawText)),
-  });
-
-  const openAiData = await openAiResponse.json();
-  console.log('[OCR] OpenAI correction response received', {
-    status: openAiResponse.status,
-    durationMs: Date.now() - openAiRequestStart,
-  });
-  console.log('[OCR] OpenAI correction response content', {
-    content: openAiData?.choices?.[0]?.message?.content ?? null,
-  });
-
-  if (!openAiResponse.ok) {
-    const error = new Error('OpenAI API request failed.');
-    error.status = 502;
-    error.details = openAiData;
-    throw error;
-  }
-
-  const correctedText = openAiData?.choices?.[0]?.message?.content?.trim();
-  if (!correctedText) {
-    const error = new Error('OpenAI did not return corrected text.');
-    error.status = 502;
-    throw error;
-  }
-
-  console.log('[OCR] OpenAI corrected text ready', {
-    correctedTextLength: correctedText.length,
+  const { content: correctedText } = await callOpenAI({
+    apiKey: openAiApiKey,
+    payload: buildOpenAiPayload(rawText),
+    label: 'OCR-Correction',
   });
 
   return { rawText, correctedText };
@@ -924,12 +891,12 @@ router.post('/api/ocr-correct', async (req, res, next) => {
 
     return res.status(200).json({ rawText, correctedText });
   } catch (error) {
+    if (error instanceof AIError) {
+      const resp = aiErrorToResponse(error);
+      return res.status(resp.status).json(resp.body);
+    }
     if (error.status) {
-      console.error('[OCR] Request failed', error);
-      return res.status(error.status).json({
-        error: error.message,
-        details: error.details,
-      });
+      return res.status(error.status).json({ error: error.message, code: 'ocr_error', retryable: false });
     }
     console.error('[OCR] Unexpected error', error);
     return next(error);
@@ -951,64 +918,20 @@ router.post('/api/coffee-photo-analysis', async (req, res, next) => {
 
     const openAiApiKey = process.env.OPENAI_API_KEY;
     if (!openAiApiKey) {
-      console.error('[PhotoAnalysis] OpenAI API key missing');
-      return res.status(500).json({ error: 'OpenAI API key is not configured.' });
+      return res.status(500).json({ error: 'OpenAI API key is not configured.', code: 'config_error', retryable: false });
     }
 
-    console.log('[PhotoAnalysis] OpenAI request started', {
-      correctedTextLength: correctedText.length,
-    });
-    const openAiRequestStart = Date.now();
-    const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openAiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(buildPhotoCoffeeAnalysisPayload(correctedText)),
+    const { content: analysisContent } = await callOpenAI({
+      apiKey: openAiApiKey,
+      payload: buildPhotoCoffeeAnalysisPayload(correctedText),
+      label: 'PhotoAnalysis',
     });
 
-    const openAiData = await openAiResponse.json();
-    console.log('[PhotoAnalysis] OpenAI response received', {
-      status: openAiResponse.status,
-      durationMs: Date.now() - openAiRequestStart,
-    });
-    console.log('[PhotoAnalysis] OpenAI response content', {
-      content: openAiData?.choices?.[0]?.message?.content ?? null,
-    });
-
-    if (!openAiResponse.ok) {
-      console.error('[PhotoAnalysis] OpenAI request failed', {
-        status: openAiResponse.status,
-        details: openAiData,
-      });
-      return res.status(502).json({
-        error: 'OpenAI API request failed.',
-        details: openAiData,
-      });
-    }
-
-    const analysisContent = openAiData?.choices?.[0]?.message?.content?.trim();
-    if (!analysisContent) {
-      console.error('[PhotoAnalysis] OpenAI response missing content', {
-        openAiData,
-      });
-      return res.status(502).json({ error: 'OpenAI did not return photo analysis.' });
-    }
-
-    let analysis;
-    try {
-      analysis = JSON.parse(analysisContent);
-    } catch (parseError) {
-      console.error('[PhotoAnalysis] Failed to parse response JSON', {
-        analysisContent,
-        parseError,
-      });
-      return res.status(502).json({
-        error: 'Failed to parse photo analysis response.',
-        rawAnalysis: analysisContent,
-      });
-    }
+    const analysis = validateAISchema(
+      parseAIJson(analysisContent, 'PhotoAnalysis'),
+      ['tasteProfile', 'flavorNotes', 'recommendedPreparations', 'confidence', 'summary'],
+      'PhotoAnalysis',
+    );
 
     return res.status(200).json({
       rawText,
@@ -1016,6 +939,10 @@ router.post('/api/coffee-photo-analysis', async (req, res, next) => {
       analysis,
     });
   } catch (error) {
+    if (error instanceof AIError) {
+      const resp = aiErrorToResponse(error);
+      return res.status(resp.status).json(resp.body);
+    }
     if (error.status) {
       console.error('[PhotoAnalysis] Request failed', error);
       return res.status(error.status).json({
@@ -1138,58 +1065,17 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
       );
     }
 
-    const openAiRequestStart = Date.now();
-    const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openAiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(aiPayload),
+    const { content: recipeContent } = await callOpenAI({
+      apiKey: openAiApiKey,
+      payload: aiPayload,
+      label: 'PhotoRecipe',
     });
 
-    const openAiData = await openAiResponse.json();
-    console.log('[PhotoRecipe] OpenAI response received', {
-      brewPath,
-      status: openAiResponse.status,
-      durationMs: Date.now() - openAiRequestStart,
-    });
-    console.log('[PhotoRecipe] OpenAI response content', {
-      content: openAiData?.choices?.[0]?.message?.content ?? null,
-    });
-
-    if (!openAiResponse.ok) {
-      console.error('[PhotoRecipe] OpenAI request failed', {
-        status: openAiResponse.status,
-        details: openAiData,
-      });
-      return res.status(502).json({
-        error: 'OpenAI API request failed.',
-        details: openAiData,
-      });
-    }
-
-    const recipeContent = openAiData?.choices?.[0]?.message?.content?.trim();
-    if (!recipeContent) {
-      console.error('[PhotoRecipe] OpenAI response missing content', {
-        openAiData,
-      });
-      return res.status(502).json({ error: 'OpenAI did not return a recipe.' });
-    }
-
-    let recipe;
-    try {
-      recipe = JSON.parse(recipeContent);
-    } catch (parseError) {
-      console.error('[PhotoRecipe] Failed to parse response JSON', {
-        recipeContent,
-        parseError,
-      });
-      return res.status(502).json({
-        error: 'Failed to parse photo recipe response.',
-        rawRecipe: recipeContent,
-      });
-    }
+    const recipe = validateAISchema(
+      parseAIJson(recipeContent, 'PhotoRecipe'),
+      ['title', 'dose', 'steps', 'baristaTips'],
+      'PhotoRecipe',
+    );
 
     // Optionally load user's questionnaire + feedback history for personalized, calibrated prediction
     let userQuestionnaire = null;
@@ -1238,6 +1124,10 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
 
     return res.status(200).json({ recipe, likePrediction });
   } catch (error) {
+    if (error instanceof AIError) {
+      const resp = aiErrorToResponse(error);
+      return res.status(resp.status).json(resp.body);
+    }
     console.error('[PhotoRecipe] Unexpected error', error);
     return next(error);
   }
@@ -1266,63 +1156,20 @@ router.post('/api/coffee-profile', async (req, res, next) => {
       return res.status(500).json({ error: 'OpenAI API key is not configured.' });
     }
 
-    console.log('[CoffeeProfile] OpenAI request started', {
-      textLength: sourceText.length,
-    });
-    const openAiRequestStart = Date.now();
-    const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openAiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(buildCoffeeProfilePayload(sourceText)),
+    const { content: profileContent } = await callOpenAI({
+      apiKey: openAiApiKey,
+      payload: buildCoffeeProfilePayload(sourceText),
+      label: 'CoffeeProfile',
     });
 
-    const openAiData = await openAiResponse.json();
-    console.log('[CoffeeProfile] OpenAI response received', {
-      status: openAiResponse.status,
-      durationMs: Date.now() - openAiRequestStart,
-    });
-    console.log('[CoffeeProfile] OpenAI response content', {
-      content: openAiData?.choices?.[0]?.message?.content ?? null,
-    });
-
-    if (!openAiResponse.ok) {
-      console.error('[CoffeeProfile] OpenAI request failed', {
-        status: openAiResponse.status,
-        details: openAiData,
-      });
-      return res.status(502).json({
-        error: 'OpenAI API request failed.',
-        details: openAiData,
-      });
-    }
-
-    const profileContent = openAiData?.choices?.[0]?.message?.content?.trim();
-    if (!profileContent) {
-      console.error('[CoffeeProfile] OpenAI response missing profile content', {
-        openAiData,
-      });
-      return res.status(502).json({ error: 'OpenAI did not return a coffee profile.' });
-    }
-
-    let profile;
-    try {
-      profile = JSON.parse(profileContent);
-    } catch (parseError) {
-      console.error('[CoffeeProfile] Failed to parse profile JSON', {
-        profileContent,
-        parseError,
-      });
-      return res.status(502).json({
-        error: 'Failed to parse coffee profile response.',
-        rawProfile: profileContent,
-      });
-    }
+    const profile = parseAIJson(profileContent, 'CoffeeProfile');
 
     return res.status(200).json({ profile });
   } catch (error) {
+    if (error instanceof AIError) {
+      const resp = aiErrorToResponse(error);
+      return res.status(resp.status).json(resp.body);
+    }
     console.error('[CoffeeProfile] Unexpected error', error);
     return next(error);
   }
@@ -1346,63 +1193,20 @@ router.post('/api/coffee-questionnaire', async (req, res, next) => {
       .map((item, index) => `${index + 1}. ${item.question}: ${item.answer}`)
       .join('\n');
 
-    console.log('[CoffeeQuestionnaire] OpenAI request started', {
-      answersCount: answers.length,
-    });
-    const openAiRequestStart = Date.now();
-    const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openAiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(buildCoffeeQuestionnairePayload(formattedAnswers)),
+    const { content: profileContent } = await callOpenAI({
+      apiKey: openAiApiKey,
+      payload: buildCoffeeQuestionnairePayload(formattedAnswers),
+      label: 'CoffeeQuestionnaire',
     });
 
-    const openAiData = await openAiResponse.json();
-    console.log('[CoffeeQuestionnaire] OpenAI response received', {
-      status: openAiResponse.status,
-      durationMs: Date.now() - openAiRequestStart,
-    });
-    console.log('[CoffeeQuestionnaire] OpenAI response content', {
-      content: openAiData?.choices?.[0]?.message?.content ?? null,
-    });
-
-    if (!openAiResponse.ok) {
-      console.error('[CoffeeQuestionnaire] OpenAI request failed', {
-        status: openAiResponse.status,
-        details: openAiData,
-      });
-      return res.status(502).json({
-        error: 'OpenAI API request failed.',
-        details: openAiData,
-      });
-    }
-
-    const profileContent = openAiData?.choices?.[0]?.message?.content?.trim();
-    if (!profileContent) {
-      console.error('[CoffeeQuestionnaire] OpenAI response missing content', {
-        openAiData,
-      });
-      return res.status(502).json({ error: 'OpenAI did not return a questionnaire profile.' });
-    }
-
-    let profile;
-    try {
-      profile = JSON.parse(profileContent);
-    } catch (parseError) {
-      console.error('[CoffeeQuestionnaire] Failed to parse response JSON', {
-        profileContent,
-        parseError,
-      });
-      return res.status(502).json({
-        error: 'Failed to parse questionnaire response.',
-        rawProfile: profileContent,
-      });
-    }
+    const profile = parseAIJson(profileContent, 'CoffeeQuestionnaire');
 
     return res.status(200).json({ profile });
   } catch (error) {
+    if (error instanceof AIError) {
+      const resp = aiErrorToResponse(error);
+      return res.status(resp.status).json(resp.body);
+    }
     console.error('[CoffeeQuestionnaire] Unexpected error', error);
     return next(error);
   }
@@ -1424,63 +1228,20 @@ router.post('/api/coffee-match', async (req, res, next) => {
       return res.status(500).json({ error: 'OpenAI API key is not configured.' });
     }
 
-    console.log('[CoffeeMatch] OpenAI request started', {
-      questionnaireCount: Array.isArray(questionnaire) ? questionnaire.length : undefined,
-    });
-    const openAiRequestStart = Date.now();
-    const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openAiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(buildCoffeeMatchPayload(questionnaire, coffeeProfile)),
+    const { content: matchContent } = await callOpenAI({
+      apiKey: openAiApiKey,
+      payload: buildCoffeeMatchPayload(questionnaire, coffeeProfile),
+      label: 'CoffeeMatch',
     });
 
-    const openAiData = await openAiResponse.json();
-    console.log('[CoffeeMatch] OpenAI response received', {
-      status: openAiResponse.status,
-      durationMs: Date.now() - openAiRequestStart,
-    });
-    console.log('[CoffeeMatch] OpenAI response content', {
-      content: openAiData?.choices?.[0]?.message?.content ?? null,
-    });
-
-    if (!openAiResponse.ok) {
-      console.error('[CoffeeMatch] OpenAI request failed', {
-        status: openAiResponse.status,
-        details: openAiData,
-      });
-      return res.status(502).json({
-        error: 'OpenAI API request failed.',
-        details: openAiData,
-      });
-    }
-
-    const matchContent = openAiData?.choices?.[0]?.message?.content?.trim();
-    if (!matchContent) {
-      console.error('[CoffeeMatch] OpenAI response missing content', {
-        openAiData,
-      });
-      return res.status(502).json({ error: 'OpenAI did not return a match result.' });
-    }
-
-    let match;
-    try {
-      match = JSON.parse(matchContent);
-    } catch (parseError) {
-      console.error('[CoffeeMatch] Failed to parse response JSON', {
-        matchContent,
-        parseError,
-      });
-      return res.status(502).json({
-        error: 'Failed to parse match response.',
-        rawMatch: matchContent,
-      });
-    }
+    const match = parseAIJson(matchContent, 'CoffeeMatch');
 
     return res.status(200).json({ match });
   } catch (error) {
+    if (error instanceof AIError) {
+      const resp = aiErrorToResponse(error);
+      return res.status(resp.status).json(resp.body);
+    }
     console.error('[CoffeeMatch] Unexpected error', error);
     return next(error);
   }
