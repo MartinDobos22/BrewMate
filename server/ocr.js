@@ -397,84 +397,101 @@ const buildFilterRecipePayload = (
   brewPreferences = null,
   grinderProfile = null,
   customPreparationText = null,
-) => ({
-  model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-  temperature: 0.35,
-  response_format: {
-    type: 'json_schema',
-    json_schema: {
-      name: 'filter_coffee_recipe',
-      strict: true,
-      schema: {
-        type: 'object',
-        additionalProperties: false,
-        required: [
-          'title',
-          'method',
-          'strengthPreference',
-          'dose',
-          'water',
-          'grind',
-          'waterTemp',
-          'totalTime',
-          'steps',
-          'baristaTips',
-          'whyThisRecipe',
-        ],
-        properties: {
-          title: { type: 'string' },
-          method: { type: 'string' },
-          strengthPreference: { type: 'string' },
-          dose: { type: 'string' },
-          water: { type: 'string' },
-          grind: { type: 'string' },
-          waterTemp: { type: 'string' },
-          totalTime: { type: 'string' },
-          steps: {
-            type: 'array',
-            minItems: 4,
-            items: { type: 'string' },
+  userQuestionnaire = null,
+) => {
+  const userContextBlock = userQuestionnaire
+    ? `\n\nProfil používateľa (z dotazníka):\n`
+      + `- Chuťový vektor: ${JSON.stringify(userQuestionnaire.tasteVector || {})}\n`
+      + `- Tolerancie: ${JSON.stringify(userQuestionnaire.toleranceVector || {})}\n`
+      + `- Otvorenosť: ${userQuestionnaire.openness || 'neznáme'}\n`
+      + `- Zhrnutie preferencií: ${userQuestionnaire.profileSummary || 'nedostupné'}\n`
+      + `Prispôsob recept chuťovým preferenciám používateľa. Ak má nízku toleranciu na niektorú os `
+      + `(napr. "dislike" pri kyslosti), prispôsob teplotu vody, hrubosť mletia a postup tak, aby sa daná chuť potlačila. `
+      + `V poli whyThisRecipe zohľadni aj používateľský profil.`
+    : '';
+
+  return {
+    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    temperature: 0.35,
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'filter_coffee_recipe',
+        strict: true,
+        schema: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'title',
+            'method',
+            'strengthPreference',
+            'dose',
+            'water',
+            'grind',
+            'waterTemp',
+            'totalTime',
+            'steps',
+            'baristaTips',
+            'whyThisRecipe',
+          ],
+          properties: {
+            title: { type: 'string' },
+            method: { type: 'string' },
+            strengthPreference: { type: 'string' },
+            dose: { type: 'string' },
+            water: { type: 'string' },
+            grind: { type: 'string' },
+            waterTemp: { type: 'string' },
+            totalTime: { type: 'string' },
+            steps: {
+              type: 'array',
+              minItems: 4,
+              items: { type: 'string' },
+            },
+            baristaTips: {
+              type: 'array',
+              minItems: 2,
+              items: { type: 'string' },
+            },
+            whyThisRecipe: { type: 'string' },
           },
-          baristaTips: {
-            type: 'array',
-            minItems: 2,
-            items: { type: 'string' },
-          },
-          whyThisRecipe: { type: 'string' },
         },
       },
     },
-  },
-  messages: [
-    {
-      role: 'system',
-      content:
-        'Si profesionálny barista špecializovaný na filter kávu. Vytvor krok za krokom recept pre vybraný spôsob prípravy. '
-        + 'Recept má byť konkrétny (gramy, teplota, čas) a prispôsobený chuťovému profilu a sile kávy. '
-        + 'Nikdy negeneruj náhodné dávky vody/kávy: rešpektuj používateľský vstup a dopočítaj chýbajúce hodnoty konzistentne. '
-        + 'Ak používateľ zadal model mlynčeka, rozpoznaj ho (Comandante, 1Zpresso, Timemore, Baratza, Eureka, Niche, Wilfa, Hario, Fellow, Lagom atď.) '
-        + 'a odporúč konkrétne nastavenie mletia pre danú metódu prípravy. '
-        + 'Ak model nepoznáš, použi typ mlynčeka (ručný/elektrický) a škálu používateľa na relatívne odporúčanie (jemné/stredné/hrubé). '
-        + 'Ak používateľ nemá mlynček, odporúč hrubosť mletia slovne a navrhni kúpu predmletej kávy v správnej hrubosti. '
-        + 'Odpovedaj po slovensky a drž sa JSON schémy.',
-    },
-    {
-      role: 'user',
-      content: `Chuťový profil:\n${JSON.stringify(
-        analysis,
-        null,
-        2,
-      )}\n\nVybraný spôsob prípravy: ${selectedPreparation}\nVlastná príprava od používateľa: ${customPreparationText || 'nie'}\nPožadovaná sila: ${strengthPreference}\nProfil mlynčeka používateľa: ${JSON.stringify(
-        grinderProfile || {},
-      )}\nPreferencie používateľa pre výpočet dávky/vody/pomeru: ${JSON.stringify(
-        brewPreferences || {},
-      )}\n\nAk používateľ zadal len vodu alebo len gramáž, dopočítaj druhú hodnotu podľa pomeru.
+    messages: [
+      {
+        role: 'system',
+        content:
+          'Si profesionálny barista špecializovaný na filter kávu. Vytvor krok za krokom recept pre vybraný spôsob prípravy. '
+          + 'Recept má byť konkrétny (gramy, teplota, čas) a prispôsobený chuťovému profilu a sile kávy. '
+          + 'Nikdy negeneruj náhodné dávky vody/kávy: rešpektuj používateľský vstup a dopočítaj chýbajúce hodnoty konzistentne. '
+          + 'Ak používateľ zadal model mlynčeka, rozpoznaj ho (Comandante, 1Zpresso, Timemore, Baratza, Eureka, Niche, Wilfa, Hario, Fellow, Lagom atď.) '
+          + 'a odporúč konkrétne nastavenie mletia pre danú metódu prípravy. '
+          + 'Ak model nepoznáš, použi typ mlynčeka (ručný/elektrický) a škálu používateľa na relatívne odporúčanie (jemné/stredné/hrubé). '
+          + 'Ak používateľ nemá mlynček, odporúč hrubosť mletia slovne a navrhni kúpu predmletej kávy v správnej hrubosti. '
+          + (userQuestionnaire
+            ? 'Ak je dostupný profil používateľa, prispôsob recept jeho chuťovým preferenciám a toleranciám. '
+            : '')
+          + 'Odpovedaj po slovensky a drž sa JSON schémy.',
+      },
+      {
+        role: 'user',
+        content: `Chuťový profil:\n${JSON.stringify(
+          analysis,
+          null,
+          2,
+        )}\n\nVybraný spôsob prípravy: ${selectedPreparation}\nVlastná príprava od používateľa: ${customPreparationText || 'nie'}\nPožadovaná sila: ${strengthPreference}\nProfil mlynčeka používateľa: ${JSON.stringify(
+          grinderProfile || {},
+        )}\nPreferencie používateľa pre výpočet dávky/vody/pomeru: ${JSON.stringify(
+          brewPreferences || {},
+        )}${userContextBlock}\n\nAk používateľ zadal len vodu alebo len gramáž, dopočítaj druhú hodnotu podľa pomeru.
 Ak používateľ nezadal pomer, použi predvolený pomer 1:15.5.
 Ak používateľ zadal pomer, použi ho na prepočet chýbajúcej dávky alebo vody.
 Pole whyThisRecipe napíš v 1-2 vetách veľmi zrozumiteľne.\nVytvor detailný recept.`,
-    },
-  ],
-});
+      },
+    ],
+  };
+};
 
 const buildEspressoRecipePayload = (
   analysis,
@@ -482,92 +499,110 @@ const buildEspressoRecipePayload = (
   machineType,
   brewPreferences = null,
   grinderProfile = null,
-) => ({
-  model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-  temperature: 0.35,
-  response_format: {
-    type: 'json_schema',
-    json_schema: {
-      name: 'espresso_coffee_recipe',
-      strict: true,
-      schema: {
-        type: 'object',
-        additionalProperties: false,
-        required: [
-          'title',
-          'drinkType',
-          'machineType',
-          'dose',
-          'yield',
-          'ratio',
-          'grind',
-          'waterTemp',
-          'extractionTime',
-          'pressure',
-          'steps',
-          'baristaTips',
-          'milkInstructions',
-          'whyThisRecipe',
-        ],
-        properties: {
-          title: { type: 'string' },
-          drinkType: { type: 'string' },
-          machineType: { type: 'string' },
-          dose: { type: 'string' },
-          yield: { type: 'string' },
-          ratio: { type: 'string' },
-          grind: { type: 'string' },
-          waterTemp: { type: 'string' },
-          extractionTime: { type: 'string' },
-          pressure: { type: 'string' },
-          steps: {
-            type: 'array',
-            minItems: 3,
-            items: { type: 'string' },
+  userQuestionnaire = null,
+) => {
+  const userContextBlock = userQuestionnaire
+    ? `\n\nProfil používateľa (z dotazníka):\n`
+      + `- Chuťový vektor: ${JSON.stringify(userQuestionnaire.tasteVector || {})}\n`
+      + `- Tolerancie: ${JSON.stringify(userQuestionnaire.toleranceVector || {})}\n`
+      + `- Otvorenosť: ${userQuestionnaire.openness || 'neznáme'}\n`
+      + `- Zhrnutie preferencií: ${userQuestionnaire.profileSummary || 'nedostupné'}\n`
+      + `- Preferencia mlieka: ${userQuestionnaire.milkPreference || 'neznáme'}\n`
+      + `Prispôsob recept chuťovým preferenciám používateľa. Ak má nízku toleranciu na niektorú os `
+      + `(napr. "dislike" pri horkosti), prispôsob pomer, teplotu a čas extrakcie. `
+      + `V poli whyThisRecipe zohľadni aj používateľský profil.`
+    : '';
+
+  return {
+    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    temperature: 0.35,
+    response_format: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'espresso_coffee_recipe',
+        strict: true,
+        schema: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'title',
+            'drinkType',
+            'machineType',
+            'dose',
+            'yield',
+            'ratio',
+            'grind',
+            'waterTemp',
+            'extractionTime',
+            'pressure',
+            'steps',
+            'baristaTips',
+            'milkInstructions',
+            'whyThisRecipe',
+          ],
+          properties: {
+            title: { type: 'string' },
+            drinkType: { type: 'string' },
+            machineType: { type: 'string' },
+            dose: { type: 'string' },
+            yield: { type: 'string' },
+            ratio: { type: 'string' },
+            grind: { type: 'string' },
+            waterTemp: { type: 'string' },
+            extractionTime: { type: 'string' },
+            pressure: { type: 'string' },
+            steps: {
+              type: 'array',
+              minItems: 3,
+              items: { type: 'string' },
+            },
+            baristaTips: {
+              type: 'array',
+              minItems: 2,
+              items: { type: 'string' },
+            },
+            milkInstructions: { type: 'string' },
+            whyThisRecipe: { type: 'string' },
           },
-          baristaTips: {
-            type: 'array',
-            minItems: 2,
-            items: { type: 'string' },
-          },
-          milkInstructions: { type: 'string' },
-          whyThisRecipe: { type: 'string' },
         },
       },
     },
-  },
-  messages: [
-    {
-      role: 'system',
-      content:
-        'Si profesionálny barista špecializovaný na espresso. Vytvor detailný recept pre espresso nápoj. '
-        + 'Recept má byť konkrétny (gramy, teplota, čas extrakcie, tlak) a prispôsobený chuťovému profilu kávy. '
-        + 'Pre typ nápoja prispôsob pomer: espresso 1:2, ristretto 1:1.5, lungo 1:3, doppio 1:2 s dvojitou dávkou. '
-        + 'Pre mliečne nápoje (latte, cappuccino, flat white, cortado, macchiato) zahrň detailné inštrukcie '
-        + 'k príprave mlieka v poli milkInstructions — teplota, technika napenenia, pomer mlieka k espressu. '
-        + 'Ak nejde o mliečny nápoj, vráť v milkInstructions prázdny reťazec. '
-        + 'Ak používateľ zadal model mlynčeka, rozpoznaj ho a odporúč konkrétne nastavenie mletia pre espresso. '
-        + 'Ak model nepoznáš, použi typ mlynčeka a škálu na relatívne odporúčanie (veľmi jemné mletie, takmer prášok). '
-        + 'Pre pákový stroj odporúč 9 bar tlak a prispôsob teplotu (90-94°C). '
-        + 'Pre automatický kávovar nastav pressure na "automatický" a zameraj sa na mletie a dávku. '
-        + 'Odpovedaj po slovensky a drž sa JSON schémy.',
-    },
-    {
-      role: 'user',
-      content: `Chuťový profil kávy:\n${JSON.stringify(
-        analysis,
-        null,
-        2,
-      )}\n\nTyp nápoja: ${drinkType}\nTyp stroja: ${machineType}\nProfil mlynčeka: ${JSON.stringify(
-        grinderProfile || {},
-      )}\nPreferencie dávkovania: ${JSON.stringify(
-        brewPreferences || {},
-      )}\n\nAk používateľ zadal len dávku alebo len výťažok, dopočítaj druhú hodnotu podľa pomeru.
+    messages: [
+      {
+        role: 'system',
+        content:
+          'Si profesionálny barista špecializovaný na espresso. Vytvor detailný recept pre espresso nápoj. '
+          + 'Recept má byť konkrétny (gramy, teplota, čas extrakcie, tlak) a prispôsobený chuťovému profilu kávy. '
+          + 'Pre typ nápoja prispôsob pomer: espresso 1:2, ristretto 1:1.5, lungo 1:3, doppio 1:2 s dvojitou dávkou. '
+          + 'Pre mliečne nápoje (latte, cappuccino, flat white, cortado, macchiato) zahrň detailné inštrukcie '
+          + 'k príprave mlieka v poli milkInstructions — teplota, technika napenenia, pomer mlieka k espressu. '
+          + 'Ak nejde o mliečny nápoj, vráť v milkInstructions prázdny reťazec. '
+          + 'Ak používateľ zadal model mlynčeka, rozpoznaj ho a odporúč konkrétne nastavenie mletia pre espresso. '
+          + 'Ak model nepoznáš, použi typ mlynčeka a škálu na relatívne odporúčanie (veľmi jemné mletie, takmer prášok). '
+          + 'Pre pákový stroj odporúč 9 bar tlak a prispôsob teplotu (90-94°C). '
+          + 'Pre automatický kávovar nastav pressure na "automatický" a zameraj sa na mletie a dávku. '
+          + (userQuestionnaire
+            ? 'Ak je dostupný profil používateľa, prispôsob recept jeho chuťovým preferenciám a toleranciám. '
+            : '')
+          + 'Odpovedaj po slovensky a drž sa JSON schémy.',
+      },
+      {
+        role: 'user',
+        content: `Chuťový profil kávy:\n${JSON.stringify(
+          analysis,
+          null,
+          2,
+        )}\n\nTyp nápoja: ${drinkType}\nTyp stroja: ${machineType}\nProfil mlynčeka: ${JSON.stringify(
+          grinderProfile || {},
+        )}\nPreferencie dávkovania: ${JSON.stringify(
+          brewPreferences || {},
+        )}${userContextBlock}\n\nAk používateľ zadal len dávku alebo len výťažok, dopočítaj druhú hodnotu podľa pomeru.
 Ak používateľ nezadal pomer, použi predvolený pomer pre daný typ nápoja.
 Pole whyThisRecipe napíš v 1-2 vetách veľmi zrozumiteľne.\nVytvor detailný espresso recept.`,
-    },
-  ],
-});
+      },
+    ],
+  };
+};
 
 
 const TASTE_AXES = ['acidity', 'sweetness', 'bitterness', 'body', 'fruity', 'roast'];
@@ -986,6 +1021,42 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
       return res.status(500).json({ error: 'OpenAI API key is not configured.' });
     }
 
+    // Load user's questionnaire + feedback history early so we can personalize the recipe
+    let userQuestionnaire = null;
+    let calibration = { offset: 0, sampleSize: 0 };
+    try {
+      const session = await requireSession(req);
+      const qResult = await db.query(
+        `SELECT questionnaire_profile
+         FROM user_questionnaires
+         WHERE user_id = $1
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [session.uid],
+      );
+      if (qResult.rows.length > 0) {
+        const raw = qResult.rows[0].questionnaire_profile;
+        userQuestionnaire = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      }
+
+      try {
+        const feedbackResult = await db.query(
+          `SELECT predicted_score, actual_rating
+           FROM user_recipe_feedback
+           WHERE user_id = $1
+             AND algorithm_version = $2
+           ORDER BY created_at DESC
+           LIMIT 20`,
+          [session.uid, MATCH_ALGORITHM_VERSION],
+        );
+        calibration = computeCalibrationOffset(feedbackResult.rows);
+      } catch (feedbackError) {
+        console.warn('[PhotoRecipe] Failed to load feedback history for calibration', feedbackError?.message);
+      }
+    } catch {
+      // No session or DB error — proceed without questionnaire / calibration data
+    }
+
     let aiPayload;
     let effectivePreparation = '';
 
@@ -1023,6 +1094,7 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
         machineType,
         sanitizedBrewPreferences,
         grinderProfile || null,
+        userQuestionnaire,
       );
     } else {
       // --- FILTER PATH ---
@@ -1062,6 +1134,7 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
         sanitizedBrewPreferences,
         grinderProfile || null,
         customPreparationText || null,
+        userQuestionnaire,
       );
     }
 
@@ -1077,42 +1150,6 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
       'PhotoRecipe',
     );
 
-    // Optionally load user's questionnaire + feedback history for personalized, calibrated prediction
-    let userQuestionnaire = null;
-    let calibration = { offset: 0, sampleSize: 0 };
-    try {
-      const session = await requireSession(req);
-      const qResult = await db.query(
-        `SELECT questionnaire_profile
-         FROM user_questionnaires
-         WHERE user_id = $1
-         ORDER BY created_at DESC
-         LIMIT 1`,
-        [session.uid],
-      );
-      if (qResult.rows.length > 0) {
-        const raw = qResult.rows[0].questionnaire_profile;
-        userQuestionnaire = typeof raw === 'string' ? JSON.parse(raw) : raw;
-      }
-
-      try {
-        const feedbackResult = await db.query(
-          `SELECT predicted_score, actual_rating
-           FROM user_recipe_feedback
-           WHERE user_id = $1
-             AND algorithm_version = $2
-           ORDER BY created_at DESC
-           LIMIT 20`,
-          [session.uid, MATCH_ALGORITHM_VERSION],
-        );
-        calibration = computeCalibrationOffset(feedbackResult.rows);
-      } catch (feedbackError) {
-        console.warn('[PhotoRecipe] Failed to load feedback history for calibration', feedbackError?.message);
-      }
-    } catch {
-      // No session or DB error — proceed without questionnaire / calibration data
-    }
-
     const likePrediction = computeMatchPrediction({
       analysis,
       selectedPreparation: effectivePreparation,
@@ -1122,7 +1159,7 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
       calibration,
     });
 
-    return res.status(200).json({ recipe, likePrediction });
+    return res.status(200).json({ recipe, likePrediction, personalizedForUser: Boolean(userQuestionnaire) });
   } catch (error) {
     if (error instanceof AIError) {
       const resp = aiErrorToResponse(error);

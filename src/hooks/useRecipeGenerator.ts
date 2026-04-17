@@ -178,6 +178,7 @@ export function useRecipeGenerator(): UseRecipeGeneratorReturn {
               }),
           recipe: payload.recipe,
           brewPreferences: resolvedBrewPreferences,
+          personalizedForUser: Boolean(payload.personalizedForUser),
           likePrediction: payload.likePrediction || {
             score: 50,
             verdict: 'Predikcia zatiaľ nie je dostupná.',

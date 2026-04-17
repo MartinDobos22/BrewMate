@@ -28,6 +28,7 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
     machineType,
     recipe,
     brewPreferences,
+    personalizedForUser,
     likePrediction,
   } = route.params;
 
@@ -257,6 +258,21 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           fontStyle: 'italic',
           marginTop: spacing.xs,
         },
+        personalizedBadge: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.xs,
+          backgroundColor: colors.primaryContainer,
+          paddingHorizontal: spacing.sm,
+          paddingVertical: spacing.xs,
+          borderRadius: shape.full,
+          alignSelf: 'flex-start',
+        },
+        personalizedText: {
+          ...typescale.labelSmall,
+          color: colors.onPrimaryContainer,
+          fontWeight: '600',
+        },
         breakdownToggle: {
           marginTop: spacing.sm,
           alignSelf: 'flex-start',
@@ -329,6 +345,12 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           <Text style={s.overline}>BrewMate Recipe AI</Text>
         </View>
         <Text style={s.title}>{recipe.title}</Text>
+        {personalizedForUser ? (
+          <View style={s.personalizedBadge}>
+            <SparklesIcon size={14} color={colors.primary} />
+            <Text style={s.personalizedText}>Prispôsobené tvojmu chuťovému profilu</Text>
+          </View>
+        ) : null}
 
         {/* AI prediction card */}
         <View style={s.card}>

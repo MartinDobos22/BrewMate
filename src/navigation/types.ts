@@ -68,6 +68,7 @@ export type RootStackParamList = {
         targetRatio: boolean;
       };
     };
+    personalizedForUser?: boolean;
     likePrediction: {
       score: number;
       verdict: string;
