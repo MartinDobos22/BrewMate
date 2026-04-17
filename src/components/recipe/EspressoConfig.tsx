@@ -4,11 +4,11 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { CoffeeCupIcon, FlameIcon } from '../icons';
 import { MD3Button } from '../md3';
+import { DEFAULT_ESPRESSO_RATIO, normalizeEspressoBrew } from '../../utils/brewCalc';
 
 const PURE_ESPRESSO_DRINKS = ['Espresso', 'Ristretto', 'Lungo', 'Doppio'];
 const MILK_DRINKS = ['Latte', 'Cappuccino', 'Flat White', 'Cortado', 'Macchiato'];
 const MACHINE_TYPES = ['Pákový stroj', 'Automatický kávovar'];
-const DEFAULT_ESPRESSO_RATIO = 2;
 
 type Props = {
   drinkType: string | null;
@@ -129,13 +129,17 @@ function EspressoConfig({
   );
 
   const applyRecommendedRatio = () => {
+    const normalized = normalizeEspressoBrew({
+      dose: targetDoseG,
+      yieldG: targetYieldG,
+      ratio: DEFAULT_ESPRESSO_RATIO,
+    });
     onRatioChange(String(DEFAULT_ESPRESSO_RATIO));
-    const parsedDose = parseFloat(targetDoseG);
-    const parsedYield = parseFloat(targetYieldG);
-    if (parsedDose && !parsedYield) {
-      onYieldChange(String(Math.round(parsedDose * DEFAULT_ESPRESSO_RATIO * 10) / 10));
-    } else if (parsedYield && !parsedDose) {
-      onDoseChange(String(Math.round((parsedYield / DEFAULT_ESPRESSO_RATIO) * 10) / 10));
+    if (normalized.targetDoseG != null) {
+      onDoseChange(String(normalized.targetDoseG));
+    }
+    if (normalized.targetYieldG != null) {
+      onYieldChange(String(normalized.targetYieldG));
     }
   };
 
@@ -198,7 +202,7 @@ function EspressoConfig({
           Zadaj dávku kávy alebo požadovaný výťažok. Zvyšok dopočítame.
         </Text>
         <MD3Button
-          label="Použiť pomer 1:2 (štandard)"
+          label={`Použiť pomer 1:${DEFAULT_ESPRESSO_RATIO} (štandard)`}
           variant="outlined"
           onPress={applyRecommendedRatio}
           style={{ marginTop: spacing.md }}
@@ -238,7 +242,7 @@ function EspressoConfig({
         </View>
         <View style={s.previewCard}>
           <Text style={s.bodyText}>
-            {targetDoseG || '—'}g kávy → {targetYieldG || '—'}g výťažok → 1:{targetRatio || '2'}
+            {targetDoseG || '—'}g kávy → {targetYieldG || '—'}g výťažok → 1:{targetRatio || String(DEFAULT_ESPRESSO_RATIO)}
           </Text>
         </View>
       </View>
