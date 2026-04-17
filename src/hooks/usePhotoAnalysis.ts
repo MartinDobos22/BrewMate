@@ -24,6 +24,7 @@ type UsePhotoAnalysisReturn = {
   analysis: PhotoAnalysis | null;
   isAnalyzing: boolean;
   canRetry: boolean;
+  cachedResult: boolean;
   analyze: (imageBase64: string) => Promise<void>;
   resetAnalysis: () => void;
 };
@@ -32,10 +33,12 @@ export function usePhotoAnalysis(): UsePhotoAnalysisReturn {
   const [analysis, setAnalysis] = useState<PhotoAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [canRetry, setCanRetry] = useState(false);
+  const [cachedResult, setCachedResult] = useState(false);
 
   const resetAnalysis = useCallback(() => {
     setAnalysis(null);
     setCanRetry(false);
+    setCachedResult(false);
   }, []);
 
   const analyze = useCallback(async (imageBase64: string) => {
@@ -48,6 +51,7 @@ export function usePhotoAnalysis(): UsePhotoAnalysisReturn {
 
     setIsAnalyzing(true);
     setCanRetry(false);
+    setCachedResult(false);
 
     try {
       const response = await apiFetch(
@@ -69,6 +73,7 @@ export function usePhotoAnalysis(): UsePhotoAnalysisReturn {
 
       const payload = await response.json();
       setAnalysis(payload.analysis);
+      setCachedResult(Boolean(payload.cached));
     } catch (error) {
       if (error instanceof ApiError && error.retryable) {
         setCanRetry(true);
@@ -81,7 +86,7 @@ export function usePhotoAnalysis(): UsePhotoAnalysisReturn {
     }
   }, [isAnalyzing]);
 
-  return { analysis, isAnalyzing, canRetry, analyze, resetAnalysis };
+  return { analysis, isAnalyzing, canRetry, cachedResult, analyze, resetAnalysis };
 }
 
 export type { PhotoAnalysis };

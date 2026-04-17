@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 
 import { corsOptions } from './config.js';
+import { globalRateLimit } from './rateLimit.js';
 import authRouter from './auth.js';
 import inventoryRouter from './inventory.js';
 import ocrRouter from './ocr.js';
@@ -10,6 +11,7 @@ const app = express();
 app.use(express.json({ limit: '20mb' }));
 
 app.use(cors(corsOptions));
+app.use(globalRateLimit);
 
 const IMAGE_PAYLOAD_KEYS = /image|base64/i;
 const SENSITIVE_KEYS = /password|token|secret/i;

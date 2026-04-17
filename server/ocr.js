@@ -3,6 +3,8 @@ import express from 'express';
 import { db } from './db.js';
 import { requireSession } from './session.js';
 import { AIError, callOpenAI, parseAIJson, validateAISchema, aiErrorToResponse } from './aiFetch.js';
+import { aiRateLimit } from './rateLimit.js';
+import * as aiCache from './aiCache.js';
 import {
   DEFAULT_ESPRESSO_RATIO,
   DEFAULT_FILTER_RATIO,
@@ -938,13 +940,20 @@ router.post('/api/ocr-correct', async (req, res, next) => {
   }
 });
 
-router.post('/api/coffee-photo-analysis', async (req, res, next) => {
+router.post('/api/coffee-photo-analysis', aiRateLimit, async (req, res, next) => {
   try {
     const { imageBase64, languageHints } = req.body || {};
     console.log('[PhotoAnalysis] request received', {
       imageBase64Length: imageBase64?.length ?? 0,
       languageHints,
     });
+
+    const cacheKey = aiCache.hashKey(['photo-analysis', imageBase64]);
+    const cached = aiCache.get(cacheKey);
+    if (cached) {
+      console.log('[PhotoAnalysis] Cache hit', { cacheKey: cacheKey.slice(0, 12) });
+      return res.status(200).json({ ...cached, cached: true });
+    }
 
     const { rawText, correctedText } = await runOcr({
       imageBase64,
@@ -968,11 +977,10 @@ router.post('/api/coffee-photo-analysis', async (req, res, next) => {
       'PhotoAnalysis',
     );
 
-    return res.status(200).json({
-      rawText,
-      correctedText,
-      analysis,
-    });
+    const responseBody = { rawText, correctedText, analysis };
+    aiCache.set(cacheKey, responseBody);
+
+    return res.status(200).json(responseBody);
   } catch (error) {
     if (error instanceof AIError) {
       const resp = aiErrorToResponse(error);
@@ -990,7 +998,7 @@ router.post('/api/coffee-photo-analysis', async (req, res, next) => {
   }
 });
 
-router.post('/api/coffee-photo-recipe', async (req, res, next) => {
+router.post('/api/coffee-photo-recipe', aiRateLimit, async (req, res, next) => {
   try {
     const {
       analysis,
@@ -1170,7 +1178,7 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
   }
 });
 
-router.post('/api/coffee-profile', async (req, res, next) => {
+router.post('/api/coffee-profile', aiRateLimit, async (req, res, next) => {
   try {
     const { text, rawText } = req.body || {};
     const sourceText = typeof text === 'string' && text.trim()
@@ -1187,6 +1195,13 @@ router.post('/api/coffee-profile', async (req, res, next) => {
       return res.status(400).json({ error: 'text is required.' });
     }
 
+    const cacheKey = aiCache.hashKey(['coffee-profile', sourceText]);
+    const cached = aiCache.get(cacheKey);
+    if (cached) {
+      console.log('[CoffeeProfile] Cache hit', { cacheKey: cacheKey.slice(0, 12) });
+      return res.status(200).json({ ...cached, cached: true });
+    }
+
     const openAiApiKey = process.env.OPENAI_API_KEY;
     if (!openAiApiKey) {
       console.error('[CoffeeProfile] OpenAI API key missing');
@@ -1201,7 +1216,10 @@ router.post('/api/coffee-profile', async (req, res, next) => {
 
     const profile = parseAIJson(profileContent, 'CoffeeProfile');
 
-    return res.status(200).json({ profile });
+    const responseBody = { profile };
+    aiCache.set(cacheKey, responseBody);
+
+    return res.status(200).json(responseBody);
   } catch (error) {
     if (error instanceof AIError) {
       const resp = aiErrorToResponse(error);
@@ -1212,7 +1230,7 @@ router.post('/api/coffee-profile', async (req, res, next) => {
   }
 });
 
-router.post('/api/coffee-questionnaire', async (req, res, next) => {
+router.post('/api/coffee-questionnaire', aiRateLimit, async (req, res, next) => {
   try {
     const { answers } = req.body || {};
 
@@ -1249,7 +1267,7 @@ router.post('/api/coffee-questionnaire', async (req, res, next) => {
   }
 });
 
-router.post('/api/coffee-match', async (req, res, next) => {
+router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
   try {
     const { questionnaire, coffeeProfile } = req.body || {};
 
