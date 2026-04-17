@@ -56,6 +56,18 @@ export type RootStackParamList = {
       pressure?: string;
       milkInstructions?: string;
     };
+    brewPreferences?: {
+      targetDoseG: number | null;
+      targetWaterMl?: number | null;
+      targetYieldG?: number | null;
+      targetRatio: number | null;
+      providedByUser: {
+        targetDoseG: boolean;
+        targetWaterMl?: boolean;
+        targetYieldG?: boolean;
+        targetRatio: boolean;
+      };
+    };
     likePrediction: {
       score: number;
       verdict: string;

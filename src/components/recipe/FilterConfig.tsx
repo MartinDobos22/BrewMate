@@ -4,9 +4,9 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { CoffeeBeanIcon, CoffeeCupIcon, FlameIcon } from '../icons';
 import { MD3Button } from '../md3';
+import { DEFAULT_FILTER_RATIO, normalizeFilterBrew } from '../../utils/brewCalc';
 
 const CUSTOM_PREPARATION_VALUE = '__custom_preparation__';
-const DEFAULT_BREW_RATIO = 15.5;
 
 const STRENGTH_OPTIONS = ['jemnejšie', 'vyvážene', 'výraznejšie'];
 
@@ -165,13 +165,17 @@ function FilterConfig({
   );
 
   const applyRecommendedRatio = () => {
-    onRatioChange(String(DEFAULT_BREW_RATIO));
-    const parsedDose = parseFloat(targetDoseG);
-    const parsedWater = parseFloat(targetWaterMl);
-    if (parsedDose && !parsedWater) {
-      onWaterChange(String(Math.round(parsedDose * DEFAULT_BREW_RATIO * 10) / 10));
-    } else if (parsedWater && !parsedDose) {
-      onDoseChange(String(Math.round((parsedWater / DEFAULT_BREW_RATIO) * 10) / 10));
+    const normalized = normalizeFilterBrew({
+      dose: targetDoseG,
+      water: targetWaterMl,
+      ratio: DEFAULT_FILTER_RATIO,
+    });
+    onRatioChange(String(DEFAULT_FILTER_RATIO));
+    if (normalized.targetDoseG != null) {
+      onDoseChange(String(normalized.targetDoseG));
+    }
+    if (normalized.targetWaterMl != null) {
+      onWaterChange(String(normalized.targetWaterMl));
     }
   };
 
@@ -264,7 +268,7 @@ function FilterConfig({
           Zadaj aspoň gramáž kávy alebo množstvo vody. Druhú hodnotu dopočítame automaticky.
         </Text>
         <MD3Button
-          label="Použiť odporúčaný pomer 1:15,5"
+          label={`Použiť odporúčaný pomer 1:${String(DEFAULT_FILTER_RATIO).replace('.', ',')}`}
           variant="outlined"
           onPress={applyRecommendedRatio}
           style={{ marginTop: spacing.md }}
@@ -304,7 +308,7 @@ function FilterConfig({
         </View>
         <View style={s.previewCard}>
           <Text style={s.bodyText}>
-            {targetDoseG || '—'} g kávy • {targetWaterMl || '—'} g vody • 1:{targetRatio || '15.5'}
+            {targetDoseG || '—'} g kávy • {targetWaterMl || '—'} g vody • 1:{targetRatio || String(DEFAULT_FILTER_RATIO)}
           </Text>
           <Text style={s.helperText}>
             Keď zadáš jednu hodnotu + pomer, ostatné dopočítame automaticky.

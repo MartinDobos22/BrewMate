@@ -41,6 +41,7 @@ create table if not exists public.user_saved_coffee_recipes (
   like_score integer not null check (like_score between 0 and 100),
   approved boolean not null default true,
   prediction_metadata jsonb,
+  brew_preferences jsonb,
   created_at timestamptz not null default now()
 );
 

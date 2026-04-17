@@ -2,11 +2,18 @@ import express from 'express';
 
 import { db } from './db.js';
 import { requireSession } from './session.js';
+import {
+  DEFAULT_ESPRESSO_RATIO,
+  DEFAULT_FILTER_RATIO,
+  hasAnyEspressoInput,
+  hasAnyFilterInput,
+  normalizeEspressoBrew,
+  normalizeFilterBrew,
+} from './brewCalc.js';
 
 const router = express.Router();
 
 const stripDataUrlPrefix = (value) => value.replace(/^data:.*;base64,/, '');
-const DEFAULT_BREW_RATIO = 15.5;
 const toNumberOrNull = (value) => {
   const numeric = Number(value);
   if (!Number.isFinite(numeric) || numeric <= 0) {
@@ -14,8 +21,6 @@ const toNumberOrNull = (value) => {
   }
   return numeric;
 };
-
-const DEFAULT_ESPRESSO_RATIO = 2;
 
 const extractVisionText = (visionResponse) => {
   const response = visionResponse?.responses?.[0];
@@ -1066,32 +1071,15 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
         return res.status(400).json({ error: 'machineType is required for espresso path.' });
       }
 
-      const sanitizedBrewPreferences = {
-        targetDoseG: toNumberOrNull(brewPreferences?.targetDoseG),
-        targetYieldG: toNumberOrNull(brewPreferences?.targetYieldG),
-        targetRatio: toNumberOrNull(brewPreferences?.targetRatio),
-      };
-
-      if (!sanitizedBrewPreferences.targetDoseG && !sanitizedBrewPreferences.targetYieldG) {
+      if (!hasAnyEspressoInput({ dose: brewPreferences?.targetDoseG, yieldG: brewPreferences?.targetYieldG })) {
         return res.status(400).json({ error: 'At least one of targetDoseG or targetYieldG is required.' });
       }
 
-      const ratioForCalculation = sanitizedBrewPreferences.targetRatio || DEFAULT_ESPRESSO_RATIO;
-      if (!sanitizedBrewPreferences.targetDoseG && sanitizedBrewPreferences.targetYieldG) {
-        sanitizedBrewPreferences.targetDoseG = toNumberOrNull(
-          sanitizedBrewPreferences.targetYieldG / ratioForCalculation,
-        );
-      }
-      if (!sanitizedBrewPreferences.targetYieldG && sanitizedBrewPreferences.targetDoseG) {
-        sanitizedBrewPreferences.targetYieldG = toNumberOrNull(
-          sanitizedBrewPreferences.targetDoseG * ratioForCalculation,
-        );
-      }
-      if (!sanitizedBrewPreferences.targetRatio && sanitizedBrewPreferences.targetDoseG && sanitizedBrewPreferences.targetYieldG) {
-        sanitizedBrewPreferences.targetRatio = toNumberOrNull(
-          sanitizedBrewPreferences.targetYieldG / sanitizedBrewPreferences.targetDoseG,
-        );
-      }
+      const sanitizedBrewPreferences = normalizeEspressoBrew({
+        dose: brewPreferences?.targetDoseG,
+        yieldG: brewPreferences?.targetYieldG,
+        ratio: brewPreferences?.targetRatio,
+      });
 
       effectivePreparation = drinkType;
 
@@ -1123,37 +1111,15 @@ router.post('/api/coffee-photo-recipe', async (req, res, next) => {
         });
       }
 
-      const sanitizedBrewPreferences = {
-        targetDoseG: toNumberOrNull(brewPreferences?.targetDoseG),
-        targetWaterMl: toNumberOrNull(brewPreferences?.targetWaterMl),
-        targetRatio: toNumberOrNull(brewPreferences?.targetRatio),
-        providedByUser: {
-          targetDoseG: Boolean(brewPreferences?.providedByUser?.targetDoseG),
-          targetWaterMl: Boolean(brewPreferences?.providedByUser?.targetWaterMl),
-          targetRatio: Boolean(brewPreferences?.providedByUser?.targetRatio),
-        },
-      };
-
-      if (!sanitizedBrewPreferences.targetDoseG && !sanitizedBrewPreferences.targetWaterMl) {
+      if (!hasAnyFilterInput({ dose: brewPreferences?.targetDoseG, water: brewPreferences?.targetWaterMl })) {
         return res.status(400).json({ error: 'At least one of targetDoseG or targetWaterMl is required.' });
       }
 
-      const ratioForCalculation = sanitizedBrewPreferences.targetRatio || DEFAULT_BREW_RATIO;
-      if (!sanitizedBrewPreferences.targetDoseG && sanitizedBrewPreferences.targetWaterMl) {
-        sanitizedBrewPreferences.targetDoseG = toNumberOrNull(
-          sanitizedBrewPreferences.targetWaterMl / ratioForCalculation,
-        );
-      }
-      if (!sanitizedBrewPreferences.targetWaterMl && sanitizedBrewPreferences.targetDoseG) {
-        sanitizedBrewPreferences.targetWaterMl = toNumberOrNull(
-          sanitizedBrewPreferences.targetDoseG * ratioForCalculation,
-        );
-      }
-      if (!sanitizedBrewPreferences.targetRatio && sanitizedBrewPreferences.targetDoseG && sanitizedBrewPreferences.targetWaterMl) {
-        sanitizedBrewPreferences.targetRatio = toNumberOrNull(
-          sanitizedBrewPreferences.targetWaterMl / sanitizedBrewPreferences.targetDoseG,
-        );
-      }
+      const sanitizedBrewPreferences = normalizeFilterBrew({
+        dose: brewPreferences?.targetDoseG,
+        water: brewPreferences?.targetWaterMl,
+        ratio: brewPreferences?.targetRatio,
+      });
 
       console.log('[PhotoRecipe] Filter request started', {
         selectedPreparation: effectivePreparation,

@@ -990,6 +990,7 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
       likeScore,
       approved,
       predictionMetadata,
+      brewPreferences,
     } = req.body || {};
 
     if (!analysis || typeof analysis !== 'object') {
@@ -1006,6 +1007,8 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
 
     const sanitizedPredictionMetadata =
       predictionMetadata && typeof predictionMetadata === 'object' ? predictionMetadata : null;
+    const sanitizedBrewPreferences =
+      brewPreferences && typeof brewPreferences === 'object' ? brewPreferences : null;
 
     try {
       await ensureAppUserExists(session.uid, session.email ?? null);
@@ -1017,9 +1020,9 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
     const insertResult = await db.query(
       `INSERT INTO user_saved_coffee_recipes (
          user_id, analysis, recipe, selected_preparation, strength_preference,
-         like_score, approved, prediction_metadata
+         like_score, approved, prediction_metadata, brew_preferences
        )
-       VALUES ($1, $2::jsonb, $3::jsonb, $4, $5, $6, $7, $8::jsonb)
+       VALUES ($1, $2::jsonb, $3::jsonb, $4, $5, $6, $7, $8::jsonb, $9::jsonb)
        RETURNING id,
                  coalesce(recipe->>'title', 'Recipe') as title,
                  coalesce(recipe->>'method', selected_preparation, 'unknown') as method,
@@ -1041,6 +1044,7 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
         normalizedLikeScore,
         approved !== false,
         sanitizedPredictionMetadata ? JSON.stringify(sanitizedPredictionMetadata) : null,
+        sanitizedBrewPreferences ? JSON.stringify(sanitizedBrewPreferences) : null,
       ],
     );
 

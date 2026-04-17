@@ -27,6 +27,7 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
     drinkType,
     machineType,
     recipe,
+    brewPreferences,
     likePrediction,
   } = route.params;
 
@@ -102,6 +103,7 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
             strengthPreference: strengthPreference || null,
             likeScore: likePrediction.score,
             approved: true,
+            brewPreferences: brewPreferences || null,
             predictionMetadata: {
               algorithmVersion: algorithmVersion || null,
               matchTier,

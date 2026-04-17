@@ -21,6 +21,12 @@ import EspressoConfig from '../components/recipe/EspressoConfig';
 import FilterConfig, { CUSTOM_PREPARATION_VALUE } from '../components/recipe/FilterConfig';
 import GrinderConfig from '../components/recipe/GrinderConfig';
 import StepIndicator from '../components/recipe/StepIndicator';
+import {
+  hasAnyEspressoInput,
+  hasAnyFilterInput,
+  normalizeEspressoBrew,
+  normalizeFilterBrew,
+} from '../utils/brewCalc';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeePhotoRecipe'>;
 
@@ -56,26 +62,11 @@ const PICKER_TIMEOUT_MS = 2000000;
 const MAX_IMAGE_DIMENSION = 1600;
 const IMAGE_QUALITY = 0.6;
 const MAX_BASE64_BYTES = 2_000_000;
-const DEFAULT_BREW_RATIO = 15.5;
-const DEFAULT_ESPRESSO_RATIO = 2;
 
 const estimateBase64Bytes = (base64: string) =>
   Math.ceil((base64.length * 3) / 4);
 
 const normalizeBase64 = (value: string) => value.replace(/^data:image\/\w+;base64,/, '').trim();
-const parseOptionalNumber = (value: string) => {
-  if (!value.trim()) {
-    return null;
-  }
-  const normalized = value.replace(',', '.');
-  const parsed = Number(normalized);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return null;
-  }
-  return parsed;
-};
-
-const roundOneDecimal = (value: number) => Math.round(value * 10) / 10;
 
 function CoffeePhotoRecipeScreen({ navigation }: Props) {
   // --- Photo input state ---
@@ -358,6 +349,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     setInfoMessage('');
 
     let requestBody: Record<string, unknown>;
+    let resolvedBrewPreferences: RootStackParamList['CoffeePhotoRecipeResult']['brewPreferences'];
 
     if (brewPath === 'espresso') {
       if (!drinkType) {
@@ -369,21 +361,16 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
         return;
       }
 
-      const parsedDose = parseOptionalNumber(targetDoseG);
-      const parsedYield = parseOptionalNumber(targetYieldG);
-      const parsedRatio = parseOptionalNumber(targetRatio);
-
-      if (!parsedDose && !parsedYield) {
+      if (!hasAnyEspressoInput({ dose: targetDoseG, yieldG: targetYieldG })) {
         setErrorMessage('Zadaj aspoň dávku alebo výťažok.');
         return;
       }
 
-      const ratioForCalc = parsedRatio ?? DEFAULT_ESPRESSO_RATIO;
-      const computedDose = parsedDose ?? (parsedYield ? roundOneDecimal(parsedYield / ratioForCalc) : null);
-      const computedYield = parsedYield ?? (parsedDose ? roundOneDecimal(parsedDose * ratioForCalc) : null);
-      const computedRatio = parsedRatio ?? (computedDose && computedYield
-        ? roundOneDecimal(computedYield / computedDose)
-        : ratioForCalc);
+      resolvedBrewPreferences = normalizeEspressoBrew({
+        dose: targetDoseG,
+        yieldG: targetYieldG,
+        ratio: targetRatio,
+      });
 
       requestBody = {
         brewPath: 'espresso',
@@ -397,11 +384,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
               grinderSettingScale: grinderSettingScale.trim() || null,
             }
           : null,
-        brewPreferences: {
-          targetDoseG: computedDose,
-          targetYieldG: computedYield,
-          targetRatio: computedRatio,
-        },
+        brewPreferences: resolvedBrewPreferences,
       };
     } else {
       // Filter path
@@ -418,21 +401,16 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
         return;
       }
 
-      const parsedDose = parseOptionalNumber(targetDoseG);
-      const parsedWater = parseOptionalNumber(targetWaterMl);
-      const parsedRatio = parseOptionalNumber(targetRatio);
-
-      if (!parsedDose && !parsedWater) {
+      if (!hasAnyFilterInput({ dose: targetDoseG, water: targetWaterMl })) {
         setErrorMessage('Zadaj aspoň množstvo kávy alebo vody.');
         return;
       }
 
-      const ratioForCalc = parsedRatio ?? DEFAULT_BREW_RATIO;
-      const computedDose = parsedDose ?? (parsedWater ? roundOneDecimal(parsedWater / ratioForCalc) : null);
-      const computedWater = parsedWater ?? (parsedDose ? roundOneDecimal(parsedDose * ratioForCalc) : null);
-      const computedRatio = parsedRatio ?? (computedDose && computedWater
-        ? roundOneDecimal(computedWater / computedDose)
-        : ratioForCalc);
+      resolvedBrewPreferences = normalizeFilterBrew({
+        dose: targetDoseG,
+        water: targetWaterMl,
+        ratio: targetRatio,
+      });
 
       requestBody = {
         brewPath: 'filter',
@@ -449,16 +427,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
               grinderSettingScale: grinderSettingScale.trim() || null,
             }
           : null,
-        brewPreferences: {
-          targetDoseG: computedDose,
-          targetWaterMl: computedWater,
-          targetRatio: computedRatio,
-          providedByUser: {
-            targetDoseG: Boolean(parsedDose),
-            targetWaterMl: Boolean(parsedWater),
-            targetRatio: Boolean(parsedRatio),
-          },
-        },
+        brewPreferences: resolvedBrewPreferences,
       };
     }
 
@@ -495,6 +464,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
               strengthPreference: strengthPreference || undefined,
             }),
         recipe: payload.recipe,
+        brewPreferences: resolvedBrewPreferences,
         likePrediction: payload.likePrediction || {
           score: 50,
           verdict: 'Predikcia zatiaľ nie je dostupná.',
