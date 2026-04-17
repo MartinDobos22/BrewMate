@@ -1,18 +1,11 @@
-import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import {
-  Asset,
-  ImagePickerResponse,
-  launchCamera,
-  launchImageLibrary,
-} from 'react-native-image-picker';
 import { RootStackParamList } from '../navigation/types';
-import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import BottomNavBar from '../components/BottomNavBar';
 import { useTheme } from '../theme/useTheme';
-import { CoffeeBeanIcon, CoffeeCupIcon } from '../components/icons';
+import { CoffeeCupIcon } from '../components/icons';
 import { MD3Button } from '../components/md3';
 
 import AnalysisResultCard from '../components/recipe/AnalysisResultCard';
@@ -20,65 +13,21 @@ import BrewPathSelector from '../components/recipe/BrewPathSelector';
 import EspressoConfig from '../components/recipe/EspressoConfig';
 import FilterConfig, { CUSTOM_PREPARATION_VALUE } from '../components/recipe/FilterConfig';
 import GrinderConfig from '../components/recipe/GrinderConfig';
+import PhotoInputCard from '../components/recipe/PhotoInputCard';
 import StepIndicator from '../components/recipe/StepIndicator';
-import {
-  hasAnyEspressoInput,
-  hasAnyFilterInput,
-  normalizeEspressoBrew,
-  normalizeFilterBrew,
-} from '../utils/brewCalc';
+import { usePhotoAnalysis } from '../hooks/usePhotoAnalysis';
+import { useRecipeGenerator } from '../hooks/useRecipeGenerator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeePhotoRecipe'>;
-
-type PhotoAnalysis = {
-  tasteProfile: string;
-  flavorNotes: string[];
-  roastLevel: 'light' | 'medium' | 'medium-dark' | 'dark';
-  recommendedBrewPath: 'espresso' | 'filter' | 'both';
-  recommendedPreparations: Array<{ method: string; description: string }>;
-  confidence: number;
-  summary: string;
-  tasteVector?: {
-    acidity: number;
-    sweetness: number;
-    bitterness: number;
-    body: number;
-    fruity: number;
-    roast: number;
-  };
-};
-
-type InventoryCoffee = {
-  id: string;
-  rawText: string | null;
-  correctedText: string | null;
-  labelImageBase64: string | null;
-  status: 'active' | 'empty' | 'archived';
-};
-
 type BrewPath = 'espresso' | 'filter';
 
-const PICKER_TIMEOUT_MS = 2000000;
-const MAX_IMAGE_DIMENSION = 1600;
-const IMAGE_QUALITY = 0.6;
-const MAX_BASE64_BYTES = 2_000_000;
-
-const estimateBase64Bytes = (base64: string) =>
-  Math.ceil((base64.length * 3) / 4);
-
-const normalizeBase64 = (value: string) => value.replace(/^data:image\/\w+;base64,/, '').trim();
-
 function CoffeePhotoRecipeScreen({ navigation }: Props) {
-  // --- Photo input state ---
+  // --- Photo state ---
   const [imageBase64, setImageBase64] = useState('');
-  const [isPicking, setIsPicking] = useState(false);
-  const [inventoryItems, setInventoryItems] = useState<InventoryCoffee[]>([]);
-  const [isInventoryVisible, setIsInventoryVisible] = useState(false);
-  const [isInventoryLoading, setIsInventoryLoading] = useState(false);
 
-  // --- Analysis state ---
-  const [analysis, setAnalysis] = useState<PhotoAnalysis | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  // --- Hooks ---
+  const { analysis, isAnalyzing, analyze, resetAnalysis } = usePhotoAnalysis();
+  const { isGenerating, generate } = useRecipeGenerator();
 
   // --- Brew path state ---
   const [brewPath, setBrewPath] = useState<BrewPath | null>(null);
@@ -93,7 +42,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
   const [customPreparationText, setCustomPreparationText] = useState('');
   const [strengthPreference, setStrengthPreference] = useState<string | null>('vyvážene');
 
-  // --- Shared state ---
+  // --- Shared brew state ---
   const [targetDoseG, setTargetDoseG] = useState('');
   const [targetWaterMl, setTargetWaterMl] = useState('');
   const [targetRatio, setTargetRatio] = useState('');
@@ -104,9 +53,8 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
   // --- UI state ---
   const [errorMessage, setErrorMessage] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
 
-  // --- Step computation ---
+  // --- Step indicator ---
   const steps = useMemo(() => {
     const hasPhoto = Boolean(imageBase64);
     const hasAnalysis = Boolean(analysis);
@@ -118,142 +66,8 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     ];
   }, [imageBase64, analysis, brewPath]);
 
-  // --- Photo handlers ---
-  const handlePickerResponse = (response: ImagePickerResponse) => {
-    if (response.didCancel) {
-      setErrorMessage('Výber bol zrušený.');
-      return;
-    }
-    if (response.errorCode) {
-      setErrorMessage(response.errorMessage || 'Nastala chyba pri výbere obrázka.');
-      return;
-    }
-    const asset: Asset | undefined = response.assets?.[0];
-    if (!asset?.base64) {
-      setErrorMessage('Nepodarilo sa načítať obrázok. Skúste znova.');
-      return;
-    }
-    const normalizedImage = normalizeBase64(asset.base64);
-    const base64Bytes = estimateBase64Bytes(normalizedImage);
-    if (base64Bytes > MAX_BASE64_BYTES) {
-      setErrorMessage('Obrázok je stále príliš veľký. Skúste menší záber alebo iný súbor.');
-      return;
-    }
-    setErrorMessage('');
-    setInfoMessage('');
-    setImageBase64(normalizedImage);
-    setIsInventoryVisible(false);
-  };
-
-  const loadInventory = async () => {
-    if (isInventoryLoading) {
-      return;
-    }
-    setIsInventoryLoading(true);
-    setErrorMessage('');
-    setInfoMessage('');
-    try {
-      const response = await apiFetch(
-        `${DEFAULT_API_HOST}/api/user-coffee`,
-        { method: 'GET', credentials: 'include' },
-        { feature: 'PhotoRecipe', action: 'inventory-load' },
-      );
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Nepodarilo sa načítať inventár.');
-      }
-      const items = Array.isArray(payload?.items) ? payload.items : [];
-      setInventoryItems(items.filter((item: InventoryCoffee) => item.status === 'active'));
-      setIsInventoryVisible(true);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Nepodarilo sa načítať inventár.';
-      setErrorMessage(message);
-    } finally {
-      setIsInventoryLoading(false);
-    }
-  };
-
-  const handleSelectInventoryCoffee = (item: InventoryCoffee) => {
-    if (!item.labelImageBase64) {
-      setErrorMessage('Táto káva v inventári nemá uloženú fotku etikety.');
-      return;
-    }
-    const normalizedImage = normalizeBase64(item.labelImageBase64);
-    const base64Bytes = estimateBase64Bytes(normalizedImage);
-    if (base64Bytes > MAX_BASE64_BYTES) {
-      setErrorMessage('Fotka etikety tejto kávy je príliš veľká na analýzu.');
-      return;
-    }
-    const coffeeName = item.correctedText || item.rawText || 'káva z inventára';
-    setErrorMessage('');
-    setInfoMessage(`Vybraná ${coffeeName}. Teraz môžeš spustiť analýzu.`);
-    setImageBase64(normalizedImage);
-    setIsInventoryVisible(false);
-    resetAfterAnalysis();
-  };
-
-  const withPickerTimeout = async <T,>(promise: Promise<T>): Promise<T> =>
-    Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        const timeoutId = setTimeout(() => {
-          clearTimeout(timeoutId);
-          reject(new Error('Image picker timed out.'));
-        }, PICKER_TIMEOUT_MS);
-      }),
-    ]);
-
-  const handleSelectFromGallery = async () => {
-    setIsPicking(true);
-    try {
-      const response = await withPickerTimeout(
-        launchImageLibrary({
-          mediaType: 'photo',
-          includeBase64: true,
-          quality: IMAGE_QUALITY,
-          maxWidth: MAX_IMAGE_DIMENSION,
-          maxHeight: MAX_IMAGE_DIMENSION,
-        }),
-      );
-      handlePickerResponse(response);
-    } catch (error) {
-      console.error('[PhotoRecipe] Image library failed', error);
-      setErrorMessage('Načítanie obrázka trvalo príliš dlho. Skúste znova.');
-    } finally {
-      setIsPicking(false);
-    }
-  };
-
-  const handleTakePhoto = async () => {
-    setIsPicking(true);
-    try {
-      const response = await withPickerTimeout(
-        launchCamera({
-          mediaType: 'photo',
-          includeBase64: true,
-          quality: IMAGE_QUALITY,
-          maxWidth: MAX_IMAGE_DIMENSION,
-          maxHeight: MAX_IMAGE_DIMENSION,
-          saveToPhotos: true,
-        }),
-      );
-      handlePickerResponse(response);
-    } catch (error) {
-      console.error('[PhotoRecipe] Camera capture failed', error);
-      setErrorMessage('Načítanie fotky trvalo príliš dlho. Skúste znova.');
-    } finally {
-      setIsPicking(false);
-    }
-  };
-
   // --- Reset helpers ---
-  const resetAfterAnalysis = () => {
-    setAnalysis(null);
-    setBrewPath(null);
-    resetPathState();
-  };
-
-  const resetPathState = () => {
+  const resetPathState = useCallback(() => {
     setDrinkType(null);
     setMachineType(null);
     setTargetYieldG('');
@@ -266,221 +80,98 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
     setGrinderType(null);
     setGrinderModel('');
     setGrinderSettingScale('');
-  };
+  }, []);
 
-  // --- Inline change handlers ---
-  const handleChangePhoto = () => {
-    setImageBase64('');
-    resetAfterAnalysis();
+  const handleImageSelected = useCallback((base64: string, info?: string) => {
     setErrorMessage('');
-    setInfoMessage('');
-  };
+    setInfoMessage(info || '');
+    setImageBase64(base64);
+    resetAnalysis();
+    setBrewPath(null);
+    resetPathState();
+  }, [resetAnalysis, resetPathState]);
 
-  const handleChangeBrewPath = () => {
+  const handleChangePhoto = useCallback(() => {
+    setImageBase64('');
+    resetAnalysis();
     setBrewPath(null);
     resetPathState();
     setErrorMessage('');
-  };
+    setInfoMessage('');
+  }, [resetAnalysis, resetPathState]);
 
-  // --- Brew path handler ---
-  const handleBrewPathSelect = (path: BrewPath) => {
+  const handleChangeBrewPath = useCallback(() => {
+    setBrewPath(null);
+    resetPathState();
+    setErrorMessage('');
+  }, [resetPathState]);
+
+  const handleBrewPathSelect = useCallback((path: BrewPath) => {
     setBrewPath(path);
     resetPathState();
     setErrorMessage('');
-
-    // Auto-select first recommended preparation for filter path
     if (path === 'filter' && analysis?.recommendedPreparations?.length) {
       setSelectedPreparation(analysis.recommendedPreparations[0].method);
     }
-  };
+  }, [resetPathState, analysis]);
 
-  // --- Analysis ---
-  const handleAnalyze = async () => {
-    if (isAnalyzing) {
-      return;
-    }
-    if (!imageBase64.trim()) {
-      setErrorMessage('Najprv vyberte alebo odfoťte obrázok.');
-      return;
-    }
-
+  const handleAnalyze = useCallback(async () => {
     setErrorMessage('');
     setInfoMessage('');
-    setIsAnalyzing(true);
-    resetAfterAnalysis();
-
+    setBrewPath(null);
+    resetPathState();
     try {
-      const response = await apiFetch(
-        `${DEFAULT_API_HOST}/api/coffee-photo-analysis`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            imageBase64: imageBase64.trim(),
-            languageHints: ['sk', 'en'],
-          }),
-        },
-        { feature: 'PhotoRecipe', action: 'analyze' },
-      );
-      const payload = await response.json();
-
-      if (!response.ok) {
-        const message = payload?.error || 'Analýza fotky zlyhala.';
-        setErrorMessage(message);
-        return;
-      }
-
-      setAnalysis(payload.analysis);
+      await analyze(imageBase64);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Analýza fotky zlyhala.';
-      setErrorMessage(message);
-    } finally {
-      setIsAnalyzing(false);
+      setErrorMessage(error instanceof Error ? error.message : 'Analýza fotky zlyhala.');
     }
-  };
+  }, [analyze, imageBase64, resetPathState]);
 
-  // --- Recipe generation ---
-  const handleGenerateRecipe = async () => {
-    if (isGenerating || !analysis || !brewPath) {
+  const handleGenerateRecipe = useCallback(async () => {
+    if (!analysis || !brewPath) {
       return;
     }
-
     setErrorMessage('');
     setInfoMessage('');
-
-    let requestBody: Record<string, unknown>;
-    let resolvedBrewPreferences: RootStackParamList['CoffeePhotoRecipeResult']['brewPreferences'];
-
-    if (brewPath === 'espresso') {
-      if (!drinkType) {
-        setErrorMessage('Vyber typ nápoja.');
-        return;
-      }
-      if (!machineType) {
-        setErrorMessage('Vyber typ kávovaru.');
-        return;
-      }
-
-      if (!hasAnyEspressoInput({ dose: targetDoseG, yieldG: targetYieldG })) {
-        setErrorMessage('Zadaj aspoň dávku alebo výťažok.');
-        return;
-      }
-
-      resolvedBrewPreferences = normalizeEspressoBrew({
-        dose: targetDoseG,
-        yieldG: targetYieldG,
-        ratio: targetRatio,
-      });
-
-      requestBody = {
-        brewPath: 'espresso',
-        analysis,
-        drinkType,
-        machineType,
-        grinderProfile: grinderType
-          ? {
-              grinderType,
-              grinderModel: grinderModel.trim() || null,
-              grinderSettingScale: grinderSettingScale.trim() || null,
-            }
-          : null,
-        brewPreferences: resolvedBrewPreferences,
-      };
-    } else {
-      // Filter path
-      const finalPreparation = selectedPreparation === CUSTOM_PREPARATION_VALUE
-        ? customPreparationText.trim()
-        : selectedPreparation;
-
-      if (!finalPreparation) {
-        setErrorMessage('Vyberte spôsob prípravy alebo napíšte vlastný.');
-        return;
-      }
-      if (!strengthPreference) {
-        setErrorMessage('Vyberte preferovanú silu kávy.');
-        return;
-      }
-
-      if (!hasAnyFilterInput({ dose: targetDoseG, water: targetWaterMl })) {
-        setErrorMessage('Zadaj aspoň množstvo kávy alebo vody.');
-        return;
-      }
-
-      resolvedBrewPreferences = normalizeFilterBrew({
-        dose: targetDoseG,
-        water: targetWaterMl,
-        ratio: targetRatio,
-      });
-
-      requestBody = {
-        brewPath: 'filter',
-        analysis,
-        selectedPreparation: finalPreparation,
-        customPreparationText: selectedPreparation === CUSTOM_PREPARATION_VALUE
-          ? customPreparationText.trim()
-          : null,
-        strengthPreference,
-        grinderProfile: grinderType
-          ? {
-              grinderType,
-              grinderModel: grinderModel.trim() || null,
-              grinderSettingScale: grinderSettingScale.trim() || null,
-            }
-          : null,
-        brewPreferences: resolvedBrewPreferences,
-      };
-    }
-
-    setIsGenerating(true);
-
     try {
-      const response = await apiFetch(
-        `${DEFAULT_API_HOST}/api/coffee-photo-recipe`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody),
-        },
-        { feature: 'PhotoRecipe', action: 'generate' },
-      );
+      const params = brewPath === 'espresso'
+        ? {
+            drinkType: drinkType!,
+            machineType: machineType!,
+            targetDoseG,
+            targetYieldG,
+            targetRatio,
+            grinderType,
+            grinderModel,
+            grinderSettingScale,
+          }
+        : {
+            selectedPreparation,
+            customPreparationText,
+            customPreparationValue: CUSTOM_PREPARATION_VALUE,
+            strengthPreference,
+            targetDoseG,
+            targetWaterMl,
+            targetRatio,
+            grinderType,
+            grinderModel,
+            grinderSettingScale,
+          };
 
-      const payload = await response.json();
-
-      if (!response.ok) {
-        const message = payload?.error || 'Generovanie receptu zlyhalo.';
-        setErrorMessage(message);
-        return;
-      }
-
-      navigation.navigate('CoffeePhotoRecipeResult', {
-        analysis,
-        brewPath,
-        ...(brewPath === 'espresso'
-          ? { drinkType: drinkType!, machineType: machineType! }
-          : {
-              selectedPreparation: (selectedPreparation === CUSTOM_PREPARATION_VALUE
-                ? customPreparationText.trim()
-                : selectedPreparation) || undefined,
-              strengthPreference: strengthPreference || undefined,
-            }),
-        recipe: payload.recipe,
-        brewPreferences: resolvedBrewPreferences,
-        likePrediction: payload.likePrediction || {
-          score: 50,
-          verdict: 'Predikcia zatiaľ nie je dostupná.',
-          reason: 'Skús recept upraviť podľa vlastnej chuti.',
-        },
-      });
+      const result = await generate(analysis, brewPath, params);
+      navigation.navigate('CoffeePhotoRecipeResult', result);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Generovanie receptu zlyhalo.';
-      setErrorMessage(message);
-    } finally {
-      setIsGenerating(false);
+      setErrorMessage(error instanceof Error ? error.message : 'Generovanie receptu zlyhalo.');
     }
-  };
+  }, [
+    analysis, brewPath, drinkType, machineType, targetDoseG, targetYieldG,
+    targetRatio, grinderType, grinderModel, grinderSettingScale,
+    selectedPreparation, customPreparationText, strengthPreference,
+    targetWaterMl, generate, navigation,
+  ]);
 
   // --- Styles ---
-  const { colors, typescale, shape, elevation: elev, spacing } = useTheme();
+  const { colors, typescale, shape, spacing } = useTheme();
 
   const s = useMemo(
     () =>
@@ -514,53 +205,15 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
           ...typescale.bodyMedium,
           color: colors.onSurfaceVariant,
         },
-        card: {
-          backgroundColor: colors.surfaceContainerLow,
-          borderRadius: shape.extraLarge,
-          padding: spacing.lg,
-          ...elev.level1.shadow,
-        },
-        cardHeader: {
+        changeRow: {
           flexDirection: 'row',
-          alignItems: 'center',
-          gap: spacing.sm,
-          marginBottom: spacing.md,
+          justifyContent: 'flex-end',
         },
-        cardTitle: {
-          ...typescale.titleSmall,
-          color: colors.onSurface,
-        },
-        buttonRow: {
-          flexDirection: 'row',
-          gap: spacing.md,
-        },
-        inventoryList: {
-          marginTop: spacing.md,
-          gap: spacing.sm,
-        },
-        inventoryItem: {
-          borderWidth: 1,
-          borderColor: colors.outlineVariant,
-          backgroundColor: colors.surfaceContainerLowest,
-          borderRadius: shape.large,
-          padding: spacing.md,
-        },
-        inventoryItemDisabled: {
-          opacity: 0.5,
-        },
-        inventoryItemTitle: {
-          ...typescale.labelLarge,
-          color: colors.onSurface,
-        },
-        inventoryItemMeta: {
-          ...typescale.bodySmall,
-          color: colors.onSurfaceVariant,
-          marginTop: spacing.xs,
-        },
-        helperText: {
-          ...typescale.bodySmall,
-          color: colors.onSurfaceVariant,
-          marginTop: spacing.sm,
+        changeLink: {
+          ...typescale.labelMedium,
+          color: colors.primary,
+          fontWeight: '600',
+          paddingVertical: spacing.xs,
         },
         errorText: {
           ...typescale.bodySmall,
@@ -572,18 +225,8 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
           color: colors.tertiary,
           fontWeight: '600',
         },
-        changeRow: {
-          flexDirection: 'row',
-          justifyContent: 'flex-end',
-        },
-        changeLink: {
-          ...typescale.labelMedium,
-          color: colors.primary,
-          fontWeight: '600',
-          paddingVertical: spacing.xs,
-        },
       }),
-    [colors, typescale, shape, elev, spacing],
+    [colors, typescale, shape, spacing],
   );
 
   return (
@@ -600,75 +243,19 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
           metódy prípravy podľa jej profilu.
         </Text>
 
-        {/* Photo input card */}
-        <View style={s.card}>
-          <View style={s.cardHeader}>
-            <CoffeeBeanIcon size={20} color={colors.primary} />
-            <Text style={s.cardTitle}>Fotografia kávy</Text>
-          </View>
-          <View style={s.buttonRow}>
-            <MD3Button
-              label="Vybrať z galérie"
-              variant="outlined"
-              onPress={handleSelectFromGallery}
-              disabled={isPicking}
-              style={{ flex: 1 }}
-            />
-            <MD3Button
-              label="Odfotiť"
-              variant="tonal"
-              onPress={handleTakePhoto}
-              disabled={isPicking}
-              style={{ flex: 1 }}
-            />
-          </View>
-          <MD3Button
-            label={isInventoryLoading ? 'Načítavam inventár…' : 'Vybrať fotku z inventára'}
-            variant="outlined"
-            onPress={loadInventory}
-            disabled={isInventoryLoading || isPicking}
-            loading={isInventoryLoading}
-            style={{ marginTop: spacing.md }}
-          />
-
-          {isInventoryVisible ? (
-            <View style={s.inventoryList}>
-              {inventoryItems.length > 0 ? (
-                inventoryItems.map((item) => {
-                  const coffeeName = item.correctedText || item.rawText || 'Neznáma káva';
-                  const hasImage = Boolean(item.labelImageBase64);
-                  return (
-                    <Pressable
-                      key={item.id}
-                      style={[s.inventoryItem, !hasImage && s.inventoryItemDisabled]}
-                      onPress={() => handleSelectInventoryCoffee(item)}
-                      disabled={!hasImage}
-                    >
-                      <Text style={s.inventoryItemTitle}>{coffeeName}</Text>
-                      <Text style={s.inventoryItemMeta}>
-                        {hasImage ? 'Použiť fotku etikety z inventára' : 'Bez fotky etikety'}
-                      </Text>
-                    </Pressable>
-                  );
-                })
-              ) : (
-                <Text style={s.helperText}>V inventári nemáš žiadnu aktívnu kávu.</Text>
-              )}
-            </View>
-          ) : null}
-          <Text style={s.helperText}>
-            {imageBase64 ? 'Fotka je pripravená.' : 'Zatiaľ nie je vybraná žiadna fotka.'}
-          </Text>
-        </View>
+        <PhotoInputCard
+          hasImage={Boolean(imageBase64)}
+          onImageSelected={handleImageSelected}
+          onError={setErrorMessage}
+        />
 
         <MD3Button
           label={isAnalyzing ? 'Analyzujem fotku…' : 'Analyzovať fotku'}
           onPress={handleAnalyze}
-          disabled={isAnalyzing || isPicking}
+          disabled={isAnalyzing || !imageBase64}
           loading={isAnalyzing}
         />
 
-        {/* Post-analysis flow */}
         {analysis ? (
           <>
             <AnalysisResultCard analysis={analysis} />
