@@ -26,7 +26,7 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
   const [imageBase64, setImageBase64] = useState('');
 
   // --- Hooks ---
-  const { analysis, isAnalyzing, canRetry: canRetryAnalysis, analyze, resetAnalysis } = usePhotoAnalysis();
+  const { analysis, isAnalyzing, canRetry: canRetryAnalysis, cachedResult, analyze, resetAnalysis } = usePhotoAnalysis();
   const { isGenerating, canRetry: canRetryGenerate, generate } = useRecipeGenerator();
 
   // --- Brew path state ---
@@ -208,6 +208,13 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
         changeRow: {
           flexDirection: 'row',
           justifyContent: 'flex-end',
+          alignItems: 'center',
+          gap: spacing.sm,
+        },
+        cachedHint: {
+          ...typescale.labelSmall,
+          color: colors.onSurfaceVariant,
+          fontStyle: 'italic',
         },
         changeLink: {
           ...typescale.labelMedium,
@@ -260,6 +267,9 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
           <>
             <AnalysisResultCard analysis={analysis} />
             <View style={s.changeRow}>
+              {cachedResult ? (
+                <Text style={s.cachedHint}>Výsledok z cache</Text>
+              ) : null}
               <Text style={s.changeLink} onPress={handleChangePhoto}>
                 Zmeniť fotku
               </Text>
