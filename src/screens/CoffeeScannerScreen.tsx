@@ -133,6 +133,7 @@ function CoffeeScannerScreen({navigation}: Props) {
         {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
+          credentials: 'include',
           body: JSON.stringify({
             imageBase64: imageBase64.trim(),
             languageHints: languageHintList,
@@ -179,6 +180,7 @@ function CoffeeScannerScreen({navigation}: Props) {
         {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
+          credentials: 'include',
           body: JSON.stringify({
             text: payload.correctedText,
             rawText: payload.rawText,

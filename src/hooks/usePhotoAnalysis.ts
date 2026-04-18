@@ -59,6 +59,7 @@ export function usePhotoAnalysis(): UsePhotoAnalysisReturn {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             imageBase64: imageBase64.trim(),
             languageHints: ['sk', 'en'],

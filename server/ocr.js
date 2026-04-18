@@ -914,6 +914,7 @@ const runOcr = async ({ imageBase64, languageHints }) => {
 
 router.post('/api/ocr-correct', async (req, res, next) => {
   try {
+    await requireSession(req);
     const { imageBase64, languageHints } = req.body || {};
 
     console.log('[OCR] request received', {
@@ -933,7 +934,8 @@ router.post('/api/ocr-correct', async (req, res, next) => {
       return res.status(resp.status).json(resp.body);
     }
     if (error.status) {
-      return res.status(error.status).json({ error: error.message, code: 'ocr_error', retryable: false });
+      const code = error.status === 401 ? 'auth_error' : 'ocr_error';
+      return res.status(error.status).json({ error: error.message, code, retryable: false });
     }
     console.error('[OCR] Unexpected error', error);
     return next(error);
@@ -942,6 +944,7 @@ router.post('/api/ocr-correct', async (req, res, next) => {
 
 router.post('/api/coffee-photo-analysis', aiRateLimit, async (req, res, next) => {
   try {
+    await requireSession(req);
     const { imageBase64, languageHints } = req.body || {};
     console.log('[PhotoAnalysis] request received', {
       imageBase64Length: imageBase64?.length ?? 0,
@@ -987,11 +990,8 @@ router.post('/api/coffee-photo-analysis', aiRateLimit, async (req, res, next) =>
       return res.status(resp.status).json(resp.body);
     }
     if (error.status) {
-      console.error('[PhotoAnalysis] Request failed', error);
-      return res.status(error.status).json({
-        error: error.message,
-        details: error.details,
-      });
+      const code = error.status === 401 ? 'auth_error' : 'api_error';
+      return res.status(error.status).json({ error: error.message, code, retryable: false });
     }
     console.error('[PhotoAnalysis] Unexpected error', error);
     return next(error);
@@ -1000,6 +1000,7 @@ router.post('/api/coffee-photo-analysis', aiRateLimit, async (req, res, next) =>
 
 router.post('/api/coffee-photo-recipe', aiRateLimit, async (req, res, next) => {
   try {
+    const session = await requireSession(req);
     const {
       analysis,
       brewPath,
@@ -1029,11 +1030,10 @@ router.post('/api/coffee-photo-recipe', aiRateLimit, async (req, res, next) => {
       return res.status(500).json({ error: 'OpenAI API key is not configured.' });
     }
 
-    // Load user's questionnaire + feedback history early so we can personalize the recipe
+    // Load user's questionnaire + feedback history for personalized recipe
     let userQuestionnaire = null;
     let calibration = { offset: 0, sampleSize: 0 };
     try {
-      const session = await requireSession(req);
       const qResult = await db.query(
         `SELECT questionnaire_profile
          FROM user_questionnaires
@@ -1047,22 +1047,18 @@ router.post('/api/coffee-photo-recipe', aiRateLimit, async (req, res, next) => {
         userQuestionnaire = typeof raw === 'string' ? JSON.parse(raw) : raw;
       }
 
-      try {
-        const feedbackResult = await db.query(
-          `SELECT predicted_score, actual_rating
-           FROM user_recipe_feedback
-           WHERE user_id = $1
-             AND algorithm_version = $2
-           ORDER BY created_at DESC
-           LIMIT 20`,
-          [session.uid, MATCH_ALGORITHM_VERSION],
-        );
-        calibration = computeCalibrationOffset(feedbackResult.rows);
-      } catch (feedbackError) {
-        console.warn('[PhotoRecipe] Failed to load feedback history for calibration', feedbackError?.message);
-      }
-    } catch {
-      // No session or DB error — proceed without questionnaire / calibration data
+      const feedbackResult = await db.query(
+        `SELECT predicted_score, actual_rating
+         FROM user_recipe_feedback
+         WHERE user_id = $1
+           AND algorithm_version = $2
+         ORDER BY created_at DESC
+         LIMIT 20`,
+        [session.uid, MATCH_ALGORITHM_VERSION],
+      );
+      calibration = computeCalibrationOffset(feedbackResult.rows);
+    } catch (dbError) {
+      console.warn('[PhotoRecipe] Failed to load personalization data', dbError?.message);
     }
 
     let aiPayload;
@@ -1173,6 +1169,10 @@ router.post('/api/coffee-photo-recipe', aiRateLimit, async (req, res, next) => {
       const resp = aiErrorToResponse(error);
       return res.status(resp.status).json(resp.body);
     }
+    if (error.status) {
+      const code = error.status === 401 ? 'auth_error' : 'api_error';
+      return res.status(error.status).json({ error: error.message, code, retryable: false });
+    }
     console.error('[PhotoRecipe] Unexpected error', error);
     return next(error);
   }
@@ -1180,6 +1180,7 @@ router.post('/api/coffee-photo-recipe', aiRateLimit, async (req, res, next) => {
 
 router.post('/api/coffee-profile', aiRateLimit, async (req, res, next) => {
   try {
+    await requireSession(req);
     const { text, rawText } = req.body || {};
     const sourceText = typeof text === 'string' && text.trim()
       ? text.trim()
@@ -1225,6 +1226,10 @@ router.post('/api/coffee-profile', aiRateLimit, async (req, res, next) => {
       const resp = aiErrorToResponse(error);
       return res.status(resp.status).json(resp.body);
     }
+    if (error.status) {
+      const code = error.status === 401 ? 'auth_error' : 'api_error';
+      return res.status(error.status).json({ error: error.message, code, retryable: false });
+    }
     console.error('[CoffeeProfile] Unexpected error', error);
     return next(error);
   }
@@ -1232,6 +1237,7 @@ router.post('/api/coffee-profile', aiRateLimit, async (req, res, next) => {
 
 router.post('/api/coffee-questionnaire', aiRateLimit, async (req, res, next) => {
   try {
+    await requireSession(req);
     const { answers } = req.body || {};
 
     if (!Array.isArray(answers) || answers.length === 0) {
@@ -1262,6 +1268,10 @@ router.post('/api/coffee-questionnaire', aiRateLimit, async (req, res, next) => 
       const resp = aiErrorToResponse(error);
       return res.status(resp.status).json(resp.body);
     }
+    if (error.status) {
+      const code = error.status === 401 ? 'auth_error' : 'api_error';
+      return res.status(error.status).json({ error: error.message, code, retryable: false });
+    }
     console.error('[CoffeeQuestionnaire] Unexpected error', error);
     return next(error);
   }
@@ -1269,6 +1279,7 @@ router.post('/api/coffee-questionnaire', aiRateLimit, async (req, res, next) => 
 
 router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
   try {
+    await requireSession(req);
     const { questionnaire, coffeeProfile } = req.body || {};
 
     if (!questionnaire || !coffeeProfile) {
@@ -1296,6 +1307,10 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
     if (error instanceof AIError) {
       const resp = aiErrorToResponse(error);
       return res.status(resp.status).json(resp.body);
+    }
+    if (error.status) {
+      const code = error.status === 401 ? 'auth_error' : 'api_error';
+      return res.status(error.status).json({ error: error.message, code, retryable: false });
     }
     console.error('[CoffeeMatch] Unexpected error', error);
     return next(error);
