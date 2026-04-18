@@ -20,6 +20,7 @@ import type { MatchTier } from '../utils/tasteVector';
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeePhotoRecipeResult'>;
 
 const PENDING_RECIPE_KEY = 'pendingRecipeSave';
+const APPROVAL_THRESHOLD = 70;
 
 const generateIdempotencyKey = () =>
   `recipe_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
@@ -29,6 +30,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   validation_error: 'Neplatné dáta receptu.',
   db_error: 'Chyba databázy. Skús to znova.',
   rate_limited: 'Príliš veľa požiadaviek. Počkaj chvíľu.',
+  below_threshold: `Skóre je príliš nízke na uloženie (min ${APPROVAL_THRESHOLD}%).`,
 };
 
 function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
@@ -304,6 +306,14 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
         tipBullet: {
           ...typescale.bodyMedium,
           color: colors.tertiary,
+        },
+        thresholdHint: {
+          ...typescale.bodySmall,
+          color: colors.onSurfaceVariant,
+          backgroundColor: colors.surfaceContainerLow,
+          padding: 12,
+          borderRadius: 12,
+          textAlign: 'center',
         },
         success: {
           ...typescale.bodySmall,
@@ -635,12 +645,18 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
 
         {/* Action buttons */}
         {saveState !== 'saved' ? (
-          <MD3Button
-            label={saveState === 'saving' ? 'Ukladám…' : 'Uložiť recept'}
-            onPress={handleSaveRecipe}
-            disabled={saveState === 'saving'}
-            loading={saveState === 'saving'}
-          />
+          likePrediction.score >= APPROVAL_THRESHOLD ? (
+            <MD3Button
+              label={saveState === 'saving' ? 'Ukladám…' : 'Uložiť recept'}
+              onPress={handleSaveRecipe}
+              disabled={saveState === 'saving'}
+              loading={saveState === 'saving'}
+            />
+          ) : (
+            <Text style={s.thresholdHint}>
+              Skóre {likePrediction.score}% je nižšie než {APPROVAL_THRESHOLD}%. Skús upraviť parametre pre lepšiu predikciu.
+            </Text>
+          )
         ) : null}
 
         <MD3Button
