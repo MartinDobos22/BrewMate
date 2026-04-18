@@ -9,6 +9,7 @@ const router = express.Router();
 const COFFEE_STATUSES = new Set(['active', 'empty', 'archived']);
 const TRACKING_MODES = new Set(['manual', 'estimated']);
 const BREW_METHODS = new Set(['espresso', 'filter', 'other']);
+const APPROVAL_THRESHOLD = 70;
 const JOURNAL_BREW_METHODS = new Set([
   'espresso',
   'v60',
@@ -1000,6 +1001,15 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
       return res.status(400).json({ error: 'likeScore must be integer between 0 and 100.', code: 'validation_error', retryable: false });
     }
 
+    if (normalizedLikeScore < APPROVAL_THRESHOLD) {
+      return res.status(400).json({
+        error: `Skóre je príliš nízke na uloženie (min ${APPROVAL_THRESHOLD}%).`,
+        code: 'below_threshold',
+        retryable: false,
+        threshold: APPROVAL_THRESHOLD,
+      });
+    }
+
     // Idempotency: if the client sends the same key twice, return the existing record
     if (typeof idempotencyKey === 'string' && idempotencyKey.trim()) {
       const existing = await db.query(
@@ -1081,6 +1091,35 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
 });
 
 const RECIPE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+router.delete('/api/coffee-recipes/:id', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+    const recipeId = String(req.params.id || '').trim();
+    if (!RECIPE_ID_PATTERN.test(recipeId)) {
+      return res.status(400).json({ error: 'Invalid recipe id.', code: 'validation_error', retryable: false });
+    }
+
+    const result = await db.query(
+      `DELETE FROM user_saved_coffee_recipes
+       WHERE id = $1 AND user_id = $2
+       RETURNING id`,
+      [recipeId, session.uid],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Recipe not found.', code: 'not_found', retryable: false });
+    }
+
+    return res.status(200).json({ ok: true, id: recipeId });
+  } catch (error) {
+    if (error?.status) {
+      return res.status(error.status).json({ error: error.message, code: 'auth_error', retryable: false });
+    }
+    console.error('[CoffeeRecipes] Failed to delete recipe', error);
+    return next(error);
+  }
+});
 
 router.post('/api/coffee-recipes/:id/feedback', async (req, res, next) => {
   try {

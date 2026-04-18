@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {apiFetch, DEFAULT_API_HOST} from '../utils/api';
@@ -28,6 +28,11 @@ type FeedbackState = {
   error: string | null;
 };
 
+type DeleteState = {
+  deleting: boolean;
+  error: string | null;
+};
+
 type Bucket = {label: string; count: number; avgLikeScore: number};
 
 type Insights = {
@@ -47,6 +52,7 @@ function CoffeeRecipesSavedScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [feedbackState, setFeedbackState] = useState<Record<string, FeedbackState>>({});
+  const [deleteState, setDeleteState] = useState<Record<string, DeleteState>>({});
 
   const loadData = useCallback(async () => {
     try {
@@ -113,6 +119,53 @@ function CoffeeRecipesSavedScreen() {
       }));
     }
   }, []);
+
+  const deleteRecipe = useCallback(async (recipeId: string) => {
+    setDeleteState(prev => ({
+      ...prev,
+      [recipeId]: {deleting: true, error: null},
+    }));
+    try {
+      const response = await apiFetch(
+        `${DEFAULT_API_HOST}/api/coffee-recipes/${recipeId}`,
+        {
+          method: 'DELETE',
+          credentials: 'include',
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || 'Nepodarilo sa zmazať recept.');
+      }
+      setItems(prev => prev.filter(item => item.id !== recipeId));
+      setDeleteState(prev => {
+        const {[recipeId]: _removed, ...rest} = prev;
+        return rest;
+      });
+    } catch (deleteError) {
+      setDeleteState(prev => ({
+        ...prev,
+        [recipeId]: {
+          deleting: false,
+          error: deleteError instanceof Error ? deleteError.message : 'Nepodarilo sa zmazať recept.',
+        },
+      }));
+    }
+  }, []);
+
+  const confirmDelete = useCallback(
+    (recipeId: string, title: string) => {
+      Alert.alert(
+        'Zmazať recept?',
+        `Naozaj chceš zmazať recept "${title}"? Túto akciu nie je možné vrátiť.`,
+        [
+          {text: 'Zrušiť', style: 'cancel'},
+          {text: 'Zmazať', style: 'destructive', onPress: () => deleteRecipe(recipeId)},
+        ],
+      );
+    },
+    [deleteRecipe],
+  );
 
   const favorite = useMemo(() => insights?.totals.methods?.[0]?.label ?? null, [insights]);
 
@@ -241,6 +294,27 @@ function CoffeeRecipesSavedScreen() {
           color: colors.error,
           marginTop: 4,
         },
+        itemHeaderRow: {
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 8,
+        },
+        itemTitleWrap: {
+          flex: 1,
+        },
+        deleteButton: {
+          paddingHorizontal: 10,
+          paddingVertical: 6,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: colors.outlineVariant,
+        },
+        deleteButtonText: {
+          ...typescale.labelSmall,
+          color: colors.error,
+          fontWeight: '600',
+        },
       }),
     [colors, shape, typescale],
   );
@@ -275,9 +349,25 @@ function CoffeeRecipesSavedScreen() {
           </View>
           {items.map((item, index) => {
             const itemFeedback = feedbackState[item.id];
+            const itemDelete = deleteState[item.id];
             return (
               <View key={item.id} style={[s.item, index === items.length - 1 && s.itemLastChild]}>
-                <Text style={s.itemTitle}>{item.title}</Text>
+                <View style={s.itemHeaderRow}>
+                  <View style={s.itemTitleWrap}>
+                    <Text style={s.itemTitle}>{item.title}</Text>
+                  </View>
+                  <Pressable
+                    style={s.deleteButton}
+                    onPress={() => confirmDelete(item.id, item.title)}
+                    disabled={itemDelete?.deleting}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Zmazať recept ${item.title}`}
+                  >
+                    <Text style={s.deleteButtonText}>
+                      {itemDelete?.deleting ? 'Mažem…' : 'Zmazať'}
+                    </Text>
+                  </Pressable>
+                </View>
                 <Text style={s.meta}>
                   {item.method} · {item.strengthPreference} · predikcia {item.likeScore}%
                 </Text>
@@ -318,6 +408,9 @@ function CoffeeRecipesSavedScreen() {
                 ) : null}
                 {item.actualRating && !itemFeedback?.submitting && !itemFeedback?.error ? (
                   <Text style={s.feedbackSaved}>Hodnotenie uložené — pomáha kalibrácii predikcií.</Text>
+                ) : null}
+                {itemDelete?.error ? (
+                  <Text style={s.feedbackError}>{itemDelete.error}</Text>
                 ) : null}
               </View>
             );
