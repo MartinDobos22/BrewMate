@@ -31,6 +31,11 @@ const ERROR_MESSAGES: Record<string, string> = {
   db_error: 'Chyba databázy. Skús to znova.',
   rate_limited: 'Príliš veľa požiadaviek. Počkaj chvíľu.',
   below_threshold: `Skóre je príliš nízke na uloženie (min ${APPROVAL_THRESHOLD}%).`,
+  config_error: 'AI služba nie je nakonfigurovaná. Kontaktuj podporu.',
+  not_found: 'Záznam sa nenašiel.',
+  ocr_error: 'Nepodarilo sa rozpoznať text z obrázka.',
+  api_error: 'Chyba externého servisu. Skús to znova.',
+  ai_timeout: 'AI odpoveď trvala príliš dlho. Skús to znova.',
 };
 
 function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {

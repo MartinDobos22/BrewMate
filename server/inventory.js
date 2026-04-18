@@ -27,6 +27,19 @@ const CONSUMPTION_SOURCES = new Set([
   'adjustment',
 ]);
 
+const RETRYABLE_CODES = new Set(['db_error', 'rate_limited', 'ai_timeout']);
+
+const errorResponse = (res, status, code, message, extra) =>
+  res.status(status).json({
+    error: message,
+    code,
+    retryable: RETRYABLE_CODES.has(code),
+    ...(extra || {}),
+  });
+
+const authErrorResponse = (res, error) =>
+  errorResponse(res, error.status || 401, 'auth_error', error.message);
+
 const toPositiveInteger = (value) => {
   if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
     return value;
@@ -192,7 +205,7 @@ router.get('/api/user-coffee', async (req, res, next) => {
     });
   } catch (error) {
     if (error?.status) {
-      return res.status(error.status).json({ error: error.message });
+      return authErrorResponse(res, error);
     }
     console.error('[UserCoffee] Failed to load user inventory', error);
     return next(error);
@@ -218,7 +231,7 @@ router.post('/api/user-coffee', async (req, res, next) => {
     } = req.body || {};
 
     if (!coffeeProfile || typeof coffeeProfile !== 'object') {
-      return res.status(400).json({ error: 'coffeeProfile is required.' });
+      return errorResponse(res, 400, 'validation_error', 'coffeeProfile is required.');
     }
 
     const normalizedPackageSize =
@@ -230,7 +243,7 @@ router.post('/api/user-coffee', async (req, res, next) => {
       && packageSizeG !== null
       && normalizedPackageSize === null
     ) {
-      return res.status(400).json({ error: 'packageSizeG must be positive integer.' });
+      return errorResponse(res, 400, 'validation_error', 'packageSizeG must be positive integer.');
     }
 
     const normalizedRemaining =
@@ -242,7 +255,7 @@ router.post('/api/user-coffee', async (req, res, next) => {
       && remainingG !== null
       && normalizedRemaining === null
     ) {
-      return res.status(400).json({ error: 'remainingG must be non-negative integer.' });
+      return errorResponse(res, 400, 'validation_error', 'remainingG must be non-negative integer.');
     }
 
     const normalizedPreferredDose =
@@ -254,7 +267,7 @@ router.post('/api/user-coffee', async (req, res, next) => {
       && preferredDoseG !== null
       && normalizedPreferredDose === null
     ) {
-      return res.status(400).json({ error: 'preferredDoseG must be positive integer.' });
+      return errorResponse(res, 400, 'validation_error', 'preferredDoseG must be positive integer.');
     }
 
     const resolvedStatus =
@@ -262,7 +275,7 @@ router.post('/api/user-coffee', async (req, res, next) => {
         ? status
         : 'active';
     if (typeof status === 'string' && !COFFEE_STATUSES.has(status)) {
-      return res.status(400).json({ error: 'status has unsupported value.' });
+      return errorResponse(res, 400, 'validation_error', 'status has unsupported value.');
     }
 
     const resolvedTrackingMode =
@@ -270,7 +283,7 @@ router.post('/api/user-coffee', async (req, res, next) => {
         ? trackingMode
         : (normalizedPackageSize ? 'manual' : 'estimated');
     if (typeof trackingMode === 'string' && !TRACKING_MODES.has(trackingMode)) {
-      return res.status(400).json({ error: 'trackingMode has unsupported value.' });
+      return errorResponse(res, 400, 'validation_error', 'trackingMode has unsupported value.');
     }
 
     const resolvedBrewMethodDefault =
@@ -282,7 +295,7 @@ router.post('/api/user-coffee', async (req, res, next) => {
       && brewMethodDefault !== null
       && !resolvedBrewMethodDefault
     ) {
-      return res.status(400).json({ error: 'brewMethodDefault has unsupported value.' });
+      return errorResponse(res, 400, 'validation_error', 'brewMethodDefault has unsupported value.');
     }
 
     const normalizedOpenedAt =
@@ -296,9 +309,7 @@ router.post('/api/user-coffee', async (req, res, next) => {
       await ensureAppUserExists(session.uid, session.email ?? null);
     } catch (dbError) {
       console.error('[UserCoffee] Failed to ensure user in DB', dbError);
-      return res.status(500).json({
-        error: 'Nepodarilo sa uložiť používateľa do databázy.',
-      });
+      return errorResponse(res, 500, 'db_error', 'Nepodarilo sa uložiť používateľa do databázy.');
     }
 
     const insertResult = await db.query(
@@ -357,7 +368,7 @@ router.post('/api/user-coffee', async (req, res, next) => {
     });
   } catch (error) {
     if (error?.status) {
-      return res.status(error.status).json({ error: error.message });
+      return authErrorResponse(res, error);
     }
     console.error('[UserCoffee] Unexpected error', error);
     return next(error);
@@ -371,7 +382,7 @@ router.patch('/api/user-coffee/:id', async (req, res, next) => {
     const { loved } = req.body || {};
 
     if (typeof loved !== 'boolean') {
-      return res.status(400).json({ error: 'loved must be boolean.' });
+      return errorResponse(res, 400, 'validation_error', 'loved must be boolean.');
     }
 
     const result = await db.query(
@@ -383,13 +394,13 @@ router.patch('/api/user-coffee/:id', async (req, res, next) => {
     );
 
     if (!result.rowCount) {
-      return res.status(404).json({ error: 'Káva nebola nájdená.' });
+      return errorResponse(res, 404, 'not_found', 'Káva nebola nájdená.');
     }
 
     return res.status(200).json({ id, loved });
   } catch (error) {
     if (error?.status) {
-      return res.status(error.status).json({ error: error.message });
+      return authErrorResponse(res, error);
     }
     console.error('[UserCoffee] Failed to update coffee', error);
     return next(error);
@@ -406,15 +417,15 @@ router.patch('/api/user-coffee/:id/consume', async (req, res, next) => {
 
     const normalizedConsumed = toPositiveInteger(consumedG);
     if (!normalizedConsumed) {
-      return res.status(400).json({ error: 'consumedG must be positive integer.' });
+      return errorResponse(res, 400, 'validation_error', 'consumedG must be positive integer.');
     }
 
     if (brewMethod && !BREW_METHODS.has(brewMethod)) {
-      return res.status(400).json({ error: 'brewMethod has unsupported value.' });
+      return errorResponse(res, 400, 'validation_error', 'brewMethod has unsupported value.');
     }
 
     if (source && !CONSUMPTION_SOURCES.has(source)) {
-      return res.status(400).json({ error: 'source has unsupported value.' });
+      return errorResponse(res, 400, 'validation_error', 'source has unsupported value.');
     }
 
     const normalizedPreferredDose =
@@ -426,7 +437,7 @@ router.patch('/api/user-coffee/:id/consume', async (req, res, next) => {
       && preferredDoseG !== null
       && normalizedPreferredDose === null
     ) {
-      return res.status(400).json({ error: 'preferredDoseG must be positive integer.' });
+      return errorResponse(res, 400, 'validation_error', 'preferredDoseG must be positive integer.');
     }
 
     await client.query('BEGIN');
@@ -441,7 +452,7 @@ router.patch('/api/user-coffee/:id/consume', async (req, res, next) => {
 
     if (!selectResult.rowCount) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Káva nebola nájdená.' });
+      return errorResponse(res, 404, 'not_found', 'Káva nebola nájdená.');
     }
 
     const item = selectResult.rows[0];
@@ -510,7 +521,7 @@ router.patch('/api/user-coffee/:id/consume', async (req, res, next) => {
   } catch (error) {
     await client.query('ROLLBACK');
     if (error?.status) {
-      return res.status(error.status).json({ error: error.message });
+      return authErrorResponse(res, error);
     }
     console.error('[UserCoffee] Failed to consume coffee grams', error);
     return next(error);
@@ -527,11 +538,11 @@ router.patch('/api/user-coffee/:id/remaining', async (req, res, next) => {
 
     const normalizedRemaining = toNonNegativeInteger(remainingG);
     if (normalizedRemaining === null) {
-      return res.status(400).json({ error: 'remainingG must be non-negative integer.' });
+      return errorResponse(res, 400, 'validation_error', 'remainingG must be non-negative integer.');
     }
 
     if (source && !CONSUMPTION_SOURCES.has(source)) {
-      return res.status(400).json({ error: 'source has unsupported value.' });
+      return errorResponse(res, 400, 'validation_error', 'source has unsupported value.');
     }
 
     const result = await db.query(
@@ -561,7 +572,7 @@ router.patch('/api/user-coffee/:id/remaining', async (req, res, next) => {
     );
 
     if (!result.rowCount) {
-      return res.status(404).json({ error: 'Káva nebola nájdená.' });
+      return errorResponse(res, 404, 'not_found', 'Káva nebola nájdená.');
     }
 
     return res.status(200).json({
@@ -570,7 +581,7 @@ router.patch('/api/user-coffee/:id/remaining', async (req, res, next) => {
     });
   } catch (error) {
     if (error?.status) {
-      return res.status(error.status).json({ error: error.message });
+      return authErrorResponse(res, error);
     }
     console.error('[UserCoffee] Failed to update remaining grams', error);
     return next(error);
@@ -584,7 +595,7 @@ router.patch('/api/user-coffee/:id/status', async (req, res, next) => {
     const { status } = req.body || {};
 
     if (typeof status !== 'string' || !COFFEE_STATUSES.has(status)) {
-      return res.status(400).json({ error: 'status has unsupported value.' });
+      return errorResponse(res, 400, 'validation_error', 'status has unsupported value.');
     }
 
     const result = await db.query(
@@ -611,7 +622,7 @@ router.patch('/api/user-coffee/:id/status', async (req, res, next) => {
     );
 
     if (!result.rowCount) {
-      return res.status(404).json({ error: 'Káva nebola nájdená.' });
+      return errorResponse(res, 404, 'not_found', 'Káva nebola nájdená.');
     }
 
     return res.status(200).json({
@@ -619,7 +630,7 @@ router.patch('/api/user-coffee/:id/status', async (req, res, next) => {
     });
   } catch (error) {
     if (error?.status) {
-      return res.status(error.status).json({ error: error.message });
+      return authErrorResponse(res, error);
     }
     console.error('[UserCoffee] Failed to update status', error);
     return next(error);
@@ -639,13 +650,13 @@ router.delete('/api/user-coffee/:id', async (req, res, next) => {
     );
 
     if (!result.rowCount) {
-      return res.status(404).json({ error: 'Káva nebola nájdená.' });
+      return errorResponse(res, 404, 'not_found', 'Káva nebola nájdená.');
     }
 
     return res.status(204).send();
   } catch (error) {
     if (error?.status) {
-      return res.status(error.status).json({ error: error.message });
+      return authErrorResponse(res, error);
     }
     console.error('[UserCoffee] Failed to delete coffee', error);
     return next(error);
@@ -658,27 +669,25 @@ router.post('/api/user-questionnaire', async (req, res, next) => {
     const { answers, profile, tasteProfile } = req.body || {};
 
     if (!Array.isArray(answers) || answers.length === 0) {
-      return res.status(400).json({ error: 'answers are required.' });
+      return errorResponse(res, 400, 'validation_error', 'answers are required.');
     }
 
     if (!profile || typeof profile !== 'object') {
-      return res.status(400).json({ error: 'profile is required.' });
+      return errorResponse(res, 400, 'validation_error', 'profile is required.');
     }
 
     const resolvedTasteProfile =
       tasteProfile && typeof tasteProfile === 'object' ? tasteProfile : profile.tasteVector;
 
     if (!resolvedTasteProfile || typeof resolvedTasteProfile !== 'object') {
-      return res.status(400).json({ error: 'tasteProfile is required.' });
+      return errorResponse(res, 400, 'validation_error', 'tasteProfile is required.');
     }
 
     try {
       await ensureAppUserExists(session.uid, session.email ?? null);
     } catch (dbError) {
       console.error('[UserQuestionnaire] Failed to ensure user in DB', dbError);
-      return res.status(500).json({
-        error: 'Nepodarilo sa uložiť používateľa do databázy.',
-      });
+      return errorResponse(res, 500, 'db_error', 'Nepodarilo sa uložiť používateľa do databázy.');
     }
 
     const insertResult = await db.query(
@@ -698,7 +707,7 @@ router.post('/api/user-questionnaire', async (req, res, next) => {
     });
   } catch (error) {
     if (error?.status) {
-      return res.status(error.status).json({ error: error.message });
+      return authErrorResponse(res, error);
     }
     console.error('[UserQuestionnaire] Unexpected error', error);
     return next(error);
@@ -735,7 +744,7 @@ router.get('/api/coffee-journal', async (req, res, next) => {
     });
   } catch (error) {
     if (error?.status) {
-      return res.status(error.status).json({ error: error.message });
+      return authErrorResponse(res, error);
     }
     console.error('[CoffeeJournal] Failed to load brew logs', error);
     return next(error);
@@ -755,31 +764,29 @@ router.post('/api/coffee-journal', async (req, res, next) => {
     } = req.body || {};
 
     if (typeof method !== 'string' || !JOURNAL_BREW_METHODS.has(method)) {
-      return res.status(400).json({ error: 'method has unsupported value.' });
+      return errorResponse(res, 400, 'validation_error', 'method has unsupported value.');
     }
 
     const normalizedDose = toPositiveInteger(doseG);
     if (!normalizedDose) {
-      return res.status(400).json({ error: 'doseG must be positive integer.' });
+      return errorResponse(res, 400, 'validation_error', 'doseG must be positive integer.');
     }
 
     const normalizedBrewTime = toPositiveInteger(brewTimeSeconds);
     if (!normalizedBrewTime) {
-      return res.status(400).json({ error: 'brewTimeSeconds must be positive integer.' });
+      return errorResponse(res, 400, 'validation_error', 'brewTimeSeconds must be positive integer.');
     }
 
     const normalizedRating = toRatingInteger(tasteRating);
     if (!normalizedRating) {
-      return res.status(400).json({ error: 'tasteRating must be integer between 1 and 5.' });
+      return errorResponse(res, 400, 'validation_error', 'tasteRating must be integer between 1 and 5.');
     }
 
     try {
       await ensureAppUserExists(session.uid, session.email ?? null);
     } catch (dbError) {
       console.error('[CoffeeJournal] Failed to ensure user in DB', dbError);
-      return res.status(500).json({
-        error: 'Nepodarilo sa uložiť používateľa do databázy.',
-      });
+      return errorResponse(res, 500, 'db_error', 'Nepodarilo sa uložiť používateľa do databázy.');
     }
 
     const insertResult = await db.query(
@@ -820,7 +827,7 @@ router.post('/api/coffee-journal', async (req, res, next) => {
     });
   } catch (error) {
     if (error?.status) {
-      return res.status(error.status).json({ error: error.message });
+      return authErrorResponse(res, error);
     }
     console.error('[CoffeeJournal] Failed to create brew log', error);
     return next(error);
@@ -926,7 +933,7 @@ router.get('/api/coffee-journal/insights', async (req, res, next) => {
     });
   } catch (error) {
     if (error?.status) {
-      return res.status(error.status).json({ error: error.message });
+      return authErrorResponse(res, error);
     }
     console.error('[CoffeeJournal] Failed to load insights', error);
     return next(error);
@@ -967,7 +974,7 @@ router.get('/api/coffee-recipes', async (req, res, next) => {
     return res.status(200).json({ items: result.rows.map(mapSavedRecipeRow) });
   } catch (error) {
     if (error?.status) {
-      return res.status(error.status).json({ error: error.message });
+      return authErrorResponse(res, error);
     }
     console.error('[CoffeeRecipes] Failed to load recipes', error);
     return next(error);
@@ -1126,13 +1133,13 @@ router.post('/api/coffee-recipes/:id/feedback', async (req, res, next) => {
     const session = await requireSession(req);
     const recipeId = String(req.params.id || '').trim();
     if (!RECIPE_ID_PATTERN.test(recipeId)) {
-      return res.status(400).json({ error: 'Invalid recipe id.' });
+      return errorResponse(res, 400, 'validation_error', 'Invalid recipe id.');
     }
 
     const { actualRating, notes } = req.body || {};
     const rating = Number(actualRating);
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-      return res.status(400).json({ error: 'actualRating must be integer between 1 and 5.' });
+      return errorResponse(res, 400, 'validation_error', 'actualRating must be integer between 1 and 5.');
     }
 
     const sanitizedNotes = typeof notes === 'string' ? notes.trim().slice(0, 500) : null;
@@ -1144,7 +1151,7 @@ router.post('/api/coffee-recipes/:id/feedback', async (req, res, next) => {
       [recipeId, session.uid],
     );
     if (recipeRow.rows.length === 0) {
-      return res.status(404).json({ error: 'Recipe not found.' });
+      return errorResponse(res, 404, 'not_found', 'Recipe not found.');
     }
 
     const predictedScore = Number(recipeRow.rows[0].like_score) || 0;
@@ -1187,7 +1194,7 @@ router.post('/api/coffee-recipes/:id/feedback', async (req, res, next) => {
     });
   } catch (error) {
     if (error?.status) {
-      return res.status(error.status).json({ error: error.message });
+      return authErrorResponse(res, error);
     }
     console.error('[CoffeeRecipes] Failed to save feedback', error);
     return next(error);
@@ -1243,7 +1250,7 @@ router.get('/api/coffee-recipes/insights', async (req, res, next) => {
     });
   } catch (error) {
     if (error?.status) {
-      return res.status(error.status).json({ error: error.message });
+      return authErrorResponse(res, error);
     }
     console.error('[CoffeeRecipes] Failed to load insights', error);
     return next(error);
