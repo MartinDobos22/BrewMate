@@ -33,7 +33,7 @@ const resolveTriplet = ({ first, second, ratio, defaultRatio, computeFirst, comp
   }
 
   let resolvedRatio = providedRatio;
-  if (resolvedRatio == null && resolvedFirst && resolvedSecond) {
+  if (resolvedRatio == null && resolvedFirst != null && resolvedSecond != null) {
     resolvedRatio = resolvedSecond / resolvedFirst;
   }
   if (resolvedRatio == null) {

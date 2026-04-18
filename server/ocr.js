@@ -912,7 +912,7 @@ const runOcr = async ({ imageBase64, languageHints }) => {
   return { rawText, correctedText };
 };
 
-router.post('/api/ocr-correct', async (req, res, next) => {
+router.post('/api/ocr-correct', aiRateLimit, async (req, res, next) => {
   try {
     await requireSession(req);
     const { imageBase64, languageHints } = req.body || {};

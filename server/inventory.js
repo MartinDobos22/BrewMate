@@ -2,6 +2,7 @@ import express from 'express';
 
 import { db, ensureAppUserExists } from './db.js';
 import { requireSession } from './session.js';
+import { callOpenAI, aiErrorToResponse } from './aiFetch.js';
 
 const router = express.Router();
 
@@ -889,13 +890,10 @@ router.get('/api/coffee-journal/insights', async (req, res, next) => {
           bestRatedMethods,
         };
 
-        const completion = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${openAiApiKey}`,
-          },
-          body: JSON.stringify({
+        const result = await callOpenAI({
+          apiKey: openAiApiKey,
+          label: 'CoffeeJournal',
+          payload: {
             model: 'gpt-4o-mini',
             temperature: 0.4,
             messages: [
@@ -909,15 +907,11 @@ router.get('/api/coffee-journal/insights', async (req, res, next) => {
                 content: `Vygeneruj sumár z dát: ${JSON.stringify(prompt)}`,
               },
             ],
-          }),
+          },
         });
 
-        if (completion.ok) {
-          const payload = await completion.json();
-          const summary = payload?.choices?.[0]?.message?.content;
-          if (typeof summary === 'string' && summary.trim().length > 0) {
-            aiSummary = summary.trim();
-          }
+        if (typeof result.content === 'string' && result.content.length > 0) {
+          aiSummary = result.content;
         }
       } catch (aiError) {
         console.warn('[CoffeeJournal] Falling back to local summary', aiError);
