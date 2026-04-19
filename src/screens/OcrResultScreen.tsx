@@ -9,6 +9,7 @@ import {
   QuestionnaireResultPayload,
   SaveEntry,
   saveCoffeeProfile,
+  saveQuestionnaireResult,
 } from '../utils/localSave';
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
@@ -36,7 +37,7 @@ type MatchResult = {
   adventureNote: string;
 };
 
-function OcrResultScreen({ route }: Props) {
+function OcrResultScreen({ route, navigation }: Props) {
   const { rawText, correctedText, coffeeProfile, labelImageBase64 } = route.params;
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [matchState, setMatchState] = useState<
@@ -150,7 +151,43 @@ function OcrResultScreen({ route }: Props) {
       setMatchResult(null);
       setQuestionnaireSnapshot(null);
 
-      const latestQuestionnaire = await loadLatestQuestionnaireResult();
+      let latestQuestionnaire = await loadLatestQuestionnaireResult();
+      if (!isActive) { return; }
+
+      if (!latestQuestionnaire?.payload) {
+        console.log('[OcrResult] No local questionnaire, trying server fallback');
+        try {
+          const remoteResponse = await apiFetch(
+            `${DEFAULT_API_HOST}/api/user-questionnaire`,
+            { method: 'GET', credentials: 'include' },
+            { feature: 'OcrResult', action: 'load-questionnaire' },
+          );
+          if (!isActive) { return; }
+          if (remoteResponse.ok) {
+            const remotePayload = await remoteResponse.json().catch(() => null);
+            const remote = remotePayload?.questionnaire;
+            if (remote?.answers && remote?.profile) {
+              const payload: QuestionnaireResultPayload = {
+                answers: remote.answers,
+                profile: remote.profile,
+              };
+              try {
+                latestQuestionnaire = await saveQuestionnaireResult(payload);
+              } catch (cacheError) {
+                console.warn('[OcrResult] Failed to cache server questionnaire locally', cacheError);
+                latestQuestionnaire = {
+                  id: String(remote.id ?? `remote-${Date.now()}`),
+                  savedAt: remote.savedAt ?? new Date().toISOString(),
+                  payload,
+                };
+              }
+            }
+          }
+        } catch (remoteError) {
+          console.warn('[OcrResult] Server questionnaire fallback failed', remoteError);
+        }
+      }
+
       if (!isActive) { return; }
       if (!latestQuestionnaire?.payload) {
         console.warn('[OcrResult] Missing questionnaire snapshot for match');
@@ -416,6 +453,9 @@ function OcrResultScreen({ route }: Props) {
           padding: spacing.md,
           marginBottom: spacing.sm,
         },
+        missingBlock: {
+          gap: spacing.md,
+        },
       }),
     [colors, typescale, shape, elev, spacing],
   );
@@ -610,10 +650,16 @@ function OcrResultScreen({ route }: Props) {
             </View>
           ) : null}
           {matchState === 'missing' ? (
-            <Text style={s.bodyText}>
-              Zatiaľ nemám uložený výsledok dotazníka. Najprv ho vyplňte a uložte,
-              aby som vedel porovnávať.
-            </Text>
+            <View style={s.missingBlock}>
+              <Text style={s.bodyText}>
+                Aby som ti vedel povedať, či ti káva bude chutiť, najprv vyplň
+                krátky chuťový dotazník. Zaberie ti to 2 minúty.
+              </Text>
+              <MD3Button
+                label="Vyplniť dotazník"
+                onPress={() => navigation.navigate('CoffeeQuestionnaire')}
+              />
+            </View>
           ) : null}
           {matchState === 'error' ? (
             <Text style={s.errorText}>{matchError}</Text>

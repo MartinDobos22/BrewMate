@@ -663,6 +663,52 @@ router.delete('/api/user-coffee/:id', async (req, res, next) => {
   }
 });
 
+router.get('/api/user-questionnaire', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+
+    const result = await db.query(
+      `SELECT id, answers, questionnaire_profile, taste_profile, created_at
+       FROM user_questionnaires
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [session.uid],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(200).json({ questionnaire: null });
+    }
+
+    const row = result.rows[0];
+    const answers = typeof row.answers === 'string' ? JSON.parse(row.answers) : row.answers;
+    const profile =
+      typeof row.questionnaire_profile === 'string'
+        ? JSON.parse(row.questionnaire_profile)
+        : row.questionnaire_profile;
+    const tasteProfile =
+      typeof row.taste_profile === 'string'
+        ? JSON.parse(row.taste_profile)
+        : row.taste_profile;
+
+    return res.status(200).json({
+      questionnaire: {
+        id: row.id,
+        answers,
+        profile,
+        tasteProfile,
+        savedAt: row.created_at,
+      },
+    });
+  } catch (error) {
+    if (error?.status) {
+      return authErrorResponse(res, error);
+    }
+    console.error('[UserQuestionnaire] Failed to load latest questionnaire', error);
+    return next(error);
+  }
+});
+
 router.post('/api/user-questionnaire', async (req, res, next) => {
   try {
     const session = await requireSession(req);
