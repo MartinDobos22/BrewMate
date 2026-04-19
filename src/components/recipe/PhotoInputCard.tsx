@@ -28,6 +28,7 @@ type InventoryCoffee = {
   rawText: string | null;
   correctedText: string | null;
   labelImageBase64: string | null;
+  hasImage?: boolean;
   status: 'active' | 'empty' | 'archived';
 };
 
@@ -43,6 +44,7 @@ function PhotoInputCard({ hasImage, onImageSelected, onError }: Props) {
   const [inventoryItems, setInventoryItems] = useState<InventoryCoffee[]>([]);
   const [isInventoryVisible, setIsInventoryVisible] = useState(false);
   const [isInventoryLoading, setIsInventoryLoading] = useState(false);
+  const [loadingInventoryItemId, setLoadingInventoryItemId] = useState<string | null>(null);
 
   const withPickerTimeout = useCallback(async <T,>(promise: Promise<T>): Promise<T> =>
     Promise.race([
@@ -145,12 +147,36 @@ function PhotoInputCard({ hasImage, onImageSelected, onError }: Props) {
     }
   }, [isInventoryLoading, onError]);
 
-  const handleSelectInventoryCoffee = useCallback((item: InventoryCoffee) => {
-    if (!item.labelImageBase64) {
+  const handleSelectInventoryCoffee = useCallback(async (item: InventoryCoffee) => {
+    const itemHasImage = item.hasImage ?? Boolean(item.labelImageBase64);
+    if (!itemHasImage) {
       onError('Táto káva v inventári nemá uloženú fotku etikety.');
       return;
     }
-    const normalizedImage = normalizeBase64(item.labelImageBase64);
+
+    let rawImage = item.labelImageBase64;
+    if (!rawImage) {
+      setLoadingInventoryItemId(item.id);
+      try {
+        const response = await apiFetch(
+          `${DEFAULT_API_HOST}/api/user-coffee/${item.id}/image`,
+          { method: 'GET', credentials: 'include' },
+          { feature: 'PhotoRecipe', action: 'inventory-image-load' },
+        );
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.imageBase64) {
+          throw new Error(payload?.error || 'Nepodarilo sa načítať fotku etikety.');
+        }
+        rawImage = payload.imageBase64 as string;
+      } catch (error) {
+        onError(error instanceof Error ? error.message : 'Nepodarilo sa načítať fotku etikety.');
+        return;
+      } finally {
+        setLoadingInventoryItemId(null);
+      }
+    }
+
+    const normalizedImage = normalizeBase64(rawImage);
     if (estimateBase64Bytes(normalizedImage) > MAX_BASE64_BYTES) {
       onError('Fotka etikety tejto kávy je príliš veľká na analýzu.');
       return;
@@ -251,17 +277,22 @@ function PhotoInputCard({ hasImage, onImageSelected, onError }: Props) {
           {inventoryItems.length > 0 ? (
             inventoryItems.map(item => {
               const coffeeName = item.correctedText || item.rawText || 'Neznáma káva';
-              const hasItemImage = Boolean(item.labelImageBase64);
+              const hasItemImage = item.hasImage ?? Boolean(item.labelImageBase64);
+              const isLoadingThis = loadingInventoryItemId === item.id;
               return (
                 <Pressable
                   key={item.id}
                   style={[s.inventoryItem, !hasItemImage && s.inventoryItemDisabled]}
                   onPress={() => handleSelectInventoryCoffee(item)}
-                  disabled={!hasItemImage}
+                  disabled={!hasItemImage || isLoadingThis}
                 >
                   <Text style={s.inventoryItemTitle}>{coffeeName}</Text>
                   <Text style={s.inventoryItemMeta}>
-                    {hasItemImage ? 'Použiť fotku etikety z inventára' : 'Bez fotky etikety'}
+                    {isLoadingThis
+                      ? 'Načítavam fotku…'
+                      : hasItemImage
+                        ? 'Použiť fotku etikety z inventára'
+                        : 'Bez fotky etikety'}
                   </Text>
                 </Pressable>
               );

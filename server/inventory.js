@@ -158,7 +158,9 @@ const mapCoffeeRow = (row) => ({
   correctedText: row.corrected_text,
   coffeeProfile: row.coffee_profile,
   aiMatchResult: row.ai_match_result,
-  labelImageBase64: row.label_image_base64,
+  // Image lives in user_coffee_images now; fetch on demand via GET /api/user-coffee/:id/image.
+  labelImageBase64: null,
+  hasImage: Boolean(row.has_image),
   loved: Boolean(row.loved),
   packageSizeG: row.package_size_g,
   remainingG: row.remaining_g,
@@ -177,26 +179,30 @@ router.get('/api/user-coffee', async (req, res, next) => {
     const includeInactive = req.query.includeInactive === 'true';
 
     const result = await db.query(
-      `SELECT id,
-              raw_text,
-              corrected_text,
-              coffee_profile,
-              ai_match_result,
-              label_image_base64,
-              loved,
-              package_size_g,
-              remaining_g,
-              opened_at,
-              status,
-              tracking_mode,
-              preferred_dose_g,
-              brew_method_default,
-              last_consumed_at,
-              created_at
-       FROM user_coffee
-       WHERE user_id = $1
-         AND ($2::boolean = true OR status = 'active')
-       ORDER BY created_at DESC`,
+      `SELECT uc.id,
+              uc.raw_text,
+              uc.corrected_text,
+              uc.coffee_profile,
+              uc.ai_match_result,
+              uc.loved,
+              uc.package_size_g,
+              uc.remaining_g,
+              uc.opened_at,
+              uc.status,
+              uc.tracking_mode,
+              uc.preferred_dose_g,
+              uc.brew_method_default,
+              uc.last_consumed_at,
+              uc.created_at,
+              (EXISTS (
+                 SELECT 1 FROM user_coffee_images uci
+                 WHERE uci.user_coffee_id = uc.id
+               )
+               OR uc.label_image_base64 IS NOT NULL) AS has_image
+       FROM user_coffee uc
+       WHERE uc.user_id = $1
+         AND ($2::boolean = true OR uc.status = 'active')
+       ORDER BY uc.created_at DESC`,
       [session.uid, includeInactive],
     );
 
@@ -213,6 +219,7 @@ router.get('/api/user-coffee', async (req, res, next) => {
 });
 
 router.post('/api/user-coffee', async (req, res, next) => {
+  let client = null;
   try {
     const session = await requireSession(req);
     const {
@@ -312,14 +319,21 @@ router.post('/api/user-coffee', async (req, res, next) => {
       return errorResponse(res, 500, 'db_error', 'Nepodarilo sa uložiť používateľa do databázy.');
     }
 
-    const insertResult = await db.query(
+    const normalizedImage =
+      typeof labelImageBase64 === 'string' && labelImageBase64.trim().length > 0
+        ? labelImageBase64.trim()
+        : null;
+
+    client = await db.connect();
+    await client.query('BEGIN');
+
+    const insertResult = await client.query(
       `INSERT INTO user_coffee (
           user_id,
           raw_text,
           corrected_text,
           coffee_profile,
           ai_match_result,
-          label_image_base64,
           loved,
           package_size_g,
           remaining_g,
@@ -329,13 +343,12 @@ router.post('/api/user-coffee', async (req, res, next) => {
           preferred_dose_g,
           brew_method_default
         )
-       VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, false, $7, $8, $9, $10, $11, $12, $13)
+       VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, false, $6, $7, $8, $9, $10, $11, $12)
        RETURNING id,
                  raw_text,
                  corrected_text,
                  coffee_profile,
                  ai_match_result,
-                 label_image_base64,
                  loved,
                  package_size_g,
                  remaining_g,
@@ -352,7 +365,6 @@ router.post('/api/user-coffee', async (req, res, next) => {
         typeof correctedText === 'string' ? correctedText : null,
         JSON.stringify(coffeeProfile),
         aiMatchResult && typeof aiMatchResult === 'object' ? JSON.stringify(aiMatchResult) : null,
-        typeof labelImageBase64 === 'string' ? labelImageBase64 : null,
         normalizedPackageSize,
         resolvedRemaining,
         normalizedOpenedAt,
@@ -363,15 +375,35 @@ router.post('/api/user-coffee', async (req, res, next) => {
       ],
     );
 
+    const insertedRow = insertResult.rows[0];
+
+    if (normalizedImage) {
+      await client.query(
+        `INSERT INTO user_coffee_images (user_coffee_id, user_id, image_base64)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_coffee_id) DO UPDATE
+           SET image_base64 = EXCLUDED.image_base64,
+               user_id = EXCLUDED.user_id`,
+        [insertedRow.id, session.uid, normalizedImage],
+      );
+    }
+
+    await client.query('COMMIT');
+
     return res.status(201).json({
-      item: mapCoffeeRow(insertResult.rows[0]),
+      item: mapCoffeeRow({ ...insertedRow, has_image: Boolean(normalizedImage) }),
     });
   } catch (error) {
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch (_rollbackError) { /* ignore */ }
+    }
     if (error?.status) {
       return authErrorResponse(res, error);
     }
     console.error('[UserCoffee] Unexpected error', error);
     return next(error);
+  } finally {
+    if (client) { client.release(); }
   }
 });
 
@@ -474,7 +506,6 @@ router.patch('/api/user-coffee/:id/consume', async (req, res, next) => {
                  corrected_text,
                  coffee_profile,
                  ai_match_result,
-                 label_image_base64,
                  loved,
                  package_size_g,
                  remaining_g,
@@ -484,7 +515,12 @@ router.patch('/api/user-coffee/:id/consume', async (req, res, next) => {
                  preferred_dose_g,
                  brew_method_default,
                  last_consumed_at,
-                 created_at`,
+                 created_at,
+                 (EXISTS (
+                    SELECT 1 FROM user_coffee_images uci
+                    WHERE uci.user_coffee_id = user_coffee.id
+                  )
+                  OR label_image_base64 IS NOT NULL) AS has_image`,
       [
         id,
         session.uid,
@@ -557,7 +593,6 @@ router.patch('/api/user-coffee/:id/remaining', async (req, res, next) => {
                  corrected_text,
                  coffee_profile,
                  ai_match_result,
-                 label_image_base64,
                  loved,
                  package_size_g,
                  remaining_g,
@@ -567,7 +602,12 @@ router.patch('/api/user-coffee/:id/remaining', async (req, res, next) => {
                  preferred_dose_g,
                  brew_method_default,
                  last_consumed_at,
-                 created_at`,
+                 created_at,
+                 (EXISTS (
+                    SELECT 1 FROM user_coffee_images uci
+                    WHERE uci.user_coffee_id = user_coffee.id
+                  )
+                  OR label_image_base64 IS NOT NULL) AS has_image`,
       [id, session.uid, normalizedRemaining],
     );
 
@@ -607,7 +647,6 @@ router.patch('/api/user-coffee/:id/status', async (req, res, next) => {
                  corrected_text,
                  coffee_profile,
                  ai_match_result,
-                 label_image_base64,
                  loved,
                  package_size_g,
                  remaining_g,
@@ -617,7 +656,12 @@ router.patch('/api/user-coffee/:id/status', async (req, res, next) => {
                  preferred_dose_g,
                  brew_method_default,
                  last_consumed_at,
-                 created_at`,
+                 created_at,
+                 (EXISTS (
+                    SELECT 1 FROM user_coffee_images uci
+                    WHERE uci.user_coffee_id = user_coffee.id
+                  )
+                  OR label_image_base64 IS NOT NULL) AS has_image`,
       [id, session.uid, status],
     );
 
@@ -633,6 +677,58 @@ router.patch('/api/user-coffee/:id/status', async (req, res, next) => {
       return authErrorResponse(res, error);
     }
     console.error('[UserCoffee] Failed to update status', error);
+    return next(error);
+  }
+});
+
+router.get('/api/user-coffee/:id/image', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+    const { id } = req.params;
+
+    const imgResult = await db.query(
+      `SELECT image_base64, content_type
+       FROM user_coffee_images
+       WHERE user_coffee_id = $1 AND user_id = $2
+       LIMIT 1`,
+      [id, session.uid],
+    );
+
+    if (imgResult.rowCount > 0) {
+      const row = imgResult.rows[0];
+      return res.status(200).json({
+        imageBase64: row.image_base64,
+        contentType: row.content_type ?? null,
+      });
+    }
+
+    // Legacy fallback — image still sits in user_coffee.label_image_base64.
+    const legacyResult = await db.query(
+      `SELECT label_image_base64
+       FROM user_coffee
+       WHERE id = $1 AND user_id = $2
+       LIMIT 1`,
+      [id, session.uid],
+    );
+
+    if (legacyResult.rowCount === 0) {
+      return errorResponse(res, 404, 'not_found', 'Káva nebola nájdená.');
+    }
+
+    const legacyImage = legacyResult.rows[0].label_image_base64;
+    if (!legacyImage) {
+      return errorResponse(res, 404, 'not_found', 'Káva nemá uloženú fotku etikety.');
+    }
+
+    return res.status(200).json({
+      imageBase64: legacyImage,
+      contentType: null,
+    });
+  } catch (error) {
+    if (error?.status) {
+      return authErrorResponse(res, error);
+    }
+    console.error('[UserCoffee] Failed to load coffee image', error);
     return next(error);
   }
 });
@@ -659,6 +755,108 @@ router.delete('/api/user-coffee/:id', async (req, res, next) => {
       return authErrorResponse(res, error);
     }
     console.error('[UserCoffee] Failed to delete coffee', error);
+    return next(error);
+  }
+});
+
+router.post('/api/user-coffee/:id/match-feedback', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+    const { id } = req.params;
+    const {
+      predictedScore,
+      predictedTier,
+      actualRating,
+      notes,
+      algorithmVersion,
+    } = req.body || {};
+
+    const normalizedPredicted = toNonNegativeInteger(predictedScore);
+    if (normalizedPredicted === null || normalizedPredicted > 100) {
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'predictedScore must be integer 0-100.',
+      );
+    }
+
+    const normalizedRating = toRatingInteger(actualRating);
+    if (normalizedRating === null) {
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'actualRating must be integer 1-5.',
+      );
+    }
+
+    const ownershipCheck = await db.query(
+      `SELECT id FROM user_coffee WHERE id = $1 AND user_id = $2`,
+      [id, session.uid],
+    );
+    if (ownershipCheck.rowCount === 0) {
+      return errorResponse(res, 404, 'not_found', 'Káva nebola nájdená.');
+    }
+
+    try {
+      await ensureAppUserExists(session.uid, session.email ?? null);
+    } catch (dbError) {
+      console.error('[CoffeeMatchFeedback] Failed to ensure user', dbError);
+      return errorResponse(res, 500, 'db_error', 'Nepodarilo sa uložiť používateľa do databázy.');
+    }
+
+    const normalizedTier =
+      typeof predictedTier === 'string' && predictedTier.trim().length > 0
+        ? predictedTier.trim()
+        : null;
+    const normalizedNotes =
+      typeof notes === 'string' && notes.trim().length > 0 ? notes.trim() : null;
+    const normalizedAlgorithm =
+      typeof algorithmVersion === 'string' && algorithmVersion.trim().length > 0
+        ? algorithmVersion.trim()
+        : null;
+
+    const insertResult = await db.query(
+      `INSERT INTO user_coffee_match_feedback (
+         user_id,
+         user_coffee_id,
+         predicted_score,
+         predicted_tier,
+         actual_rating,
+         notes,
+         algorithm_version
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, created_at`,
+      [
+        session.uid,
+        id,
+        normalizedPredicted,
+        normalizedTier,
+        normalizedRating,
+        normalizedNotes,
+        normalizedAlgorithm,
+      ],
+    );
+
+    return res.status(201).json({
+      feedback: {
+        id: insertResult.rows[0].id,
+        userCoffeeId: id,
+        predictedScore: normalizedPredicted,
+        predictedTier: normalizedTier,
+        actualRating: normalizedRating,
+        notes: normalizedNotes,
+        algorithmVersion: normalizedAlgorithm,
+        createdAt: insertResult.rows[0].created_at,
+      },
+    });
+  } catch (error) {
+    if (error?.status) {
+      return authErrorResponse(res, error);
+    }
+    console.error('[CoffeeMatchFeedback] Failed to persist feedback', error);
     return next(error);
   }
 });

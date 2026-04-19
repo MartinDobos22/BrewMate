@@ -611,7 +611,8 @@ const TASTE_AXES = ['acidity', 'sweetness', 'bitterness', 'body', 'fruity', 'roa
 const TOLERANCE_WEIGHTS = { tolerant: 0.4, neutral: 0.7, dislike: 1.0 };
 const MATCH_TIER_THRESHOLDS = { perfect: 85, great: 70, worthTrying: 50, experiment: 30 };
 const MATCH_ALGORITHM_VERSION = 'vector-v1';
-const MATCH_CACHE_VERSION = 'match-llm-v1';
+const MATCH_CACHE_VERSION = 'match-hybrid-v1';
+const MATCH_LLM_FALLBACK_VERSION = 'llm-fallback-v1';
 const CALIBRATION_RATING_MAP = { 1: 10, 2: 35, 3: 60, 3.5: 70, 4: 80, 5: 95 };
 const CALIBRATION_MAX_OFFSET = 15;
 
@@ -829,6 +830,175 @@ const computeMatchPrediction = ({
     },
   };
 };
+
+// Deterministic match between a coffee profile and a user questionnaire.
+// Mirrors the vector branch of computeMatchPrediction but without brewPath
+// coupling. Used by /api/coffee-match to produce stable score + tier; the LLM
+// then only writes the human-readable texts consistent with that score.
+const computeCoffeeProfileMatch = ({ coffeeProfile, userQuestionnaire, calibration }) => {
+  const coffeeVector = coffeeProfile?.tasteVector;
+  const userVector = userQuestionnaire?.tasteVector;
+  const calibrationOffset = Number(calibration?.offset) || 0;
+  const calibrationSample = Number(calibration?.sampleSize) || 0;
+
+  if (!coffeeVector || !userVector) {
+    return {
+      hasVector: false,
+      calibrationOffset,
+      calibrationSampleSize: calibrationSample,
+    };
+  }
+
+  const tolerance = userQuestionnaire.toleranceVector || {};
+  const opennessRaw = String(userQuestionnaire.openness || 'moderate').toLowerCase();
+  const openness = ['conservative', 'moderate', 'adventurous'].includes(opennessRaw)
+    ? opennessRaw
+    : 'moderate';
+
+  let totalWeight = 0;
+  let weightedDistance = 0;
+  const axes = [];
+  const keyMatches = [];
+  const keyConflicts = [];
+
+  for (const axis of TASTE_AXES) {
+    const toleranceLevel = tolerance[axis] || 'neutral';
+    const weight = TOLERANCE_WEIGHTS[toleranceLevel] || TOLERANCE_WEIGHTS.neutral;
+    const coffeeValue = clampAxis(coffeeVector[axis]);
+    const userValue = clampAxis(userVector[axis]);
+    const diff = Math.abs(userValue - coffeeValue);
+    totalWeight += weight;
+    weightedDistance += diff * weight;
+
+    let status = 'neutral';
+    if (diff <= 15) {
+      status = 'match';
+      keyMatches.push(AXIS_LABELS[axis]);
+    } else if (diff >= 40 && (toleranceLevel === 'dislike' || toleranceLevel === 'neutral')) {
+      status = 'conflict';
+      keyConflicts.push(AXIS_LABELS[axis]);
+    }
+
+    axes.push({
+      axis,
+      label: AXIS_LABELS[axis],
+      coffeeValue,
+      userValue,
+      diff: Math.round(diff),
+      tolerance: toleranceLevel,
+      weight,
+      status,
+    });
+  }
+
+  const normalizedDistance = totalWeight > 0 ? weightedDistance / totalWeight : 0;
+  const baseScore = Math.round(100 - normalizedDistance);
+
+  let opennessBonus = 0;
+  if (openness === 'adventurous') { opennessBonus = 4; }
+  else if (openness === 'conservative') { opennessBonus = -3; }
+
+  const rawProfileConfidence = Number(coffeeProfile?.confidence);
+  const profileConfidence = Number.isFinite(rawProfileConfidence)
+    ? Math.max(0, Math.min(1, rawProfileConfidence))
+    : null;
+
+  let confidencePenalty = 0;
+  if (profileConfidence !== null && profileConfidence < 0.5) {
+    confidencePenalty = Math.round((0.5 - profileConfidence) * 10);
+  }
+
+  const preCalibrationScore = baseScore + opennessBonus - confidencePenalty;
+  const matchScore = Math.max(0, Math.min(99, preCalibrationScore - calibrationOffset));
+  const matchTier = matchScoreToTier(matchScore);
+
+  return {
+    hasVector: true,
+    matchScore,
+    matchTier,
+    confidence: profileConfidence ?? 0.7,
+    keyMatches,
+    keyConflicts,
+    axes,
+    algorithmVersion: MATCH_ALGORITHM_VERSION,
+    breakdown: {
+      mode: 'vector',
+      baseScore,
+      opennessBonus,
+      confidencePenalty,
+      calibrationOffset,
+      calibrationSampleSize: calibrationSample,
+      openness,
+    },
+  };
+};
+
+const buildCoffeeMatchTextPayload = (questionnaire, coffeeProfile, vectorResult) => ({
+  model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  temperature: 0.4,
+  response_format: {
+    type: 'json_schema',
+    json_schema: {
+      name: 'coffee_match_text',
+      strict: true,
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['baristaSummary', 'laymanSummary', 'suggestedAdjustments', 'adventureNote'],
+        properties: {
+          baristaSummary: { type: 'string' },
+          laymanSummary: { type: 'string' },
+          suggestedAdjustments: { type: 'string' },
+          adventureNote: { type: 'string' },
+        },
+      },
+    },
+  },
+  messages: [
+    {
+      role: 'system',
+      content:
+        'Si priateľský coffee sensory analytik. Deterministický algoritmus UŽ vypočítal numerické skóre zhody '
+        + 'a kľúčové zhody/konflikty medzi profilom zákazníka a kávou. '
+        + 'Tvoja úloha je IBA napísať ľudské texty — baristaSummary, laymanSummary, suggestedAdjustments, adventureNote — '
+        + 'ktoré sú v súlade so skóre a tierom. NEprepisuj skóre, NEhádaj iný tier, drž sa toho čo dostaneš. '
+        + 'baristaSummary: odborný pohľad pre baristu (2-3 vety, senzorické termíny, konkrétne osi). '
+        + 'laymanSummary: zrozumiteľný sumár pre bežného kávičkára (2-3 vety, bez žargónu). '
+        + 'suggestedAdjustments: konkrétny tip čo pri príprave skúsiť aby sa káva priblížila profilu zákazníka '
+        + '(napr. úprava teploty, mletia, pomeru) — alebo prázdny string ak netreba. '
+        + 'adventureNote: vždy napíš aspoň jednu vetu čo zaujímavé môže káva ponúknuť, aj keď nie je perfect match. '
+        + 'Odpovedaj po slovensky, bez marketingových fráz. Výstup musí presne sedieť na JSON schému.',
+    },
+    {
+      role: 'user',
+      content: `Deterministické skóre: ${vectorResult.matchScore}/100 (tier: ${vectorResult.matchTier}).\n`
+        + `Zhoda v osách: ${vectorResult.keyMatches.join(', ') || '—'}.\n`
+        + `Konflikty v osách: ${vectorResult.keyConflicts.join(', ') || '—'}.\n`
+        + `Openness zákazníka: ${questionnaire?.openness || 'moderate'}.\n\n`
+        + `Dotazník (profil):\n${JSON.stringify(
+          {
+            tasteVector: questionnaire?.tasteVector || {},
+            toleranceVector: questionnaire?.toleranceVector || {},
+            openness: questionnaire?.openness,
+            profileSummary: questionnaire?.profileSummary,
+          },
+          null,
+          2,
+        )}\n\nProfil kávy:\n${JSON.stringify(
+          {
+            tasteVector: coffeeProfile?.tasteVector || {},
+            flavorNotes: coffeeProfile?.flavorNotes || [],
+            tasteProfile: coffeeProfile?.tasteProfile,
+            expertSummary: coffeeProfile?.expertSummary,
+            preferenceHint: coffeeProfile?.preferenceHint,
+            confidence: coffeeProfile?.confidence,
+          },
+          null,
+          2,
+        )}\n\nNapíš texty konzistentné s vyššie uvedeným skóre a tierom.`,
+    },
+  ],
+});
 
 const runOcr = async ({ imageBase64, languageHints }) => {
   if (!imageBase64) {
@@ -1325,13 +1495,62 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
       console.warn('[CoffeeMatch] DB cache lookup failed', dbError?.message);
     }
 
-    const { content: matchContent } = await callOpenAI({
-      apiKey: openAiApiKey,
-      payload: buildCoffeeMatchPayload(questionnaire, coffeeProfile),
-      label: 'CoffeeMatch',
+    // Load user's coffee-match feedback history for calibration offset.
+    let calibration = { offset: 0, sampleSize: 0 };
+    try {
+      const feedbackResult = await db.query(
+        `SELECT predicted_score, actual_rating
+         FROM user_coffee_match_feedback
+         WHERE user_id = $1
+           AND algorithm_version = $2
+         ORDER BY created_at DESC
+         LIMIT 20`,
+        [session.uid, MATCH_ALGORITHM_VERSION],
+      );
+      calibration = computeCalibrationOffset(feedbackResult.rows);
+    } catch (dbError) {
+      console.warn('[CoffeeMatch] Failed to load calibration feedback', dbError?.message);
+    }
+
+    const vectorResult = computeCoffeeProfileMatch({
+      coffeeProfile,
+      userQuestionnaire: questionnaire,
+      calibration,
     });
 
-    const match = parseAIJson(matchContent, 'CoffeeMatch');
+    let match;
+    if (vectorResult.hasVector) {
+      const { content: textContent } = await callOpenAI({
+        apiKey: openAiApiKey,
+        payload: buildCoffeeMatchTextPayload(questionnaire, coffeeProfile, vectorResult),
+        label: 'CoffeeMatch-Text',
+      });
+      const texts = parseAIJson(textContent, 'CoffeeMatch-Text');
+
+      match = {
+        matchScore: vectorResult.matchScore,
+        matchTier: vectorResult.matchTier,
+        confidence: vectorResult.confidence,
+        baristaSummary: typeof texts?.baristaSummary === 'string' ? texts.baristaSummary : '',
+        laymanSummary: typeof texts?.laymanSummary === 'string' ? texts.laymanSummary : '',
+        keyMatches: vectorResult.keyMatches,
+        keyConflicts: vectorResult.keyConflicts,
+        suggestedAdjustments:
+          typeof texts?.suggestedAdjustments === 'string' ? texts.suggestedAdjustments : '',
+        adventureNote: typeof texts?.adventureNote === 'string' ? texts.adventureNote : '',
+        algorithmVersion: vectorResult.algorithmVersion,
+        breakdown: vectorResult.breakdown,
+      };
+    } else {
+      console.log('[CoffeeMatch] Vector unavailable, falling back to LLM-only path');
+      const { content: matchContent } = await callOpenAI({
+        apiKey: openAiApiKey,
+        payload: buildCoffeeMatchPayload(questionnaire, coffeeProfile),
+        label: 'CoffeeMatch',
+      });
+      match = parseAIJson(matchContent, 'CoffeeMatch');
+      match.algorithmVersion = MATCH_LLM_FALLBACK_VERSION;
+    }
 
     aiCache.set(cacheKey, match);
 
@@ -1344,7 +1563,12 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
          DO UPDATE SET match = EXCLUDED.match,
                        algorithm_version = EXCLUDED.algorithm_version,
                        updated_at = now()`,
-        [session.uid, cacheKey, JSON.stringify(match), MATCH_CACHE_VERSION],
+        [
+          session.uid,
+          cacheKey,
+          JSON.stringify(match),
+          match.algorithmVersion || MATCH_CACHE_VERSION,
+        ],
       );
     } catch (dbError) {
       console.warn('[CoffeeMatch] Failed to persist match cache', dbError?.message);

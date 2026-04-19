@@ -81,6 +81,36 @@ create table if not exists public.coffee_match_cache (
 create index if not exists coffee_match_cache_user_idx
   on public.coffee_match_cache (user_id, updated_at desc);
 
+create table if not exists public.user_coffee_match_feedback (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null references public.app_users (id) on delete cascade,
+  user_coffee_id uuid references public.user_coffee (id) on delete cascade,
+  predicted_score integer not null check (predicted_score between 0 and 100),
+  predicted_tier text,
+  actual_rating integer not null check (actual_rating between 1 and 5),
+  notes text,
+  algorithm_version text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists user_coffee_match_feedback_user_idx
+  on public.user_coffee_match_feedback (user_id, created_at desc);
+
+create index if not exists user_coffee_match_feedback_coffee_idx
+  on public.user_coffee_match_feedback (user_coffee_id);
+
+create table if not exists public.user_coffee_images (
+  user_coffee_id uuid primary key
+    references public.user_coffee (id) on delete cascade,
+  user_id text not null references public.app_users (id) on delete cascade,
+  image_base64 text not null,
+  content_type text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists user_coffee_images_user_idx
+  on public.user_coffee_images (user_id);
+
 create table if not exists public.user_questionnaires (
   id uuid primary key default gen_random_uuid(),
   user_id text not null references public.app_users (id) on delete cascade,
@@ -143,6 +173,8 @@ alter table public.user_questionnaires enable row level security;
 alter table public.user_saved_coffee_recipes enable row level security;
 alter table public.user_recipe_feedback enable row level security;
 alter table public.coffee_match_cache enable row level security;
+alter table public.user_coffee_match_feedback enable row level security;
+alter table public.user_coffee_images enable row level security;
 
 create policy "Users can insert their own profile"
   on public.app_users
@@ -268,5 +300,41 @@ create policy "Users can update their match cache"
 
 create policy "Users can delete their match cache"
   on public.coffee_match_cache
+  for delete
+  using (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
+
+create policy "Users can read their match feedback"
+  on public.user_coffee_match_feedback
+  for select
+  using (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
+
+create policy "Users can insert their match feedback"
+  on public.user_coffee_match_feedback
+  for insert
+  with check (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
+
+create policy "Users can update their match feedback"
+  on public.user_coffee_match_feedback
+  for update
+  using (auth.uid()::text = user_id and public.is_valid_firebase_jwt())
+  with check (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
+
+create policy "Users can delete their match feedback"
+  on public.user_coffee_match_feedback
+  for delete
+  using (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
+
+create policy "Users can read their coffee images"
+  on public.user_coffee_images
+  for select
+  using (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
+
+create policy "Users can insert their coffee images"
+  on public.user_coffee_images
+  for insert
+  with check (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
+
+create policy "Users can delete their coffee images"
+  on public.user_coffee_images
   for delete
   using (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
