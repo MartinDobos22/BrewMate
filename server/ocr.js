@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { db } from './db.js';
+import { db, ensureAppUserExists } from './db.js';
 import { requireSession } from './session.js';
 import { AIError, callOpenAI, parseAIJson, validateAISchema, aiErrorToResponse } from './aiFetch.js';
 import { aiRateLimit } from './rateLimit.js';
@@ -611,6 +611,7 @@ const TASTE_AXES = ['acidity', 'sweetness', 'bitterness', 'body', 'fruity', 'roa
 const TOLERANCE_WEIGHTS = { tolerant: 0.4, neutral: 0.7, dislike: 1.0 };
 const MATCH_TIER_THRESHOLDS = { perfect: 85, great: 70, worthTrying: 50, experiment: 30 };
 const MATCH_ALGORITHM_VERSION = 'vector-v1';
+const MATCH_CACHE_VERSION = 'match-llm-v1';
 const CALIBRATION_RATING_MAP = { 1: 10, 2: 35, 3: 60, 3.5: 70, 4: 80, 5: 95 };
 const CALIBRATION_MAX_OFFSET = 15;
 
@@ -1279,7 +1280,7 @@ router.post('/api/coffee-questionnaire', aiRateLimit, async (req, res, next) => 
 
 router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
   try {
-    await requireSession(req);
+    const session = await requireSession(req);
     const { questionnaire, coffeeProfile } = req.body || {};
 
     if (!questionnaire || !coffeeProfile) {
@@ -1294,6 +1295,36 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
       return res.status(500).json({ error: 'OpenAI API key is not configured.' });
     }
 
+    const cacheKey = aiCache.hashKey([
+      'coffee-match',
+      MATCH_CACHE_VERSION,
+      session.uid,
+      questionnaire,
+      coffeeProfile,
+    ]);
+
+    const memoryHit = aiCache.get(cacheKey);
+    if (memoryHit) {
+      console.log('[CoffeeMatch] In-memory cache hit', { cacheKey: cacheKey.slice(0, 12) });
+      return res.status(200).json({ match: memoryHit, cached: true });
+    }
+
+    try {
+      const dbHit = await db.query(
+        'SELECT match FROM coffee_match_cache WHERE user_id = $1 AND cache_key = $2',
+        [session.uid, cacheKey],
+      );
+      if (dbHit.rows.length > 0) {
+        const row = dbHit.rows[0];
+        const cachedMatch = typeof row.match === 'string' ? JSON.parse(row.match) : row.match;
+        console.log('[CoffeeMatch] DB cache hit', { cacheKey: cacheKey.slice(0, 12) });
+        aiCache.set(cacheKey, cachedMatch);
+        return res.status(200).json({ match: cachedMatch, cached: true });
+      }
+    } catch (dbError) {
+      console.warn('[CoffeeMatch] DB cache lookup failed', dbError?.message);
+    }
+
     const { content: matchContent } = await callOpenAI({
       apiKey: openAiApiKey,
       payload: buildCoffeeMatchPayload(questionnaire, coffeeProfile),
@@ -1301,6 +1332,23 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
     });
 
     const match = parseAIJson(matchContent, 'CoffeeMatch');
+
+    aiCache.set(cacheKey, match);
+
+    try {
+      await ensureAppUserExists(session.uid, session.email ?? null);
+      await db.query(
+        `INSERT INTO coffee_match_cache (user_id, cache_key, match, algorithm_version)
+         VALUES ($1, $2, $3::jsonb, $4)
+         ON CONFLICT (user_id, cache_key)
+         DO UPDATE SET match = EXCLUDED.match,
+                       algorithm_version = EXCLUDED.algorithm_version,
+                       updated_at = now()`,
+        [session.uid, cacheKey, JSON.stringify(match), MATCH_CACHE_VERSION],
+      );
+    } catch (dbError) {
+      console.warn('[CoffeeMatch] Failed to persist match cache', dbError?.message);
+    }
 
     return res.status(200).json({ match });
   } catch (error) {
