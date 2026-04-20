@@ -8,7 +8,8 @@
     "ios": "react-native run-ios --config metro.config.cjs",
     "lint": "eslint .",
     "start": "react-native start --config metro.config.cjs",
-    "test": "jest"
+    "test": "jest",
+    "verify:db": "node scripts/verify-db-schema.js"
   },
   "dependencies": {
     "@invertase/react-native-apple-authentication": "^2.3.0",
