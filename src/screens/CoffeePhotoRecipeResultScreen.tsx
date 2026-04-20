@@ -70,16 +70,33 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
 
   const idempotencyKeyRef = useRef(generateIdempotencyKey());
 
-  // Check for pending backup on mount
+  // Check for pending backup on mount. If stored params match current recipe,
+  // reuse its idempotency key to avoid duplicate DB rows on retry. Otherwise
+  // drop the stale backup so the "previous session" banner doesn't appear
+  // on an unrelated recipe.
   useEffect(() => {
     AsyncStorage.getItem(PENDING_RECIPE_KEY)
       .then((data) => {
-        if (data) {
-          setHasPendingBackup(true);
+        if (!data) return;
+        try {
+          const parsed = JSON.parse(data);
+          const storedParams = parsed?.params;
+          const sameRecipe =
+            storedParams?.recipe?.title === route.params.recipe?.title &&
+            storedParams?.brewPath === route.params.brewPath &&
+            storedParams?.analysis?.summary === route.params.analysis?.summary;
+          if (sameRecipe && typeof parsed.idempotencyKey === 'string') {
+            idempotencyKeyRef.current = parsed.idempotencyKey;
+            setHasPendingBackup(true);
+          } else {
+            AsyncStorage.removeItem(PENDING_RECIPE_KEY).catch(() => {});
+          }
+        } catch {
+          AsyncStorage.removeItem(PENDING_RECIPE_KEY).catch(() => {});
         }
       })
       .catch(() => {});
-  }, []);
+  }, [route.params]);
 
   // Clear backup after successful save
   const clearPendingBackup = useCallback(async () => {
@@ -215,6 +232,37 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
     setIsRetryable(false);
     handleSaveRecipe();
   }, [handleSaveRecipe]);
+
+  const handleBottomNavBeforeNavigate = useCallback((): boolean | Promise<boolean> => {
+    if (saveState === 'saved' || saveState === 'saving') {
+      return true;
+    }
+    return new Promise<boolean>((resolve) => {
+      Alert.alert(
+        'Neuložený recept',
+        'Recept ešte nie je uložený. Naozaj chceš odísť?',
+        [
+          { text: 'Zostať', style: 'cancel', onPress: () => resolve(false) },
+          {
+            text: 'Odísť bez uloženia',
+            style: 'destructive',
+            onPress: async () => {
+              await savePendingBackup();
+              resolve(true);
+            },
+          },
+        ],
+      );
+    });
+  }, [saveState, savePendingBackup]);
+
+  const handleStartNewRecipe = useCallback(async () => {
+    await clearPendingBackup();
+    navigation.reset({
+      index: 1,
+      routes: [{ name: 'Home' }, { name: 'CoffeePhotoRecipe' }],
+    });
+  }, [clearPendingBackup, navigation]);
 
   const { colors, typescale, shape, elevation: elev, spacing } = useTheme();
 
@@ -690,12 +738,7 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
             <MD3Button
               label="Nový recept"
               variant="tonal"
-              onPress={() =>
-                navigation.reset({
-                  index: 1,
-                  routes: [{ name: 'Home' }, { name: 'CoffeePhotoRecipe' }],
-                })
-              }
+              onPress={handleStartNewRecipe}
             />
           </>
         ) : null}
@@ -724,7 +767,7 @@ function CoffeePhotoRecipeResultScreen({ route, navigation }: Props) {
           </View>
         ) : null}
       </ScrollView>
-      <BottomNavBar />
+      <BottomNavBar onBeforeNavigate={handleBottomNavBeforeNavigate} />
     </SafeAreaView>
   );
 }
