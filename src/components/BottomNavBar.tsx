@@ -34,7 +34,13 @@ const ROUTE_TO_TAB: Record<string, TabKey> = {
   CoffeeQuestionnaireResult: 'profile',
 };
 
-function BottomNavBar() {
+type BottomNavBarProps = {
+  onBeforeNavigate?: (
+    target: keyof RootStackParamList,
+  ) => boolean | Promise<boolean>;
+};
+
+function BottomNavBar({onBeforeNavigate}: BottomNavBarProps = {}) {
   const navigation = useNavigation<NavProp>();
   const route = useRoute();
   const activeTab = ROUTE_TO_TAB[route.name] ?? null;
@@ -107,10 +113,17 @@ function BottomNavBar() {
             accessibilityRole="tab"
             accessibilityLabel={tab.label}
             accessibilityState={{selected: isActive}}
-            onPress={() => {
-              if (!isActive) {
-                navigation.navigate(tab.route as never);
+            onPress={async () => {
+              if (isActive) {
+                return;
               }
+              if (onBeforeNavigate) {
+                const canNavigate = await onBeforeNavigate(tab.route);
+                if (!canNavigate) {
+                  return;
+                }
+              }
+              navigation.navigate(tab.route as never);
             }}>
             {renderIcon(tab.key, isActive)}
             {isActive ? (

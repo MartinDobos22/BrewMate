@@ -217,10 +217,16 @@ function CoffeePhotoRecipeScreen({ navigation }: Props) {
           fontStyle: 'italic',
         },
         changeLink: {
-          ...typescale.labelMedium,
+          ...typescale.labelLarge,
           color: colors.primary,
           fontWeight: '600',
-          paddingVertical: spacing.xs,
+          paddingVertical: spacing.sm,
+          paddingHorizontal: spacing.lg,
+          borderWidth: 1,
+          borderColor: colors.outline,
+          borderRadius: shape.full,
+          textAlign: 'center',
+          overflow: 'hidden',
         },
         errorText: {
           ...typescale.bodySmall,
