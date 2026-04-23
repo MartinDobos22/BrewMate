@@ -35,6 +35,7 @@ type MatchResult = {
   keyConflicts: string[];
   suggestedAdjustments: string;
   adventureNote: string;
+  algorithmVersion?: string;
 };
 
 function OcrResultScreen({ route, navigation }: Props) {
@@ -55,6 +56,12 @@ function OcrResultScreen({ route, navigation }: Props) {
   const [showInventoryDetails, setShowInventoryDetails] = useState(false);
   const [packageSizeG, setPackageSizeG] = useState('');
   const [remainingG, setRemainingG] = useState('');
+  const [scanId, setScanId] = useState<string | null>(null);
+  const [ratingValue, setRatingValue] = useState<number | null>(null);
+  const [ratingState, setRatingState] = useState<'idle' | 'submitting' | 'saved' | 'error'>(
+    'idle',
+  );
+  const [ratingError, setRatingError] = useState('');
   const { user } = useAuth();
 
   const handleSave = useCallback(async () => {
@@ -273,6 +280,88 @@ function OcrResultScreen({ route, navigation }: Props) {
     };
   }, [coffeeProfile]);
 
+  useEffect(() => {
+    if (matchState !== 'ready' || !matchResult || scanId) {
+      return;
+    }
+    let cancelled = false;
+
+    const persistScan = async () => {
+      try {
+        const response = await apiFetch(
+          `${DEFAULT_API_HOST}/api/coffee-scans`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              rawText,
+              correctedText,
+              coffeeProfile,
+              aiMatchResult: matchResult,
+            }),
+          },
+          { feature: 'OcrResult', action: 'persist-scan' },
+        );
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.scan?.id) {
+          console.warn('[OcrResult] Failed to persist scan', payload?.error);
+          return;
+        }
+        if (!cancelled) {
+          setScanId(payload.scan.id as string);
+        }
+      } catch (persistError) {
+        console.warn('[OcrResult] Scan persist network error', persistError);
+      }
+    };
+
+    persistScan();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [coffeeProfile, correctedText, matchResult, matchState, rawText, scanId]);
+
+  const handleSubmitRating = useCallback(
+    async (nextRating: number) => {
+      if (!scanId || !matchResult || ratingState === 'submitting' || ratingState === 'saved') {
+        return;
+      }
+      setRatingState('submitting');
+      setRatingError('');
+      setRatingValue(nextRating);
+      try {
+        const response = await apiFetch(
+          `${DEFAULT_API_HOST}/api/coffee-scans/${scanId}/match-feedback`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              predictedScore: Math.round(matchResult.matchScore),
+              predictedTier: matchResult.matchTier,
+              actualRating: nextRating,
+              algorithmVersion: matchResult.algorithmVersion ?? null,
+            }),
+          },
+          { feature: 'OcrResult', action: 'match-feedback' },
+        );
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.error || 'Nepodarilo sa uložiť hodnotenie.');
+        }
+        setRatingState('saved');
+      } catch (ratingErr) {
+        setRatingState('error');
+        setRatingError(
+          ratingErr instanceof Error ? ratingErr.message : 'Nepodarilo sa uložiť hodnotenie.',
+        );
+      }
+    },
+    [matchResult, ratingState, scanId],
+  );
+
   const { colors, typescale, shape, elevation: elev, spacing } = useTheme();
 
   const verdictLabel = useMemo(() => {
@@ -288,6 +377,24 @@ function OcrResultScreen({ route, navigation }: Props) {
     }
     return MATCH_TIER_COLORS[matchResult.matchTier] || MATCH_TIER_COLORS.worth_trying;
   }, [matchResult]);
+
+  const confidenceBadge = useMemo<
+    { label: string; role: 'error' | 'tertiary' } | null
+  >(() => {
+    if (coffeeProfile.confidence < 0.5) {
+      return { label: 'Odhadnuté z obmedzených údajov', role: 'error' };
+    }
+    switch (coffeeProfile.source) {
+      case 'low_info':
+        return { label: 'Etiketa mala málo údajov', role: 'error' };
+      case 'inferred':
+        return { label: 'AI odhadla z obrázka', role: 'tertiary' };
+      case 'mixed':
+        return { label: 'Čiastočne overené', role: 'tertiary' };
+      default:
+        return null;
+    }
+  }, [coffeeProfile.confidence, coffeeProfile.source]);
 
   const s = useMemo(
     () =>
@@ -455,6 +562,39 @@ function OcrResultScreen({ route, navigation }: Props) {
         },
         missingBlock: {
           gap: spacing.md,
+        },
+        confidenceBadgeWrap: {
+          marginTop: spacing.sm,
+        },
+        ratingBlock: {
+          marginTop: spacing.md,
+        },
+        ratingTitle: {
+          ...typescale.labelLarge,
+          color: colors.primary,
+          marginBottom: spacing.xs,
+        },
+        ratingRow: {
+          flexDirection: 'row',
+          gap: spacing.sm,
+        },
+        ratingStarButton: {
+          paddingHorizontal: spacing.xs + 2,
+          paddingVertical: spacing.xs,
+        },
+        ratingStarText: {
+          fontSize: 28,
+          color: colors.primary,
+        },
+        ratingHint: {
+          ...typescale.bodySmall,
+          color: colors.onSurfaceVariant,
+          marginTop: spacing.xs + 2,
+        },
+        ratingError: {
+          ...typescale.bodySmall,
+          color: colors.error,
+          marginTop: spacing.xs + 2,
         },
       }),
     [colors, typescale, shape, elev, spacing],
@@ -677,6 +817,11 @@ function OcrResultScreen({ route, navigation }: Props) {
                 ]}
               >
                 <Text style={s.verdictText}>{verdictLabel}</Text>
+                {confidenceBadge ? (
+                  <View style={s.confidenceBadgeWrap}>
+                    <Chip label={confidenceBadge.label} role={confidenceBadge.role} />
+                  </View>
+                ) : null}
                 <View style={s.scoreRow}>
                   <Text style={s.scoreText}>
                     Zhoda: {Math.round(matchResult.matchScore)}%
@@ -696,6 +841,39 @@ function OcrResultScreen({ route, navigation }: Props) {
                     ]}
                   />
                 </View>
+              </View>
+              <View style={s.ratingBlock}>
+                <Text style={s.ratingTitle}>Ako ti káva v skutočnosti chutila?</Text>
+                <View style={s.ratingRow}>
+                  {[1, 2, 3, 4, 5].map(n => {
+                    const filled = ratingValue !== null && n <= ratingValue;
+                    const isDisabled =
+                      !scanId || ratingState === 'submitting' || ratingState === 'saved';
+                    return (
+                      <Pressable
+                        key={n}
+                        onPress={() => handleSubmitRating(n)}
+                        disabled={isDisabled}
+                        style={s.ratingStarButton}
+                        accessibilityLabel={`Hodnotenie ${n} z 5`}
+                      >
+                        <Text style={s.ratingStarText}>{filled ? '★' : '☆'}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                {ratingState === 'saved' ? (
+                  <Text style={s.ratingHint}>Ďakujeme za spätnú väzbu.</Text>
+                ) : null}
+                {ratingState === 'submitting' ? (
+                  <Text style={s.ratingHint}>Ukladám hodnotenie…</Text>
+                ) : null}
+                {ratingState === 'error' ? (
+                  <Text style={s.ratingError}>{ratingError}</Text>
+                ) : null}
+                {!scanId && ratingState === 'idle' ? (
+                  <Text style={s.ratingHint}>Hodnotenie bude dostupné po uložení skenu.</Text>
+                ) : null}
               </View>
               {matchResult.adventureNote ? (
                 <View style={s.adventureNoteBlock}>

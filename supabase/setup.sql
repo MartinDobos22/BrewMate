@@ -24,12 +24,25 @@ create table if not exists public.user_coffee (
   corrected_text text,
   coffee_profile jsonb not null,
   ai_match_result jsonb,
-  label_image_base64 text,
   loved boolean not null default false,
   created_at timestamptz not null default now()
 );
 
 create index if not exists user_coffee_user_id_idx on public.user_coffee (user_id);
+
+create table if not exists public.user_coffee_scans (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null references public.app_users (id) on delete cascade,
+  raw_text text,
+  corrected_text text,
+  coffee_profile jsonb not null,
+  ai_match_result jsonb,
+  algorithm_version text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists user_coffee_scans_user_idx
+  on public.user_coffee_scans (user_id, created_at desc);
 
 create table if not exists public.user_saved_coffee_recipes (
   id uuid primary key default gen_random_uuid(),
@@ -85,12 +98,17 @@ create table if not exists public.user_coffee_match_feedback (
   id uuid primary key default gen_random_uuid(),
   user_id text not null references public.app_users (id) on delete cascade,
   user_coffee_id uuid references public.user_coffee (id) on delete cascade,
+  user_coffee_scan_id uuid references public.user_coffee_scans (id) on delete cascade,
   predicted_score integer not null check (predicted_score between 0 and 100),
   predicted_tier text,
   actual_rating integer not null check (actual_rating between 1 and 5),
   notes text,
   algorithm_version text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  constraint user_coffee_match_feedback_source_check check (
+    (user_coffee_id is not null and user_coffee_scan_id is null)
+    or (user_coffee_id is null and user_coffee_scan_id is not null)
+  )
 );
 
 create index if not exists user_coffee_match_feedback_user_idx
@@ -98,6 +116,9 @@ create index if not exists user_coffee_match_feedback_user_idx
 
 create index if not exists user_coffee_match_feedback_coffee_idx
   on public.user_coffee_match_feedback (user_coffee_id);
+
+create index if not exists user_coffee_match_feedback_scan_idx
+  on public.user_coffee_match_feedback (user_coffee_scan_id);
 
 create table if not exists public.user_coffee_images (
   user_coffee_id uuid primary key
@@ -175,6 +196,7 @@ alter table public.user_recipe_feedback enable row level security;
 alter table public.coffee_match_cache enable row level security;
 alter table public.user_coffee_match_feedback enable row level security;
 alter table public.user_coffee_images enable row level security;
+alter table public.user_coffee_scans enable row level security;
 
 create policy "Users can insert their own profile"
   on public.app_users
@@ -336,5 +358,20 @@ create policy "Users can insert their coffee images"
 
 create policy "Users can delete their coffee images"
   on public.user_coffee_images
+  for delete
+  using (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
+
+create policy "Users can read their coffee scans"
+  on public.user_coffee_scans
+  for select
+  using (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
+
+create policy "Users can insert their coffee scans"
+  on public.user_coffee_scans
+  for insert
+  with check (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
+
+create policy "Users can delete their coffee scans"
+  on public.user_coffee_scans
   for delete
   using (auth.uid()::text = user_id and public.is_valid_firebase_jwt());

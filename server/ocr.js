@@ -5,6 +5,7 @@ import { requireSession } from './session.js';
 import { AIError, callOpenAI, parseAIJson, validateAISchema, aiErrorToResponse } from './aiFetch.js';
 import { aiRateLimit } from './rateLimit.js';
 import * as aiCache from './aiCache.js';
+import { sendError } from './errors.js';
 import {
   DEFAULT_ESPRESSO_RATIO,
   DEFAULT_FILTER_RATIO,
@@ -1106,7 +1107,7 @@ router.post('/api/ocr-correct', aiRateLimit, async (req, res, next) => {
     }
     if (error.status) {
       const code = error.status === 401 ? 'auth_error' : 'ocr_error';
-      return res.status(error.status).json({ error: error.message, code, retryable: false });
+      return sendError(res, code, error.message);
     }
     console.error('[OCR] Unexpected error', error);
     return next(error);
@@ -1136,7 +1137,7 @@ router.post('/api/coffee-photo-analysis', aiRateLimit, async (req, res, next) =>
 
     const openAiApiKey = process.env.OPENAI_API_KEY;
     if (!openAiApiKey) {
-      return res.status(500).json({ error: 'OpenAI API key is not configured.', code: 'config_error', retryable: false });
+      return sendError(res, 'config_error', 'OpenAI API key is not configured.');
     }
 
     const { content: analysisContent } = await callOpenAI({
@@ -1152,7 +1153,7 @@ router.post('/api/coffee-photo-analysis', aiRateLimit, async (req, res, next) =>
     );
 
     const responseBody = { rawText, correctedText, analysis };
-    aiCache.set(cacheKey, responseBody);
+    aiCache.set(cacheKey, responseBody, undefined, 'photo-analysis');
 
     return res.status(200).json(responseBody);
   } catch (error) {
@@ -1162,7 +1163,7 @@ router.post('/api/coffee-photo-analysis', aiRateLimit, async (req, res, next) =>
     }
     if (error.status) {
       const code = error.status === 401 ? 'auth_error' : 'api_error';
-      return res.status(error.status).json({ error: error.message, code, retryable: false });
+      return sendError(res, code, error.message);
     }
     console.error('[PhotoAnalysis] Unexpected error', error);
     return next(error);
@@ -1188,17 +1189,17 @@ router.post('/api/coffee-photo-recipe', aiRateLimit, async (req, res, next) => {
     } = req.body || {};
 
     if (!analysis || typeof analysis !== 'object') {
-      return res.status(400).json({ error: 'analysis is required.' });
+      return sendError(res, 'validation_error', 'analysis is required.');
     }
 
     if (brewPath !== 'espresso' && brewPath !== 'filter') {
-      return res.status(400).json({ error: 'brewPath must be "espresso" or "filter".' });
+      return sendError(res, 'validation_error', 'brewPath must be "espresso" or "filter".');
     }
 
     const openAiApiKey = process.env.OPENAI_API_KEY;
     if (!openAiApiKey) {
       console.error('[PhotoRecipe] OpenAI API key missing');
-      return res.status(500).json({ error: 'OpenAI API key is not configured.' });
+      return sendError(res, 'config_error', 'OpenAI API key is not configured.');
     }
 
     // Load user's questionnaire + feedback history for personalized recipe
@@ -1238,14 +1239,14 @@ router.post('/api/coffee-photo-recipe', aiRateLimit, async (req, res, next) => {
     if (brewPath === 'espresso') {
       // --- ESPRESSO PATH ---
       if (!drinkType || typeof drinkType !== 'string') {
-        return res.status(400).json({ error: 'drinkType is required for espresso path.' });
+        return sendError(res, 'validation_error', 'drinkType is required for espresso path.');
       }
       if (!machineType || typeof machineType !== 'string') {
-        return res.status(400).json({ error: 'machineType is required for espresso path.' });
+        return sendError(res, 'validation_error', 'machineType is required for espresso path.');
       }
 
       if (!hasAnyEspressoInput({ dose: brewPreferences?.targetDoseG, yieldG: brewPreferences?.targetYieldG })) {
-        return res.status(400).json({ error: 'At least one of targetDoseG or targetYieldG is required.' });
+        return sendError(res, 'validation_error', 'At least one of targetDoseG or targetYieldG is required.');
       }
 
       const sanitizedBrewPreferences = normalizeEspressoBrew({
@@ -1280,13 +1281,15 @@ router.post('/api/coffee-photo-recipe', aiRateLimit, async (req, res, next) => {
           : '';
 
       if (!strengthPreference || !effectivePreparation) {
-        return res.status(400).json({
-          error: 'strengthPreference and selectedPreparation/customPreparationText are required for filter path.',
-        });
+        return sendError(
+          res,
+          'validation_error',
+          'strengthPreference and selectedPreparation/customPreparationText are required for filter path.',
+        );
       }
 
       if (!hasAnyFilterInput({ dose: brewPreferences?.targetDoseG, water: brewPreferences?.targetWaterMl })) {
-        return res.status(400).json({ error: 'At least one of targetDoseG or targetWaterMl is required.' });
+        return sendError(res, 'validation_error', 'At least one of targetDoseG or targetWaterMl is required.');
       }
 
       const sanitizedBrewPreferences = normalizeFilterBrew({
@@ -1342,7 +1345,7 @@ router.post('/api/coffee-photo-recipe', aiRateLimit, async (req, res, next) => {
     }
     if (error.status) {
       const code = error.status === 401 ? 'auth_error' : 'api_error';
-      return res.status(error.status).json({ error: error.message, code, retryable: false });
+      return sendError(res, code, error.message);
     }
     console.error('[PhotoRecipe] Unexpected error', error);
     return next(error);
@@ -1364,7 +1367,7 @@ router.post('/api/coffee-profile', aiRateLimit, async (req, res, next) => {
     });
 
     if (!sourceText) {
-      return res.status(400).json({ error: 'text is required.' });
+      return sendError(res, 'validation_error', 'text is required.');
     }
 
     const cacheKey = aiCache.hashKey(['coffee-profile', sourceText]);
@@ -1377,7 +1380,7 @@ router.post('/api/coffee-profile', aiRateLimit, async (req, res, next) => {
     const openAiApiKey = process.env.OPENAI_API_KEY;
     if (!openAiApiKey) {
       console.error('[CoffeeProfile] OpenAI API key missing');
-      return res.status(500).json({ error: 'OpenAI API key is not configured.' });
+      return sendError(res, 'config_error', 'OpenAI API key is not configured.');
     }
 
     const { content: profileContent } = await callOpenAI({
@@ -1389,7 +1392,7 @@ router.post('/api/coffee-profile', aiRateLimit, async (req, res, next) => {
     const profile = parseAIJson(profileContent, 'CoffeeProfile');
 
     const responseBody = { profile };
-    aiCache.set(cacheKey, responseBody);
+    aiCache.set(cacheKey, responseBody, undefined, 'coffee-profile');
 
     return res.status(200).json(responseBody);
   } catch (error) {
@@ -1399,7 +1402,7 @@ router.post('/api/coffee-profile', aiRateLimit, async (req, res, next) => {
     }
     if (error.status) {
       const code = error.status === 401 ? 'auth_error' : 'api_error';
-      return res.status(error.status).json({ error: error.message, code, retryable: false });
+      return sendError(res, code, error.message);
     }
     console.error('[CoffeeProfile] Unexpected error', error);
     return next(error);
@@ -1412,13 +1415,13 @@ router.post('/api/coffee-questionnaire', aiRateLimit, async (req, res, next) => 
     const { answers } = req.body || {};
 
     if (!Array.isArray(answers) || answers.length === 0) {
-      return res.status(400).json({ error: 'answers are required.' });
+      return sendError(res, 'validation_error', 'answers are required.');
     }
 
     const openAiApiKey = process.env.OPENAI_API_KEY;
     if (!openAiApiKey) {
       console.error('[CoffeeQuestionnaire] OpenAI API key missing');
-      return res.status(500).json({ error: 'OpenAI API key is not configured.' });
+      return sendError(res, 'config_error', 'OpenAI API key is not configured.');
     }
 
     const formattedAnswers = answers
@@ -1441,7 +1444,7 @@ router.post('/api/coffee-questionnaire', aiRateLimit, async (req, res, next) => 
     }
     if (error.status) {
       const code = error.status === 401 ? 'auth_error' : 'api_error';
-      return res.status(error.status).json({ error: error.message, code, retryable: false });
+      return sendError(res, code, error.message);
     }
     console.error('[CoffeeQuestionnaire] Unexpected error', error);
     return next(error);
@@ -1454,15 +1457,13 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
     const { questionnaire, coffeeProfile } = req.body || {};
 
     if (!questionnaire || !coffeeProfile) {
-      return res.status(400).json({
-        error: 'questionnaire and coffeeProfile are required.',
-      });
+      return sendError(res, 'validation_error', 'questionnaire and coffeeProfile are required.');
     }
 
     const openAiApiKey = process.env.OPENAI_API_KEY;
     if (!openAiApiKey) {
       console.error('[CoffeeMatch] OpenAI API key missing');
-      return res.status(500).json({ error: 'OpenAI API key is not configured.' });
+      return sendError(res, 'config_error', 'OpenAI API key is not configured.');
     }
 
     const cacheKey = aiCache.hashKey([
@@ -1488,7 +1489,7 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
         const row = dbHit.rows[0];
         const cachedMatch = typeof row.match === 'string' ? JSON.parse(row.match) : row.match;
         console.log('[CoffeeMatch] DB cache hit', { cacheKey: cacheKey.slice(0, 12) });
-        aiCache.set(cacheKey, cachedMatch);
+        aiCache.set(cacheKey, cachedMatch, undefined, 'coffee-match');
         return res.status(200).json({ match: cachedMatch, cached: true });
       }
     } catch (dbError) {
@@ -1552,7 +1553,7 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
       match.algorithmVersion = MATCH_LLM_FALLBACK_VERSION;
     }
 
-    aiCache.set(cacheKey, match);
+    aiCache.set(cacheKey, match, undefined, 'coffee-match');
 
     try {
       await ensureAppUserExists(session.uid, session.email ?? null);
@@ -1582,7 +1583,7 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
     }
     if (error.status) {
       const code = error.status === 401 ? 'auth_error' : 'api_error';
-      return res.status(error.status).json({ error: error.message, code, retryable: false });
+      return sendError(res, code, error.message);
     }
     console.error('[CoffeeMatch] Unexpected error', error);
     return next(error);

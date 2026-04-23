@@ -10,6 +10,7 @@ import CoffeeQuestionnaireScreen from '../screens/CoffeeQuestionnaireScreen';
 import CoffeeQuestionnaireResultScreen from '../screens/CoffeeQuestionnaireResultScreen';
 import CoffeeInventoryScreen from '../screens/CoffeeInventoryScreen';
 import CoffeeRecipesSavedScreen from '../screens/CoffeeRecipesSavedScreen';
+import RecentScansScreen from '../screens/RecentScansScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -124,6 +125,13 @@ function MainNavigator() {
         component={CoffeeRecipesSavedScreen}
         options={{
           title: 'Uložené recepty',
+        }}
+      />
+      <AppStack.Screen
+        name="RecentScans"
+        component={RecentScansScreen}
+        options={{
+          title: 'Posledné skeny',
         }}
       />
     </AppStack.Navigator>

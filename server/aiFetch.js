@@ -87,11 +87,17 @@ const callOpenAI = async ({ apiKey, payload, label = 'AI' }) => {
       });
     }
 
+    const usage = data?.usage && typeof data.usage === 'object' ? data.usage : {};
     console.log(`[${label}] Response received`, {
       status: response.status,
       durationMs,
       attempt: attempt + 1,
     });
+    if (response.ok) {
+      console.log(
+        `[AI] ${label} tokens=${usage.total_tokens ?? '?'} prompt=${usage.prompt_tokens ?? '?'} completion=${usage.completion_tokens ?? '?'} duration=${durationMs}ms`,
+      );
+    }
 
     if (!response.ok) {
       const isRetryable = RETRYABLE_STATUS_CODES.has(response.status);
@@ -118,7 +124,7 @@ const callOpenAI = async ({ apiKey, payload, label = 'AI' }) => {
       });
     }
 
-    return { content, raw: data, durationMs };
+    return { content, raw: data, durationMs, usage };
   }
 
   throw lastError || new AIError('AI request failed after retries.', { code: 'ai_exhausted', retryable: false });

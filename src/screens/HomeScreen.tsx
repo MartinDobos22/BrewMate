@@ -101,6 +101,10 @@ function HomeScreen({navigation}: Props) {
     () => navigation.navigate('CoffeeRecipesSaved'),
     [navigation],
   );
+  const handleRecentScansPress = useCallback(
+    () => navigation.navigate('RecentScans'),
+    [navigation],
+  );
   const handleProfilePress = useCallback(() => navigation.navigate('Profile'), [navigation]);
 
   const userVector = useMemo(
@@ -256,6 +260,7 @@ function HomeScreen({navigation}: Props) {
             onPressScan={handleScanPress}
             onPressRecipes={handleSavedRecipesPress}
             onPressGenerate={handlePhotoRecipePress}
+            onPressRecentScans={handleRecentScansPress}
           />
         </View>
 
