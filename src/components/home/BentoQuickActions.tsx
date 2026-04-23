@@ -12,6 +12,7 @@ type Props = {
   onPressScan: () => void;
   onPressRecipes: () => void;
   onPressGenerate: () => void;
+  onPressRecentScans: () => void;
 };
 
 /**
@@ -27,6 +28,7 @@ function BentoQuickActions({
   onPressScan,
   onPressRecipes,
   onPressGenerate,
+  onPressRecentScans,
 }: Props) {
   const { colors } = useTheme();
 
@@ -96,6 +98,16 @@ function BentoQuickActions({
         icon={<SparklesIcon size={26} color={colors.onTertiaryContainer} />}
         onPress={onPressGenerate}
         accessibilityLabel="Generovať recept z fotky"
+      />
+      <Tile
+        title="Posledné skeny"
+        subtitle="História naskenovaných káv"
+        role="neutral"
+        minHeight={84}
+        style={styles.wideTile}
+        icon={<ScanIcon size={22} color={colors.primary} />}
+        onPress={onPressRecentScans}
+        accessibilityLabel="Zobraziť históriu skenov"
       />
     </View>
   );

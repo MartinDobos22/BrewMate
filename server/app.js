@@ -6,6 +6,8 @@ import { globalRateLimit } from './rateLimit.js';
 import authRouter from './auth.js';
 import inventoryRouter from './inventory.js';
 import ocrRouter from './ocr.js';
+import { requireSession } from './session.js';
+import * as aiCache from './aiCache.js';
 
 const app = express();
 app.use(express.json({ limit: '20mb' }));
@@ -81,6 +83,22 @@ app.get('/health', (_req, res) => {
 app.use(authRouter);
 app.use(inventoryRouter);
 app.use(ocrRouter);
+
+app.get('/api/diagnostics/ai-stats', async (req, res, next) => {
+  try {
+    await requireSession(req);
+    return res.status(200).json({ cache: aiCache.cacheStats() });
+  } catch (error) {
+    if (error?.status) {
+      return res.status(error.status).json({
+        error: error.message,
+        code: 'auth_error',
+        retryable: false,
+      });
+    }
+    return next(error);
+  }
+});
 
 // Central error handler to surface issues in logs and return coherent JSON.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

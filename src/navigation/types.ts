@@ -113,6 +113,7 @@ export type RootStackParamList = {
   };
   CoffeeInventory: undefined;
   CoffeeRecipesSaved: undefined;
+  RecentScans: undefined;
 };
 
 export type AuthStackParamList = {
