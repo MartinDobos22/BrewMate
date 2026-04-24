@@ -1,7 +1,18 @@
+// Rate limiting with two backends:
+// - In-memory (default, dev-friendly, single-instance)
+// - Redis via INCR+EXPIRE (multi-instance safe, opt-in via REDIS_URL)
+//
+// AI endpoints key by session.uid when a valid session cookie is present so
+// one user can't exhaust the OpenAI quota for everyone on the same IP.
+
+import { tryAttachSession } from './session.js';
+import { getRedis, isRedisEnabled } from './redis.js';
+import { log } from './logger.js';
+
 const DEFAULT_WINDOW_MS = 60_000;
 const DEFAULT_MAX_REQUESTS = 30;
 
-const createStore = () => {
+const createMemoryStore = () => {
   const hits = new Map();
 
   const cleanup = () => {
@@ -16,7 +27,8 @@ const createStore = () => {
   setInterval(cleanup, 60_000).unref();
 
   return {
-    increment(key, windowMs) {
+    backend: 'memory',
+    async increment(key, windowMs) {
       const now = Date.now();
       let entry = hits.get(key);
       if (!entry || now > entry.resetAt) {
@@ -29,25 +41,61 @@ const createStore = () => {
   };
 };
 
-const globalStore = createStore();
+const createRedisStore = () => ({
+  backend: 'redis',
+  async increment(key, windowMs) {
+    const redis = getRedis();
+    if (!redis) {
+      return memoryStore.increment(key, windowMs);
+    }
+    try {
+      const redisKey = `rl:${key}`;
+      const count = await redis.incr(redisKey);
+      if (count === 1) {
+        await redis.pexpire(redisKey, windowMs);
+      }
+      const pttl = await redis.pttl(redisKey);
+      const resetAt = Date.now() + (pttl > 0 ? pttl : windowMs);
+      return { count, resetAt };
+    } catch (err) {
+      log.warn('RateLimit Redis backend failed, falling back to memory', {
+        error: err?.message,
+      });
+      return memoryStore.increment(key, windowMs);
+    }
+  },
+});
 
-const resolveKey = (req) => {
+const memoryStore = createMemoryStore();
+const store = isRedisEnabled() ? createRedisStore() : memoryStore;
+
+const resolveIp = (req) => {
   const forwarded = req.headers['x-forwarded-for'];
-  const ip = typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : req.ip || 'unknown';
-  return ip;
+  if (typeof forwarded === 'string') {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.ip || 'unknown';
 };
+
+const defaultKeyGenerator = (req) => `ip:${resolveIp(req)}`;
 
 const rateLimit = ({
   windowMs = DEFAULT_WINDOW_MS,
   max = DEFAULT_MAX_REQUESTS,
   keyPrefix = 'global',
-  keyGenerator,
+  keyGenerator = defaultKeyGenerator,
   message = 'Príliš veľa požiadaviek. Skúste to znova neskôr.',
 } = {}) => {
-  return (req, res, next) => {
-    const baseKey = keyGenerator ? keyGenerator(req) : resolveKey(req);
+  return async (req, res, next) => {
+    let baseKey;
+    try {
+      baseKey = await keyGenerator(req);
+    } catch (err) {
+      log.warn('RateLimit keyGenerator failed, falling back to IP', { error: err?.message });
+      baseKey = defaultKeyGenerator(req);
+    }
     const key = `${keyPrefix}:${baseKey}`;
-    const { count, resetAt } = globalStore.increment(key, windowMs);
+    const { count, resetAt } = await store.increment(key, windowMs);
     const remaining = Math.max(0, max - count);
 
     res.setHeader('X-RateLimit-Limit', String(max));
@@ -57,7 +105,7 @@ const rateLimit = ({
     if (count > max) {
       const retryAfter = Math.ceil((resetAt - Date.now()) / 1000);
       res.setHeader('Retry-After', String(retryAfter));
-      console.warn('[RateLimit] Blocked', { key, count, max, retryAfter });
+      log.warn('RateLimit blocked', { key, count, max, retryAfter });
       return res.status(429).json({
         error: message,
         code: 'rate_limited',
@@ -66,14 +114,25 @@ const rateLimit = ({
       });
     }
 
-    next();
+    return next();
   };
+};
+
+// AI endpoints: prefer per-user keying so one abusive session cannot drain
+// the project-wide OpenAI / Vision quota.
+const aiKeyGenerator = async (req) => {
+  const session = await tryAttachSession(req);
+  if (session?.uid) {
+    return `user:${session.uid}`;
+  }
+  return `ip:${resolveIp(req)}`;
 };
 
 const aiRateLimit = rateLimit({
   windowMs: 60_000,
   max: 10,
   keyPrefix: 'ai',
+  keyGenerator: aiKeyGenerator,
   message: 'Príliš veľa AI požiadaviek. Počkajte chvíľu.',
 });
 
@@ -83,4 +142,6 @@ const globalRateLimit = rateLimit({
   keyPrefix: 'global',
 });
 
-export { rateLimit, aiRateLimit, globalRateLimit };
+const rateLimitBackend = () => store.backend;
+
+export { rateLimit, aiRateLimit, globalRateLimit, rateLimitBackend };

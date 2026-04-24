@@ -6,6 +6,7 @@ import { AIError, callOpenAI, parseAIJson, validateAISchema, aiErrorToResponse }
 import { aiRateLimit } from './rateLimit.js';
 import * as aiCache from './aiCache.js';
 import { sendError } from './errors.js';
+import { log } from './logger.js';
 import {
   DEFAULT_ESPRESSO_RATIO,
   DEFAULT_FILTER_RATIO,
@@ -1089,7 +1090,7 @@ router.post('/api/ocr-correct', aiRateLimit, async (req, res, next) => {
     await requireSession(req);
     const { imageBase64, languageHints } = req.body || {};
 
-    console.log('[OCR] request received', {
+    log.info('OCR request received', {
       imageBase64Length: imageBase64?.length ?? 0,
       languageHints,
     });
@@ -1118,15 +1119,15 @@ router.post('/api/coffee-photo-analysis', aiRateLimit, async (req, res, next) =>
   try {
     await requireSession(req);
     const { imageBase64, languageHints } = req.body || {};
-    console.log('[PhotoAnalysis] request received', {
+    log.info('PhotoAnalysis request received', {
       imageBase64Length: imageBase64?.length ?? 0,
       languageHints,
     });
 
     const cacheKey = aiCache.hashKey(['photo-analysis', imageBase64]);
-    const cached = aiCache.get(cacheKey);
+    const cached = await aiCache.get(cacheKey);
     if (cached) {
-      console.log('[PhotoAnalysis] Cache hit', { cacheKey: cacheKey.slice(0, 12) });
+      log.info('PhotoAnalysis cache hit', { cacheKey: cacheKey.slice(0, 12) });
       return res.status(200).json({ ...cached, cached: true });
     }
 
@@ -1153,7 +1154,7 @@ router.post('/api/coffee-photo-analysis', aiRateLimit, async (req, res, next) =>
     );
 
     const responseBody = { rawText, correctedText, analysis };
-    aiCache.set(cacheKey, responseBody, undefined, 'photo-analysis');
+    await aiCache.set(cacheKey, responseBody, undefined, 'photo-analysis');
 
     return res.status(200).json(responseBody);
   } catch (error) {
@@ -1362,7 +1363,7 @@ router.post('/api/coffee-profile', aiRateLimit, async (req, res, next) => {
         ? rawText.trim()
         : '';
 
-    console.log('[CoffeeProfile] request received', {
+    log.info('CoffeeProfile request received', {
       textLength: sourceText.length,
     });
 
@@ -1371,15 +1372,15 @@ router.post('/api/coffee-profile', aiRateLimit, async (req, res, next) => {
     }
 
     const cacheKey = aiCache.hashKey(['coffee-profile', sourceText]);
-    const cached = aiCache.get(cacheKey);
+    const cached = await aiCache.get(cacheKey);
     if (cached) {
-      console.log('[CoffeeProfile] Cache hit', { cacheKey: cacheKey.slice(0, 12) });
+      log.info('CoffeeProfile cache hit', { cacheKey: cacheKey.slice(0, 12) });
       return res.status(200).json({ ...cached, cached: true });
     }
 
     const openAiApiKey = process.env.OPENAI_API_KEY;
     if (!openAiApiKey) {
-      console.error('[CoffeeProfile] OpenAI API key missing');
+      log.error('CoffeeProfile OpenAI API key missing');
       return sendError(res, 'config_error', 'OpenAI API key is not configured.');
     }
 
@@ -1392,7 +1393,7 @@ router.post('/api/coffee-profile', aiRateLimit, async (req, res, next) => {
     const profile = parseAIJson(profileContent, 'CoffeeProfile');
 
     const responseBody = { profile };
-    aiCache.set(cacheKey, responseBody, undefined, 'coffee-profile');
+    await aiCache.set(cacheKey, responseBody, undefined, 'coffee-profile');
 
     return res.status(200).json(responseBody);
   } catch (error) {
@@ -1474,9 +1475,9 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
       coffeeProfile,
     ]);
 
-    const memoryHit = aiCache.get(cacheKey);
+    const memoryHit = await aiCache.get(cacheKey);
     if (memoryHit) {
-      console.log('[CoffeeMatch] In-memory cache hit', { cacheKey: cacheKey.slice(0, 12) });
+      log.info('CoffeeMatch shared cache hit', { cacheKey: cacheKey.slice(0, 12) });
       return res.status(200).json({ match: memoryHit, cached: true });
     }
 
@@ -1488,12 +1489,12 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
       if (dbHit.rows.length > 0) {
         const row = dbHit.rows[0];
         const cachedMatch = typeof row.match === 'string' ? JSON.parse(row.match) : row.match;
-        console.log('[CoffeeMatch] DB cache hit', { cacheKey: cacheKey.slice(0, 12) });
-        aiCache.set(cacheKey, cachedMatch, undefined, 'coffee-match');
+        log.info('CoffeeMatch DB cache hit', { cacheKey: cacheKey.slice(0, 12) });
+        await aiCache.set(cacheKey, cachedMatch, undefined, 'coffee-match');
         return res.status(200).json({ match: cachedMatch, cached: true });
       }
     } catch (dbError) {
-      console.warn('[CoffeeMatch] DB cache lookup failed', dbError?.message);
+      log.warn('CoffeeMatch DB cache lookup failed', { error: dbError?.message });
     }
 
     // Load user's coffee-match feedback history for calibration offset.
@@ -1543,7 +1544,7 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
         breakdown: vectorResult.breakdown,
       };
     } else {
-      console.log('[CoffeeMatch] Vector unavailable, falling back to LLM-only path');
+      log.info('CoffeeMatch vector unavailable, falling back to LLM-only path');
       const { content: matchContent } = await callOpenAI({
         apiKey: openAiApiKey,
         payload: buildCoffeeMatchPayload(questionnaire, coffeeProfile),
@@ -1553,7 +1554,7 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
       match.algorithmVersion = MATCH_LLM_FALLBACK_VERSION;
     }
 
-    aiCache.set(cacheKey, match, undefined, 'coffee-match');
+    await aiCache.set(cacheKey, match, undefined, 'coffee-match');
 
     try {
       await ensureAppUserExists(session.uid, session.email ?? null);

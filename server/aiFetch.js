@@ -1,5 +1,7 @@
 // Resilient wrapper for OpenAI API calls with timeout, retry, and schema validation.
 
+import { log } from './logger.js';
+
 const AI_REQUEST_TIMEOUT_MS = 30_000;
 const MAX_RETRIES = 2;
 const RETRY_BASE_DELAY_MS = 1000;
@@ -48,7 +50,7 @@ const callOpenAI = async ({ apiKey, payload, label = 'AI' }) => {
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     if (attempt > 0) {
       const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
-      console.log(`[${label}] Retrying (attempt ${attempt + 1}/${MAX_RETRIES + 1}) after ${delay}ms`);
+      log.info('AI retry', { label, attempt: attempt + 1, maxAttempts: MAX_RETRIES + 1, delayMs: delay });
       await sleep(delay);
     }
 
@@ -69,7 +71,7 @@ const callOpenAI = async ({ apiKey, payload, label = 'AI' }) => {
       );
     } catch (err) {
       lastError = err instanceof AIError ? err : new AIError(err.message, { retryable: true });
-      console.warn(`[${label}] Request failed (attempt ${attempt + 1})`, { error: lastError.message });
+      log.warn('AI request failed', { label, attempt: attempt + 1, error: lastError.message });
       if (!lastError.retryable || attempt === MAX_RETRIES) {
         throw lastError;
       }
@@ -88,15 +90,20 @@ const callOpenAI = async ({ apiKey, payload, label = 'AI' }) => {
     }
 
     const usage = data?.usage && typeof data.usage === 'object' ? data.usage : {};
-    console.log(`[${label}] Response received`, {
+    log.info('AI response received', {
+      label,
       status: response.status,
       durationMs,
       attempt: attempt + 1,
     });
     if (response.ok) {
-      console.log(
-        `[AI] ${label} tokens=${usage.total_tokens ?? '?'} prompt=${usage.prompt_tokens ?? '?'} completion=${usage.completion_tokens ?? '?'} duration=${durationMs}ms`,
-      );
+      log.info('AI tokens', {
+        label,
+        totalTokens: usage.total_tokens ?? null,
+        promptTokens: usage.prompt_tokens ?? null,
+        completionTokens: usage.completion_tokens ?? null,
+        durationMs,
+      });
     }
 
     if (!response.ok) {

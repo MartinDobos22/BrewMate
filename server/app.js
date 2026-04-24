@@ -1,18 +1,28 @@
 import express from 'express';
 import cors from 'cors';
 
+import { Sentry, initSentry, sentryEnabled, tagCorrelationId } from './sentry.js';
 import { corsOptions } from './config.js';
-import { globalRateLimit } from './rateLimit.js';
+import { globalRateLimit, rateLimitBackend } from './rateLimit.js';
 import authRouter from './auth.js';
 import inventoryRouter from './inventory.js';
 import ocrRouter from './ocr.js';
 import { requireSession } from './session.js';
 import * as aiCache from './aiCache.js';
+import { runWithCorrelation, getCorrelationId } from './correlation.js';
+import { log } from './logger.js';
+
+// Init Sentry before building the Express app so request handlers run with
+// the SDK already attached. (`import` is hoisted in ESM, so we call this
+// after all `import` statements rather than between them.)
+initSentry();
 
 const app = express();
 app.use(express.json({ limit: '20mb' }));
 
 app.use(cors(corsOptions));
+app.use(runWithCorrelation);
+app.use(tagCorrelationId);
 app.use(globalRateLimit);
 
 const IMAGE_PAYLOAD_KEYS = /image|base64/i;
@@ -48,7 +58,7 @@ const sanitizePayload = (payload) => {
 
 app.use((req, res, next) => {
   const startedAt = Date.now();
-  console.log('[Request] started', {
+  log.info('request started', {
     method: req.method,
     path: req.originalUrl,
     ip: req.ip,
@@ -60,7 +70,7 @@ app.use((req, res, next) => {
   });
 
   res.on('finish', () => {
-    console.log('[Request] completed', {
+    log.info('request completed', {
       method: req.method,
       path: req.originalUrl,
       status: res.statusCode,
@@ -87,7 +97,13 @@ app.use(ocrRouter);
 app.get('/api/diagnostics/ai-stats', async (req, res, next) => {
   try {
     await requireSession(req);
-    return res.status(200).json({ cache: aiCache.cacheStats() });
+    const stats = await aiCache.cacheStats();
+    return res.status(200).json({
+      cache: stats,
+      rateLimitBackend: rateLimitBackend(),
+      sentry: sentryEnabled(),
+      correlationId: getCorrelationId(),
+    });
   } catch (error) {
     if (error?.status) {
       return res.status(error.status).json({
@@ -100,10 +116,14 @@ app.get('/api/diagnostics/ai-stats', async (req, res, next) => {
   }
 });
 
+if (sentryEnabled()) {
+  Sentry.setupExpressErrorHandler(app);
+}
+
 // Central error handler to surface issues in logs and return coherent JSON.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err, _req, res, _next) => {
-  console.error('❌ Unhandled server error:', err);
+  log.error('Unhandled server error', { error: err?.message, stack: err?.stack });
   const status = err?.status || 500;
   const message = err?.message || 'Internal server error';
   res.status(status).json({ error: message });
