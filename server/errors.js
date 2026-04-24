@@ -7,6 +7,7 @@ export const ERROR_CODES = {
   auth_error: { status: 401, retryable: false },
   not_found: { status: 404, retryable: false },
   below_threshold: { status: 400, retryable: false },
+  api_version_mismatch: { status: 426, retryable: false },
   rate_limited: { status: 429, retryable: true },
   db_error: { status: 500, retryable: true },
   config_error: { status: 500, retryable: false },
