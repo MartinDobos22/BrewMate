@@ -11,6 +11,7 @@ import { requireSession } from './session.js';
 import * as aiCache from './aiCache.js';
 import { runWithCorrelation, getCorrelationId } from './correlation.js';
 import { log } from './logger.js';
+import { API_VERSION, attachApiVersion } from './apiVersion.js';
 
 // Init Sentry before building the Express app so request handlers run with
 // the SDK already attached. (`import` is hoisted in ESM, so we call this
@@ -23,6 +24,7 @@ app.use(express.json({ limit: '20mb' }));
 app.use(cors(corsOptions));
 app.use(runWithCorrelation);
 app.use(tagCorrelationId);
+app.use(attachApiVersion);
 app.use(globalRateLimit);
 
 const IMAGE_PAYLOAD_KEYS = /image|base64/i;
@@ -103,6 +105,7 @@ app.get('/api/diagnostics/ai-stats', async (req, res, next) => {
       rateLimitBackend: rateLimitBackend(),
       sentry: sentryEnabled(),
       correlationId: getCorrelationId(),
+      apiVersion: API_VERSION,
     });
   } catch (error) {
     if (error?.status) {

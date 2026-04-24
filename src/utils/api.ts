@@ -2,6 +2,11 @@ import { Platform } from 'react-native';
 import Config from 'react-native-config';
 
 import { setCorrelationId } from '../sentry';
+import {
+  API_VERSION,
+  API_VERSION_REQUEST_HEADER,
+  API_VERSION_RESPONSE_HEADER,
+} from '../constants/apiVersion';
 
 type ApiLogContext = Record<string, unknown>;
 
@@ -108,6 +113,40 @@ const mergeHeaders = (existing: FetchHeaders, correlationId: string): FetchHeade
   return hasExisting ? asRecord : { ...asRecord, [CORRELATION_HEADER]: correlationId };
 };
 
+const withApiVersionHeader = (headers: FetchHeaders): FetchHeaders => {
+  const already = getHeaderValue(headers, API_VERSION_REQUEST_HEADER);
+  if (already) {
+    return headers ?? {};
+  }
+  if (!headers) {
+    return { [API_VERSION_REQUEST_HEADER]: API_VERSION };
+  }
+  if (headers instanceof Headers) {
+    const cloned = new Headers(headers);
+    cloned.set(API_VERSION_REQUEST_HEADER, API_VERSION);
+    return cloned;
+  }
+  if (Array.isArray(headers)) {
+    return [...headers, [API_VERSION_REQUEST_HEADER, API_VERSION]];
+  }
+  return { ...(headers as Record<string, string>), [API_VERSION_REQUEST_HEADER]: API_VERSION };
+};
+
+let lastLoggedServerVersion: string | null = null;
+const logServerVersionIfChanged = (serverVersion: string | null, url: string): void => {
+  if (!serverVersion || serverVersion === lastLoggedServerVersion) {
+    return;
+  }
+  lastLoggedServerVersion = serverVersion;
+  if (serverVersion !== API_VERSION) {
+    console.warn('[API] server version differs from client build', {
+      clientVersion: API_VERSION,
+      serverVersion,
+      url,
+    });
+  }
+};
+
 const summarizeBody = (body: FetchBody): SanitizedPayload | null => {
   if (!body) {
     return null;
@@ -187,7 +226,8 @@ export const apiFetch = async (
   const hasAuthHeader = Boolean(getHeaderValue(init.headers, 'Authorization'));
   const correlationId =
     getHeaderValue(init.headers, CORRELATION_HEADER) || generateCorrelationId();
-  const headers = mergeHeaders(init.headers, correlationId);
+  const withCorrelation = mergeHeaders(init.headers, correlationId);
+  const headers = withApiVersionHeader(withCorrelation);
   const startedAt = Date.now();
 
   setCorrelationId(correlationId);
@@ -198,11 +238,15 @@ export const apiFetch = async (
     contentType,
     hasAuthHeader,
     correlationId,
+    clientApiVersion: API_VERSION,
     context,
     body: summarizeBody(init.body ?? null),
   });
 
   const response = await fetch(input, { ...init, headers });
+
+  const serverApiVersion = response.headers.get(API_VERSION_RESPONSE_HEADER);
+  logServerVersionIfChanged(serverApiVersion, url);
 
   console.log('[API] response', {
     url,
@@ -211,6 +255,7 @@ export const apiFetch = async (
     ok: response.ok,
     durationMs: Date.now() - startedAt,
     correlationId: response.headers.get('X-Correlation-Id') || correlationId,
+    serverApiVersion,
     contentType: response.headers.get('Content-Type'),
     contentLength: response.headers.get('Content-Length'),
     context,
