@@ -51,6 +51,9 @@ function CoffeeScannerScreen({navigation}: Props) {
     'idle' | 'upload' | 'ocr' | 'profile' | 'done'
   >('idle');
   const submitStartRef = useRef<number | null>(null);
+  // Kept outside state so the Cancel button can abort the fetches without
+  // triggering a re-render first.
+  const submitAbortRef = useRef<AbortController | null>(null);
 
   const submitStageTarget = useMemo(
     () => ({
@@ -102,6 +105,13 @@ function CoffeeScannerScreen({navigation}: Props) {
     return () => clearInterval(intervalId);
   }, [isSubmitting, submitStage, submitStageTarget]);
 
+  const handleCancel = () => {
+    const controller = submitAbortRef.current;
+    if (!controller) return;
+    console.log('[CoffeeScanner] User cancelled submit');
+    controller.abort();
+  };
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
 
@@ -109,6 +119,9 @@ function CoffeeScannerScreen({navigation}: Props) {
       setErrorMessage('Najprv vyberte alebo odfoťte obrázok.');
       return;
     }
+
+    const controller = new AbortController();
+    submitAbortRef.current = controller;
 
     setErrorMessage('');
     setIsSubmitting(true);
@@ -134,6 +147,7 @@ function CoffeeScannerScreen({navigation}: Props) {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           credentials: 'include',
+          signal: controller.signal,
           body: JSON.stringify({
             imageBase64: imageBase64.trim(),
             languageHints: languageHintList,
@@ -181,6 +195,7 @@ function CoffeeScannerScreen({navigation}: Props) {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           credentials: 'include',
+          signal: controller.signal,
           body: JSON.stringify({
             text: payload.correctedText,
             rawText: payload.rawText,
@@ -228,11 +243,20 @@ function CoffeeScannerScreen({navigation}: Props) {
         labelImageBase64: imageBase64.trim(),
       });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'OCR request failed.';
-      console.error('[CoffeeScanner] OCR request failed', error);
-      setErrorMessage(message);
+      if (controller.signal.aborted) {
+        console.log('[CoffeeScanner] Submit aborted by user');
+        setErrorMessage('Skenovanie bolo zrušené.');
+        setSubmitStage('idle');
+      } else {
+        const message =
+          error instanceof Error ? error.message : 'OCR request failed.';
+        console.error('[CoffeeScanner] OCR request failed', error);
+        setErrorMessage(message);
+      }
     } finally {
+      if (submitAbortRef.current === controller) {
+        submitAbortRef.current = null;
+      }
       setIsSubmitting(false);
     }
   };
@@ -594,6 +618,15 @@ function CoffeeScannerScreen({navigation}: Props) {
               <Text style={s.submitButtonText}>Odoslať na OCR</Text>
             )}
           </Pressable>
+
+          {isSubmitting ? (
+            <MD3Button
+              label="Zrušiť"
+              variant="outlined"
+              onPress={handleCancel}
+              accessibilityLabel="Zrušiť skenovanie"
+            />
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
       <BottomNavBar />

@@ -9,6 +9,28 @@ import {
 import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import { CoffeeProfile, MatchTier } from '../utils/tasteVector';
 
+export type MatchBreakdownAxis = {
+  axis: string;
+  label: string;
+  coffeeValue: number;
+  userValue: number;
+  diff: number;
+  tolerance: string;
+  weight: number;
+  status: 'match' | 'conflict' | 'neutral';
+};
+
+export type MatchBreakdown = {
+  mode: 'vector' | 'heuristic';
+  baseScore: number;
+  pathBonus?: number;
+  strengthBonus?: number;
+  calibrationOffset: number;
+  calibrationSampleSize: number;
+  confidence?: number | null;
+  axes: MatchBreakdownAxis[];
+};
+
 export type MatchResult = {
   matchScore: number;
   matchTier: MatchTier;
@@ -20,6 +42,7 @@ export type MatchResult = {
   suggestedAdjustments: string;
   adventureNote: string;
   algorithmVersion?: string;
+  breakdown?: MatchBreakdown;
 };
 
 export type MatchState = 'idle' | 'loading' | 'ready' | 'missing' | 'error';
@@ -44,6 +67,7 @@ export function useCoffeeMatch(coffeeProfile: CoffeeProfile): UseCoffeeMatchOutp
 
   useEffect(() => {
     let isActive = true;
+    const controller = new AbortController();
 
     const run = async () => {
       if (!isActive) return;
@@ -59,7 +83,11 @@ export function useCoffeeMatch(coffeeProfile: CoffeeProfile): UseCoffeeMatchOutp
         try {
           const remoteResponse = await apiFetch(
             `${DEFAULT_API_HOST}/api/user-questionnaire`,
-            { method: 'GET', credentials: 'include' },
+            {
+              method: 'GET',
+              credentials: 'include',
+              signal: controller.signal,
+            },
             { feature: 'OcrResult', action: 'load-questionnaire' },
           );
           if (!isActive) return;
@@ -87,6 +115,7 @@ export function useCoffeeMatch(coffeeProfile: CoffeeProfile): UseCoffeeMatchOutp
             }
           }
         } catch (remoteError) {
+          if (controller.signal.aborted) return;
           console.warn('[useCoffeeMatch] Server questionnaire fallback failed', remoteError);
         }
       }
@@ -106,6 +135,7 @@ export function useCoffeeMatch(coffeeProfile: CoffeeProfile): UseCoffeeMatchOutp
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
+            signal: controller.signal,
             body: JSON.stringify({
               questionnaire: latest.payload,
               coffeeProfile,
@@ -129,7 +159,7 @@ export function useCoffeeMatch(coffeeProfile: CoffeeProfile): UseCoffeeMatchOutp
         setResult(payload.match as MatchResult);
         setState('ready');
       } catch (matchErr) {
-        if (!isActive) return;
+        if (!isActive || controller.signal.aborted) return;
         setError(
           matchErr instanceof Error
             ? matchErr.message
@@ -143,6 +173,7 @@ export function useCoffeeMatch(coffeeProfile: CoffeeProfile): UseCoffeeMatchOutp
 
     return () => {
       isActive = false;
+      controller.abort();
     };
   }, [coffeeProfile]);
 

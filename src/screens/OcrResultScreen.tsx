@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -15,6 +15,11 @@ import { useAutoSaveScan } from '../hooks/useAutoSaveScan';
 import { useMatchFeedback } from '../hooks/useMatchFeedback';
 import VerdictCard from '../components/scan/VerdictCard';
 import InventorySaveCard from '../components/scan/InventorySaveCard';
+import {
+  SCAN_WITHOUT_QUESTIONNAIRE_THRESHOLD,
+  incrementScansWithoutQuestionnaire,
+  resetScansWithoutQuestionnaire,
+} from '../utils/scanCounter';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OcrResult'>;
 
@@ -25,6 +30,7 @@ function OcrResultScreen({ route, navigation }: Props) {
   const { user } = useAuth();
 
   const [saveState, setSaveState] = useState<LocalSaveState>('idle');
+  const [scansWithoutQuestionnaire, setScansWithoutQuestionnaire] = useState(0);
 
   const match = useCoffeeMatch(coffeeProfile);
   const scanId = useAutoSaveScan({
@@ -46,6 +52,37 @@ function OcrResultScreen({ route, navigation }: Props) {
       setSaveState('error');
     }
   }, [coffeeProfile, correctedText, rawText]);
+
+  const handleRescan = useCallback(() => {
+    navigation.navigate('CoffeeScanner');
+  }, [navigation]);
+
+  // Sticky questionnaire reminder: bump the counter each time the match
+  // machine settles on `missing`, reset it when a questionnaire is found.
+  // Reacts to the match state so the user who finally fills the questionnaire
+  // stops seeing escalated warnings.
+  useEffect(() => {
+    let cancelled = false;
+    if (match.state === 'missing') {
+      incrementScansWithoutQuestionnaire().then(n => {
+        if (!cancelled) setScansWithoutQuestionnaire(n);
+      });
+    } else if (match.state === 'ready' && match.questionnaire) {
+      resetScansWithoutQuestionnaire();
+      setScansWithoutQuestionnaire(0);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [match.state, match.questionnaire]);
+
+  const stickyMissingMessage = useMemo(() => {
+    if (match.state !== 'missing') return null;
+    if (scansWithoutQuestionnaire >= SCAN_WITHOUT_QUESTIONNAIRE_THRESHOLD) {
+      return `Už ${scansWithoutQuestionnaire}. sken bez dotazníka — verdikty sú hrubé odhady. Vyplň ho za 2 minúty a ušetríš si sklamania.`;
+    }
+    return 'Aby som ti vedel povedať, či ti káva bude chutiť, najprv vyplň krátky chuťový dotazník. Zaberie ti to 2 minúty.';
+  }, [match.state, scansWithoutQuestionnaire]);
 
   const { colors, typescale, shape, elevation: elev, spacing } = useTheme();
 
@@ -129,6 +166,18 @@ function OcrResultScreen({ route, navigation }: Props) {
         missingBlock: {
           gap: spacing.md,
         },
+        stickyReminder: {
+          backgroundColor: colors.errorContainer,
+          borderRadius: shape.large,
+          padding: spacing.md,
+          borderWidth: 1,
+          borderColor: colors.error,
+        },
+        stickyReminderText: {
+          ...typescale.bodyMedium,
+          color: colors.onErrorContainer,
+          fontWeight: '600',
+        },
       }),
     [colors, typescale, shape, elev, spacing],
   );
@@ -156,6 +205,19 @@ function OcrResultScreen({ route, navigation }: Props) {
             <Text style={s.saveError}>Uloženie zlyhalo.</Text>
           ) : null}
         </View>
+
+        <MD3Button
+          label="Naskenovať inú fotku"
+          variant="outlined"
+          onPress={handleRescan}
+        />
+
+        {match.state === 'missing'
+        && scansWithoutQuestionnaire >= SCAN_WITHOUT_QUESTIONNAIRE_THRESHOLD ? (
+          <View style={s.stickyReminder}>
+            <Text style={s.stickyReminderText}>{stickyMissingMessage}</Text>
+          </View>
+        ) : null}
 
         <InventorySaveCard
           authenticated={Boolean(user)}
@@ -234,8 +296,8 @@ function OcrResultScreen({ route, navigation }: Props) {
           {match.state === 'missing' ? (
             <View style={s.missingBlock}>
               <Text style={s.bodyText}>
-                Aby som ti vedel povedať, či ti káva bude chutiť, najprv vyplň
-                krátky chuťový dotazník. Zaberie ti to 2 minúty.
+                {stickyMissingMessage ||
+                  'Aby som ti vedel povedať, či ti káva bude chutiť, najprv vyplň krátky chuťový dotazník. Zaberie ti to 2 minúty.'}
               </Text>
               <MD3Button
                 label="Vyplniť dotazník"
@@ -254,6 +316,7 @@ function OcrResultScreen({ route, navigation }: Props) {
               ratingValue={feedback.ratingValue}
               ratingState={feedback.state}
               ratingError={feedback.error}
+              ratingSavedAt={feedback.lastSavedAt}
               onSubmitRating={feedback.submit}
               questionnaireSavedAt={match.questionnaire?.savedAt ?? null}
             />
