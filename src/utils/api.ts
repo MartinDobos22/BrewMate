@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 import Config from 'react-native-config';
 
+import { setCorrelationId } from '../sentry';
+
 type ApiLogContext = Record<string, unknown>;
 
 type SanitizedPayload =
@@ -70,6 +72,40 @@ const getHeaderValue = (headers: FetchHeaders, name: string): string | null => {
     return match ? match[1] : null;
   }
   return (headers as Record<string, string>)[name] || null;
+};
+
+const CORRELATION_HEADER = 'X-Correlation-Id';
+
+const generateCorrelationId = (): string => {
+  const cryptoObj = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
+  if (cryptoObj?.randomUUID) {
+    return cryptoObj.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const mergeHeaders = (existing: FetchHeaders, correlationId: string): FetchHeaders => {
+  if (!existing) {
+    return { [CORRELATION_HEADER]: correlationId };
+  }
+  if (existing instanceof Headers) {
+    const cloned = new Headers(existing);
+    if (!cloned.has(CORRELATION_HEADER)) {
+      cloned.set(CORRELATION_HEADER, correlationId);
+    }
+    return cloned;
+  }
+  if (Array.isArray(existing)) {
+    if (existing.some(([key]) => key.toLowerCase() === CORRELATION_HEADER.toLowerCase())) {
+      return existing;
+    }
+    return [...existing, [CORRELATION_HEADER, correlationId]];
+  }
+  const asRecord = existing as Record<string, string>;
+  const hasExisting = Object.keys(asRecord).some(
+    key => key.toLowerCase() === CORRELATION_HEADER.toLowerCase(),
+  );
+  return hasExisting ? asRecord : { ...asRecord, [CORRELATION_HEADER]: correlationId };
 };
 
 const summarizeBody = (body: FetchBody): SanitizedPayload | null => {
@@ -149,18 +185,24 @@ export const apiFetch = async (
   const method = init.method || 'GET';
   const contentType = getHeaderValue(init.headers, 'Content-Type');
   const hasAuthHeader = Boolean(getHeaderValue(init.headers, 'Authorization'));
+  const correlationId =
+    getHeaderValue(init.headers, CORRELATION_HEADER) || generateCorrelationId();
+  const headers = mergeHeaders(init.headers, correlationId);
   const startedAt = Date.now();
+
+  setCorrelationId(correlationId);
 
   console.log('[API] request', {
     url,
     method,
     contentType,
     hasAuthHeader,
+    correlationId,
     context,
     body: summarizeBody(init.body ?? null),
   });
 
-  const response = await fetch(input, init);
+  const response = await fetch(input, { ...init, headers });
 
   console.log('[API] response', {
     url,
@@ -168,6 +210,7 @@ export const apiFetch = async (
     status: response.status,
     ok: response.ok,
     durationMs: Date.now() - startedAt,
+    correlationId: response.headers.get('X-Correlation-Id') || correlationId,
     contentType: response.headers.get('Content-Type'),
     contentLength: response.headers.get('Content-Length'),
     context,

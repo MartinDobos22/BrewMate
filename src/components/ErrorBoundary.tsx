@@ -1,6 +1,8 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { captureException } from '../sentry';
+
 type Props = {
   children: React.ReactNode;
 };
@@ -19,6 +21,7 @@ class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('[ErrorBoundary] Uncaught error', error, info.componentStack);
+    captureException(error, { componentStack: info.componentStack });
   }
 
   handleReset = () => {
