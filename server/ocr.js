@@ -7,6 +7,7 @@ import { aiRateLimit } from './rateLimit.js';
 import * as aiCache from './aiCache.js';
 import { sendError } from './errors.js';
 import { log } from './logger.js';
+import { assertWithinBudget, BudgetExceededError } from './aiBudget.js';
 import {
   DEFAULT_ESPRESSO_RATIO,
   DEFAULT_FILTER_RATIO,
@@ -1002,7 +1003,7 @@ const buildCoffeeMatchTextPayload = (questionnaire, coffeeProfile, vectorResult)
   ],
 });
 
-const runOcr = async ({ imageBase64, languageHints }) => {
+const runOcr = async ({ imageBase64, languageHints, uid = null }) => {
   if (!imageBase64) {
     const error = new Error('imageBase64 is required.');
     error.status = 400;
@@ -1080,6 +1081,7 @@ const runOcr = async ({ imageBase64, languageHints }) => {
     apiKey: openAiApiKey,
     payload: buildOpenAiPayload(rawText),
     label: 'OCR-Correction',
+    uid,
   });
 
   return { rawText, correctedText };
@@ -1087,7 +1089,8 @@ const runOcr = async ({ imageBase64, languageHints }) => {
 
 router.post('/api/ocr-correct', aiRateLimit, async (req, res, next) => {
   try {
-    await requireSession(req);
+    const session = await requireSession(req);
+    await assertWithinBudget(session.uid);
     const { imageBase64, languageHints } = req.body || {};
 
     log.info('OCR request received', {
@@ -1098,10 +1101,17 @@ router.post('/api/ocr-correct', aiRateLimit, async (req, res, next) => {
     const { rawText, correctedText } = await runOcr({
       imageBase64,
       languageHints,
+      uid: session.uid,
     });
 
     return res.status(200).json({ rawText, correctedText });
   } catch (error) {
+    if (error instanceof BudgetExceededError) {
+      return sendError(res, 'daily_budget_exhausted', error.message, {
+        usedToday: error.usedToday,
+        limit: error.limit,
+      });
+    }
     if (error instanceof AIError) {
       const resp = aiErrorToResponse(error);
       return res.status(resp.status).json(resp.body);
@@ -1110,14 +1120,15 @@ router.post('/api/ocr-correct', aiRateLimit, async (req, res, next) => {
       const code = error.status === 401 ? 'auth_error' : 'ocr_error';
       return sendError(res, code, error.message);
     }
-    console.error('[OCR] Unexpected error', error);
+    log.error('OCR unexpected error', { error: error?.message || error });
     return next(error);
   }
 });
 
 router.post('/api/coffee-photo-analysis', aiRateLimit, async (req, res, next) => {
   try {
-    await requireSession(req);
+    const session = await requireSession(req);
+    await assertWithinBudget(session.uid);
     const { imageBase64, languageHints } = req.body || {};
     log.info('PhotoAnalysis request received', {
       imageBase64Length: imageBase64?.length ?? 0,
@@ -1134,6 +1145,7 @@ router.post('/api/coffee-photo-analysis', aiRateLimit, async (req, res, next) =>
     const { rawText, correctedText } = await runOcr({
       imageBase64,
       languageHints,
+      uid: session.uid,
     });
 
     const openAiApiKey = process.env.OPENAI_API_KEY;
@@ -1145,6 +1157,7 @@ router.post('/api/coffee-photo-analysis', aiRateLimit, async (req, res, next) =>
       apiKey: openAiApiKey,
       payload: buildPhotoCoffeeAnalysisPayload(correctedText),
       label: 'PhotoAnalysis',
+      uid: session.uid,
     });
 
     const analysis = validateAISchema(
@@ -1158,6 +1171,12 @@ router.post('/api/coffee-photo-analysis', aiRateLimit, async (req, res, next) =>
 
     return res.status(200).json(responseBody);
   } catch (error) {
+    if (error instanceof BudgetExceededError) {
+      return sendError(res, 'daily_budget_exhausted', error.message, {
+        usedToday: error.usedToday,
+        limit: error.limit,
+      });
+    }
     if (error instanceof AIError) {
       const resp = aiErrorToResponse(error);
       return res.status(resp.status).json(resp.body);
@@ -1166,7 +1185,7 @@ router.post('/api/coffee-photo-analysis', aiRateLimit, async (req, res, next) =>
       const code = error.status === 401 ? 'auth_error' : 'api_error';
       return sendError(res, code, error.message);
     }
-    console.error('[PhotoAnalysis] Unexpected error', error);
+    log.error('PhotoAnalysis unexpected error', { error: error?.message || error });
     return next(error);
   }
 });
@@ -1174,6 +1193,7 @@ router.post('/api/coffee-photo-analysis', aiRateLimit, async (req, res, next) =>
 router.post('/api/coffee-photo-recipe', aiRateLimit, async (req, res, next) => {
   try {
     const session = await requireSession(req);
+    await assertWithinBudget(session.uid);
     const {
       analysis,
       brewPath,
@@ -1199,7 +1219,7 @@ router.post('/api/coffee-photo-recipe', aiRateLimit, async (req, res, next) => {
 
     const openAiApiKey = process.env.OPENAI_API_KEY;
     if (!openAiApiKey) {
-      console.error('[PhotoRecipe] OpenAI API key missing');
+      log.error('PhotoRecipe OpenAI API key missing');
       return sendError(res, 'config_error', 'OpenAI API key is not configured.');
     }
 
@@ -1321,6 +1341,7 @@ router.post('/api/coffee-photo-recipe', aiRateLimit, async (req, res, next) => {
       apiKey: openAiApiKey,
       payload: aiPayload,
       label: 'PhotoRecipe',
+      uid: session.uid,
     });
 
     const recipe = validateAISchema(
@@ -1340,6 +1361,12 @@ router.post('/api/coffee-photo-recipe', aiRateLimit, async (req, res, next) => {
 
     return res.status(200).json({ recipe, likePrediction, personalizedForUser: Boolean(userQuestionnaire) });
   } catch (error) {
+    if (error instanceof BudgetExceededError) {
+      return sendError(res, 'daily_budget_exhausted', error.message, {
+        usedToday: error.usedToday,
+        limit: error.limit,
+      });
+    }
     if (error instanceof AIError) {
       const resp = aiErrorToResponse(error);
       return res.status(resp.status).json(resp.body);
@@ -1348,14 +1375,15 @@ router.post('/api/coffee-photo-recipe', aiRateLimit, async (req, res, next) => {
       const code = error.status === 401 ? 'auth_error' : 'api_error';
       return sendError(res, code, error.message);
     }
-    console.error('[PhotoRecipe] Unexpected error', error);
+    log.error('PhotoRecipe unexpected error', { error: error?.message || error });
     return next(error);
   }
 });
 
 router.post('/api/coffee-profile', aiRateLimit, async (req, res, next) => {
   try {
-    await requireSession(req);
+    const session = await requireSession(req);
+    await assertWithinBudget(session.uid);
     const { text, rawText } = req.body || {};
     const sourceText = typeof text === 'string' && text.trim()
       ? text.trim()
@@ -1388,6 +1416,7 @@ router.post('/api/coffee-profile', aiRateLimit, async (req, res, next) => {
       apiKey: openAiApiKey,
       payload: buildCoffeeProfilePayload(sourceText),
       label: 'CoffeeProfile',
+      uid: session.uid,
     });
 
     const profile = parseAIJson(profileContent, 'CoffeeProfile');
@@ -1397,6 +1426,12 @@ router.post('/api/coffee-profile', aiRateLimit, async (req, res, next) => {
 
     return res.status(200).json(responseBody);
   } catch (error) {
+    if (error instanceof BudgetExceededError) {
+      return sendError(res, 'daily_budget_exhausted', error.message, {
+        usedToday: error.usedToday,
+        limit: error.limit,
+      });
+    }
     if (error instanceof AIError) {
       const resp = aiErrorToResponse(error);
       return res.status(resp.status).json(resp.body);
@@ -1405,14 +1440,15 @@ router.post('/api/coffee-profile', aiRateLimit, async (req, res, next) => {
       const code = error.status === 401 ? 'auth_error' : 'api_error';
       return sendError(res, code, error.message);
     }
-    console.error('[CoffeeProfile] Unexpected error', error);
+    log.error('CoffeeProfile unexpected error', { error: error?.message || error });
     return next(error);
   }
 });
 
 router.post('/api/coffee-questionnaire', aiRateLimit, async (req, res, next) => {
   try {
-    await requireSession(req);
+    const session = await requireSession(req);
+    await assertWithinBudget(session.uid);
     const { answers } = req.body || {};
 
     if (!Array.isArray(answers) || answers.length === 0) {
@@ -1421,7 +1457,7 @@ router.post('/api/coffee-questionnaire', aiRateLimit, async (req, res, next) => 
 
     const openAiApiKey = process.env.OPENAI_API_KEY;
     if (!openAiApiKey) {
-      console.error('[CoffeeQuestionnaire] OpenAI API key missing');
+      log.error('CoffeeQuestionnaire OpenAI API key missing');
       return sendError(res, 'config_error', 'OpenAI API key is not configured.');
     }
 
@@ -1433,12 +1469,19 @@ router.post('/api/coffee-questionnaire', aiRateLimit, async (req, res, next) => 
       apiKey: openAiApiKey,
       payload: buildCoffeeQuestionnairePayload(formattedAnswers),
       label: 'CoffeeQuestionnaire',
+      uid: session.uid,
     });
 
     const profile = parseAIJson(profileContent, 'CoffeeQuestionnaire');
 
     return res.status(200).json({ profile });
   } catch (error) {
+    if (error instanceof BudgetExceededError) {
+      return sendError(res, 'daily_budget_exhausted', error.message, {
+        usedToday: error.usedToday,
+        limit: error.limit,
+      });
+    }
     if (error instanceof AIError) {
       const resp = aiErrorToResponse(error);
       return res.status(resp.status).json(resp.body);
@@ -1447,7 +1490,7 @@ router.post('/api/coffee-questionnaire', aiRateLimit, async (req, res, next) => 
       const code = error.status === 401 ? 'auth_error' : 'api_error';
       return sendError(res, code, error.message);
     }
-    console.error('[CoffeeQuestionnaire] Unexpected error', error);
+    log.error('CoffeeQuestionnaire unexpected error', { error: error?.message || error });
     return next(error);
   }
 });
@@ -1455,6 +1498,7 @@ router.post('/api/coffee-questionnaire', aiRateLimit, async (req, res, next) => 
 router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
   try {
     const session = await requireSession(req);
+    await assertWithinBudget(session.uid);
     const { questionnaire, coffeeProfile } = req.body || {};
 
     if (!questionnaire || !coffeeProfile) {
@@ -1463,7 +1507,7 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
 
     const openAiApiKey = process.env.OPENAI_API_KEY;
     if (!openAiApiKey) {
-      console.error('[CoffeeMatch] OpenAI API key missing');
+      log.error('CoffeeMatch OpenAI API key missing');
       return sendError(res, 'config_error', 'OpenAI API key is not configured.');
     }
 
@@ -1526,6 +1570,7 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
         apiKey: openAiApiKey,
         payload: buildCoffeeMatchTextPayload(questionnaire, coffeeProfile, vectorResult),
         label: 'CoffeeMatch-Text',
+        uid: session.uid,
       });
       const texts = parseAIJson(textContent, 'CoffeeMatch-Text');
 
@@ -1549,6 +1594,7 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
         apiKey: openAiApiKey,
         payload: buildCoffeeMatchPayload(questionnaire, coffeeProfile),
         label: 'CoffeeMatch',
+        uid: session.uid,
       });
       match = parseAIJson(matchContent, 'CoffeeMatch');
       match.algorithmVersion = MATCH_LLM_FALLBACK_VERSION;
@@ -1578,6 +1624,12 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
 
     return res.status(200).json({ match });
   } catch (error) {
+    if (error instanceof BudgetExceededError) {
+      return sendError(res, 'daily_budget_exhausted', error.message, {
+        usedToday: error.usedToday,
+        limit: error.limit,
+      });
+    }
     if (error instanceof AIError) {
       const resp = aiErrorToResponse(error);
       return res.status(resp.status).json(resp.body);
@@ -1586,7 +1638,7 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
       const code = error.status === 401 ? 'auth_error' : 'api_error';
       return sendError(res, code, error.message);
     }
-    console.error('[CoffeeMatch] Unexpected error', error);
+    log.error('CoffeeMatch unexpected error', { error: error?.message || error });
     return next(error);
   }
 });

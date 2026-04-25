@@ -9,6 +9,7 @@ export const ERROR_CODES = {
   below_threshold: { status: 400, retryable: false },
   api_version_mismatch: { status: 426, retryable: false },
   rate_limited: { status: 429, retryable: true },
+  daily_budget_exhausted: { status: 429, retryable: false },
   db_error: { status: 500, retryable: true },
   config_error: { status: 500, retryable: false },
   ocr_error: { status: 502, retryable: true },

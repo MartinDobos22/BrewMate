@@ -11,7 +11,8 @@ import { requireSession } from './session.js';
 import * as aiCache from './aiCache.js';
 import { runWithCorrelation, getCorrelationId } from './correlation.js';
 import { log } from './logger.js';
-import { API_VERSION, attachApiVersion } from './apiVersion.js';
+import { API_VERSION, attachApiVersion, requireApiVersion } from './apiVersion.js';
+import { usageToday } from './aiBudget.js';
 
 // Init Sentry before building the Express app so request handlers run with
 // the SDK already attached. (`import` is hoisted in ESM, so we call this
@@ -25,6 +26,7 @@ app.use(cors(corsOptions));
 app.use(runWithCorrelation);
 app.use(tagCorrelationId);
 app.use(attachApiVersion);
+app.use(requireApiVersion);
 app.use(globalRateLimit);
 
 const IMAGE_PAYLOAD_KEYS = /image|base64/i;
@@ -98,14 +100,18 @@ app.use(ocrRouter);
 
 app.get('/api/diagnostics/ai-stats', async (req, res, next) => {
   try {
-    await requireSession(req);
-    const stats = await aiCache.cacheStats();
+    const session = await requireSession(req);
+    const [stats, budget] = await Promise.all([
+      aiCache.cacheStats(),
+      usageToday(session.uid),
+    ]);
     return res.status(200).json({
       cache: stats,
       rateLimitBackend: rateLimitBackend(),
       sentry: sentryEnabled(),
       correlationId: getCorrelationId(),
       apiVersion: API_VERSION,
+      budget,
     });
   } catch (error) {
     if (error?.status) {

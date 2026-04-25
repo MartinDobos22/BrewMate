@@ -304,6 +304,8 @@ function VerdictCardInner({
               accessibilityLabel={
                 breakdownExpanded ? 'Skryť detail chuťových osí' : 'Zobraziť prečo'
               }
+              accessibilityState={{ expanded: breakdownExpanded }}
+              hitSlop={8}
             >
               <Text style={s.breakdownToggle}>
                 {breakdownExpanded ? 'Skryť detail ▲' : 'Prečo tento verdikt? ▼'}
@@ -378,7 +380,13 @@ function VerdictCardInner({
                 onPress={() => onSubmitRating(n)}
                 disabled={ratingDisabled}
                 style={s.ratingStarButton}
+                accessibilityRole="button"
                 accessibilityLabel={`Hodnotenie ${n} z 5`}
+                accessibilityState={{
+                  selected: filled,
+                  disabled: ratingDisabled,
+                }}
+                hitSlop={12}
               >
                 <Text style={s.ratingStarText}>{filled ? '★' : '☆'}</Text>
               </Pressable>

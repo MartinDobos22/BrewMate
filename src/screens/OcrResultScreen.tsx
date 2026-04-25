@@ -197,12 +197,17 @@ function OcrResultScreen({ route, navigation }: Props) {
             onPress={handleSaveLocal}
             disabled={saveState === 'saving'}
             loading={saveState === 'saving'}
+            accessibilityLabel="Uložiť výsledok skenu lokálne na zariadenie"
           />
           {saveState === 'saved' ? (
-            <Text style={s.saveHint}>Uložené do zariadenia.</Text>
+            <Text style={s.saveHint} accessibilityRole="alert">
+              Uložené do zariadenia.
+            </Text>
           ) : null}
           {saveState === 'error' ? (
-            <Text style={s.saveError}>Uloženie zlyhalo.</Text>
+            <Text style={s.saveError} accessibilityRole="alert">
+              Uloženie zlyhalo.
+            </Text>
           ) : null}
         </View>
 
@@ -210,11 +215,16 @@ function OcrResultScreen({ route, navigation }: Props) {
           label="Naskenovať inú fotku"
           variant="outlined"
           onPress={handleRescan}
+          accessibilityLabel="Naskenovať inú fotku"
+          accessibilityHint="Vráti späť na skenovaciu obrazovku"
         />
 
         {match.state === 'missing'
         && scansWithoutQuestionnaire >= SCAN_WITHOUT_QUESTIONNAIRE_THRESHOLD ? (
-          <View style={s.stickyReminder}>
+          <View
+            style={s.stickyReminder}
+            accessibilityRole="alert"
+            accessibilityLiveRegion="polite">
             <Text style={s.stickyReminderText}>{stickyMissingMessage}</Text>
           </View>
         ) : null}

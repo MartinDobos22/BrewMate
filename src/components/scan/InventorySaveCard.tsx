@@ -22,6 +22,71 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 const PACKAGE_OPTIONS = ['', '250', '500', '1000'];
 const REMAINING_OPTIONS = ['', '50', '100', '150', '200'];
 
+const base64ToBytes = (base64: string): Uint8Array => {
+  // React Native ships atob via the standard URL polyfill; fall back to a
+  // Buffer shim if it isn't on the global (e.g. in unit tests).
+  const decode = typeof atob === 'function'
+    ? (s: string) => atob(s)
+    : (s: string) => Buffer.from(s, 'base64').toString('binary');
+  const binary = decode(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+};
+
+// Try the signed-URL upload path. Returns true on success. Caller should
+// swallow failures — the legacy inline base64 row remains as fallback.
+async function migrateImageToStorage(
+  userCoffeeId: string,
+  base64: string,
+): Promise<boolean> {
+  const contentType = 'image/jpeg';
+  const urlResp = await apiFetch(
+    `${DEFAULT_API_HOST}/api/user-coffee/${userCoffeeId}/image-upload-url`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ contentType }),
+    },
+    { feature: 'OcrResult', action: 'image-upload-url' },
+  );
+  if (urlResp.status === 501 || !urlResp.ok) {
+    return false;
+  }
+  const urlPayload = await urlResp.json().catch(() => null);
+  if (!urlPayload?.uploadUrl || !urlPayload?.storagePath) {
+    return false;
+  }
+
+  // Direct PUT to Supabase Storage — bypasses our backend so apiFetch isn't used.
+  const putResp = await fetch(urlPayload.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': contentType },
+    body: base64ToBytes(base64),
+  });
+  if (!putResp.ok) {
+    return false;
+  }
+
+  const confirmResp = await apiFetch(
+    `${DEFAULT_API_HOST}/api/user-coffee/${userCoffeeId}/image-confirm`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        storagePath: urlPayload.storagePath,
+        contentType,
+      }),
+    },
+    { feature: 'OcrResult', action: 'image-confirm' },
+  );
+  return confirmResp.ok;
+}
+
 function InventorySaveCardInner({
   authenticated,
   rawText,
@@ -79,6 +144,14 @@ function InventorySaveCardInner({
       }
       setState('saved');
       setShowDetails(false);
+
+      // Best-effort migration to object storage. The server NULLs the
+      // base64 row on confirm, so subsequent reads use the signed URL path.
+      // Failures here are silent — the inline base64 fallback stays intact.
+      const savedId: string | undefined = payload?.coffee?.id || payload?.id;
+      if (savedId && labelImageBase64) {
+        migrateImageToStorage(savedId, labelImageBase64).catch(() => {});
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Nepodarilo sa uložiť kávu do inventára.');
       setState('error');
@@ -200,6 +273,10 @@ function InventorySaveCardInner({
       key={value || labelIfEmpty}
       style={[s.packageOption, active && s.packageOptionActive]}
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={value ? `${value} gramov` : 'Nevyplnené'}
+      accessibilityState={{ selected: active }}
+      hitSlop={6}
     >
       <Text style={[s.packageOptionText, active && s.packageOptionTextActive]}>
         {value ? `${value} g` : 'nechať prázdne'}

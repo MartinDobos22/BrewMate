@@ -212,13 +212,29 @@ function RecentScansScreen({ navigation }: Props) {
           const title = item.correctedText || item.rawText || 'Neznáma káva';
           const tier = item.aiMatchResult?.matchTier;
           const score = item.aiMatchResult?.matchScore;
+          const tierLabel = tier ? (MATCH_TIER_LABELS[tier] ?? tier) : null;
+          const a11yLabel = [
+            title,
+            formatDate(item.createdAt),
+            tierLabel,
+            typeof score === 'number' ? `${Math.round(score)} percent zhoda` : null,
+          ]
+            .filter(Boolean)
+            .join(', ');
           return (
-            <Pressable key={item.id} onPress={() => handleOpen(item)} style={styles.card}>
+            <Pressable
+              key={item.id}
+              onPress={() => handleOpen(item)}
+              style={styles.card}
+              accessibilityRole="button"
+              accessibilityLabel={a11yLabel}
+              accessibilityHint="Otvorí detail skenu"
+            >
               <Text style={styles.cardTitle}>{title}</Text>
               <Text style={styles.cardMeta}>{formatDate(item.createdAt)}</Text>
               {tier ? (
                 <View style={styles.chipRow}>
-                  <Chip label={MATCH_TIER_LABELS[tier] ?? tier} role="primary" />
+                  <Chip label={tierLabel ?? ''} role="primary" />
                   {typeof score === 'number' ? (
                     <Chip label={`${Math.round(score)}% zhoda`} role="secondary" />
                   ) : null}

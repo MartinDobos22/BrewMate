@@ -11,12 +11,6 @@ import {
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {
-  Asset,
-  ImagePickerResponse,
-  launchCamera,
-  launchImageLibrary,
-} from 'react-native-image-picker';
 import {RootStackParamList} from '../navigation/types';
 import {ensureCoffeeProfile} from '../utils/tasteVector';
 import {apiFetch, DEFAULT_API_HOST} from '../utils/api';
@@ -26,24 +20,17 @@ import {elevation} from '../theme/theme';
 import {ScanIcon} from '../components/icons';
 import {MD3Button} from '../components/md3';
 import {BOTTOM_NAV_SAFE_PADDING} from '../constants/ui';
+import {useImagePicker} from '../hooks/useImagePicker';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeeScanner'>;
 
-const PICKER_TIMEOUT_MS = 30_000;
-const MAX_IMAGE_DIMENSION = 1600;
-const IMAGE_QUALITY = 0.6;
-const MAX_BASE64_BYTES = 2_000_000;
-
-const estimateBase64Bytes = (base64: string) =>
-  Math.ceil((base64.length * 3) / 4);
-
 function CoffeeScannerScreen({navigation}: Props) {
   const {colors, typescale, shape} = useTheme();
-  const [imageBase64, setImageBase64] = useState('');
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  const picker = useImagePicker();
   const [languageHints, setLanguageHints] = useState('sk, en');
-  const [errorMessage, setErrorMessage] = useState('');
-  const [isPicking, setIsPicking] = useState(false);
+  // Submit-path errors are tracked separately from picker errors so the
+  // hook can stay focused on image acquisition.
+  const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitProgress, setSubmitProgress] = useState(0);
   const [submitElapsedMs, setSubmitElapsedMs] = useState(0);
@@ -115,22 +102,24 @@ function CoffeeScannerScreen({navigation}: Props) {
   const handleSubmit = async () => {
     if (isSubmitting) return;
 
-    if (!imageBase64.trim()) {
-      setErrorMessage('Najprv vyberte alebo odfoťte obrázok.');
+    const trimmedBase64 = picker.imageBase64.trim();
+    if (!trimmedBase64) {
+      setSubmitError('Najprv vyberte alebo odfoťte obrázok.');
       return;
     }
 
     const controller = new AbortController();
     submitAbortRef.current = controller;
 
-    setErrorMessage('');
+    setSubmitError('');
+    picker.clearError();
     setIsSubmitting(true);
     setSubmitStage('upload');
     setSubmitProgress(current => Math.max(current, 5));
     const submitStartedAt = Date.now();
 
     console.log('[CoffeeScanner] Submitting OCR request', {
-      imageBase64Length: imageBase64.trim().length,
+      imageBase64Length: trimmedBase64.length,
       languageHintList,
       apiHost: DEFAULT_API_HOST,
     });
@@ -149,7 +138,7 @@ function CoffeeScannerScreen({navigation}: Props) {
           credentials: 'include',
           signal: controller.signal,
           body: JSON.stringify({
-            imageBase64: imageBase64.trim(),
+            imageBase64: trimmedBase64,
             languageHints: languageHintList,
           }),
         },
@@ -170,7 +159,7 @@ function CoffeeScannerScreen({navigation}: Props) {
       if (!response.ok) {
         const message = payload?.error || 'OCR request failed.';
         console.error('[CoffeeScanner] OCR request failed', {message, payload});
-        setErrorMessage(message);
+        setSubmitError(message);
         return;
       }
 
@@ -180,7 +169,7 @@ function CoffeeScannerScreen({navigation}: Props) {
         typeof payload.rawText !== 'string'
       ) {
         console.error('[CoffeeScanner] OCR response malformed', {payload});
-        setErrorMessage('Server vrátil neočakávanú OCR odpoveď.');
+        setSubmitError('Server vrátil neočakávanú OCR odpoveď.');
         return;
       }
 
@@ -224,7 +213,7 @@ function CoffeeScannerScreen({navigation}: Props) {
           message,
           payload: profilePayload,
         });
-        setErrorMessage(message);
+        setSubmitError(message);
         return;
       }
 
@@ -240,18 +229,18 @@ function CoffeeScannerScreen({navigation}: Props) {
         rawText: payload.rawText,
         correctedText: payload.correctedText,
         coffeeProfile,
-        labelImageBase64: imageBase64.trim(),
+        labelImageBase64: trimmedBase64,
       });
     } catch (error) {
       if (controller.signal.aborted) {
         console.log('[CoffeeScanner] Submit aborted by user');
-        setErrorMessage('Skenovanie bolo zrušené.');
+        setSubmitError('Skenovanie bolo zrušené.');
         setSubmitStage('idle');
       } else {
         const message =
           error instanceof Error ? error.message : 'OCR request failed.';
         console.error('[CoffeeScanner] OCR request failed', error);
-        setErrorMessage(message);
+        setSubmitError(message);
       }
     } finally {
       if (submitAbortRef.current === controller) {
@@ -281,122 +270,6 @@ function CoffeeScannerScreen({navigation}: Props) {
     return `${seconds.toFixed(1)} s`;
   };
 
-  const handlePickerResponse = (response: ImagePickerResponse) => {
-    console.log('[CoffeeScanner] Image picker response', {
-      didCancel: response.didCancel,
-      errorCode: response.errorCode,
-      assetsCount: response.assets?.length,
-    });
-
-    if (response.didCancel) {
-      setErrorMessage('Výber bol zrušený.');
-      return;
-    }
-
-    if (response.errorCode) {
-      setErrorMessage(
-        response.errorMessage || 'Nastala chyba pri výbere obrázka.',
-      );
-      return;
-    }
-
-    const asset: Asset | undefined = response.assets?.[0];
-    if (!asset?.base64) {
-      console.warn('[CoffeeScanner] Missing base64 data in asset', {
-        uri: asset?.uri,
-        fileName: asset?.fileName,
-        fileSize: asset?.fileSize,
-        type: asset?.type,
-      });
-      setErrorMessage('Nepodarilo sa načítať obrázok. Skúste znova.');
-      return;
-    }
-
-    const base64Length = asset.base64.length;
-    const base64Bytes = estimateBase64Bytes(asset.base64);
-
-    console.log('[CoffeeScanner] Prepared resized image payload', {
-      base64Length,
-      estimatedBytes: base64Bytes,
-      fileSize: asset.fileSize,
-      width: asset.width,
-      height: asset.height,
-    });
-
-    if (base64Bytes > MAX_BASE64_BYTES) {
-      setErrorMessage(
-        'Obrázok je stále príliš veľký. Skúste prosím menší záber alebo orežte etiketu.',
-      );
-      return;
-    }
-
-    setErrorMessage('');
-    setImageBase64(asset.base64);
-    setImageUri(asset.uri ?? null);
-  };
-
-  const withPickerTimeout = async <T,>(promise: Promise<T>): Promise<T> => {
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    try {
-      return await Promise.race<T>([
-        promise,
-        new Promise<T>((_, reject) => {
-          timeoutId = setTimeout(() => {
-            reject(new Error('Image picker timed out.'));
-          }, PICKER_TIMEOUT_MS);
-        }),
-      ]);
-    } finally {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    }
-  };
-
-  const handleSelectFromGallery = async () => {
-    setIsPicking(true);
-    try {
-      console.log('[CoffeeScanner] Opening image library');
-      const response = await withPickerTimeout(
-        launchImageLibrary({
-          mediaType: 'photo',
-          includeBase64: true,
-          quality: IMAGE_QUALITY,
-          maxWidth: MAX_IMAGE_DIMENSION,
-          maxHeight: MAX_IMAGE_DIMENSION,
-        }),
-      );
-      handlePickerResponse(response);
-    } catch (error) {
-      console.error('[CoffeeScanner] Image library failed', error);
-      setErrorMessage('Načítanie obrázka trvalo príliš dlho. Skúste znova.');
-    } finally {
-      setIsPicking(false);
-    }
-  };
-
-  const handleTakePhoto = async () => {
-    setIsPicking(true);
-    try {
-      console.log('[CoffeeScanner] Opening camera');
-      const response = await withPickerTimeout(
-        launchCamera({
-          mediaType: 'photo',
-          includeBase64: true,
-          quality: IMAGE_QUALITY,
-          maxWidth: MAX_IMAGE_DIMENSION,
-          maxHeight: MAX_IMAGE_DIMENSION,
-          saveToPhotos: true,
-        }),
-      );
-      handlePickerResponse(response);
-    } catch (error) {
-      console.error('[CoffeeScanner] Camera capture failed', error);
-      setErrorMessage('Načítanie fotky trvalo príliš dlho. Skúste znova.');
-    } finally {
-      setIsPicking(false);
-    }
-  };
 
   // ---------------------------------------------------------------------------
   // Styles
@@ -556,20 +429,20 @@ function CoffeeScannerScreen({navigation}: Props) {
               <MD3Button
                 label="Vybrať z galérie"
                 variant="outlined"
-                onPress={handleSelectFromGallery}
-                disabled={isPicking}
+                onPress={picker.pickFromGallery}
+                disabled={picker.isPicking}
                 style={{flex: 1}}
               />
               <MD3Button
                 label="Odfotiť"
                 variant="tonal"
-                onPress={handleTakePhoto}
-                disabled={isPicking}
+                onPress={picker.takePhoto}
+                disabled={picker.isPicking}
                 style={{flex: 1}}
               />
             </View>
             <Text style={s.helperText}>
-              {imageUri
+              {picker.imageUri
                 ? 'Obrázok pripravený na odoslanie.'
                 : 'Zatiaľ nie je vybraný žiadny obrázok.'}
             </Text>
@@ -587,18 +460,30 @@ function CoffeeScannerScreen({navigation}: Props) {
             />
           </View>
 
-          {isPicking ? (
+          {picker.isPicking ? (
             <Text style={s.statusText}>Načítavam obrázok…</Text>
           ) : null}
 
-          {errorMessage ? (
-            <Text style={s.errorText}>{errorMessage}</Text>
+          {(submitError || picker.errorMessage) ? (
+            <Text
+              style={s.errorText}
+              accessibilityRole="alert"
+              accessibilityLiveRegion="polite">
+              {submitError || picker.errorMessage}
+            </Text>
           ) : null}
 
           <Pressable
             style={[s.submitButton, isSubmitting && s.submitButtonDisabled]}
             onPress={handleSubmit}
-            disabled={isSubmitting || isPicking}>
+            disabled={isSubmitting || picker.isPicking}
+            accessibilityRole="button"
+            accessibilityLabel="Odoslať na OCR"
+            accessibilityHint="Spustí rozpoznanie textu z fotky etikety"
+            accessibilityState={{
+              disabled: isSubmitting || picker.isPicking,
+              busy: isSubmitting,
+            }}>
             {isSubmitting ? (
               <View style={s.loadingContainer}>
                 <View style={s.progressTrack}>
