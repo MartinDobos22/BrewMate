@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '../../theme/useTheme';
@@ -8,7 +8,7 @@ import {
   MATCH_TIER_COLORS,
   MATCH_TIER_LABELS,
 } from '../../utils/tasteVector';
-import { MatchResult } from '../../hooks/useCoffeeMatch';
+import { MatchBreakdownAxis, MatchResult } from '../../hooks/useCoffeeMatch';
 import type { FeedbackState } from '../../hooks/useMatchFeedback';
 
 type Props = {
@@ -18,12 +18,11 @@ type Props = {
   ratingValue: number | null;
   ratingState: FeedbackState;
   ratingError: string;
+  ratingSavedAt: string | null;
   onSubmitRating: (rating: number) => void;
   questionnaireSavedAt: string | null;
 };
 
-// Confidence / source badge for the current profile. Returns null when the
-// profile is fully label-sourced with healthy confidence.
 const deriveConfidenceBadge = (
   profile: CoffeeProfile,
 ): { label: string; role: 'error' | 'tertiary' } | null => {
@@ -42,6 +41,19 @@ const deriveConfidenceBadge = (
   }
 };
 
+const formatTimeAgo = (iso: string | null): string => {
+  if (!iso) return '';
+  const ms = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(ms) || ms < 0) return '';
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 1) return 'pred chvíľou';
+  if (minutes < 60) return `pred ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `pred ${hours} h`;
+  const days = Math.floor(hours / 24);
+  return `pred ${days} d`;
+};
+
 function VerdictCardInner({
   matchResult,
   coffeeProfile,
@@ -49,15 +61,19 @@ function VerdictCardInner({
   ratingValue,
   ratingState,
   ratingError,
+  ratingSavedAt,
   onSubmitRating,
   questionnaireSavedAt,
 }: Props) {
   const { colors, typescale, shape, spacing } = useTheme();
+  const [breakdownExpanded, setBreakdownExpanded] = useState(false);
 
   const verdictLabel = MATCH_TIER_LABELS[matchResult.matchTier] || 'Neznáme hodnotenie';
   const tierColors =
     MATCH_TIER_COLORS[matchResult.matchTier] || MATCH_TIER_COLORS.worth_trying;
   const confidenceBadge = deriveConfidenceBadge(coffeeProfile);
+  const axes: MatchBreakdownAxis[] = matchResult.breakdown?.axes ?? [];
+  const hasBreakdown = axes.length > 0;
 
   const s = useMemo(
     () =>
@@ -114,6 +130,90 @@ function VerdictCardInner({
           width: `${Math.round(matchResult.matchScore)}%`,
           backgroundColor: tierColors.border,
         },
+        breakdownToggle: {
+          ...typescale.labelMedium,
+          color: colors.primary,
+          marginTop: spacing.sm,
+        },
+        breakdownBlock: {
+          marginTop: spacing.sm,
+          gap: spacing.sm,
+        },
+        axisRow: {
+          gap: spacing.xs,
+        },
+        axisHeaderRow: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+        },
+        axisLabel: {
+          ...typescale.labelMedium,
+          color: colors.onSurface,
+        },
+        axisMeta: {
+          ...typescale.bodySmall,
+          color: colors.onSurfaceVariant,
+        },
+        axisBarTrack: {
+          position: 'relative',
+          height: 12,
+          backgroundColor: colors.outlineVariant,
+          borderRadius: 6,
+          overflow: 'hidden',
+        },
+        axisCoffeeDot: {
+          position: 'absolute',
+          top: 0,
+          width: 4,
+          height: 12,
+          backgroundColor: colors.primary,
+          borderRadius: 2,
+        },
+        axisUserDot: {
+          position: 'absolute',
+          top: 0,
+          width: 4,
+          height: 12,
+          backgroundColor: colors.tertiary,
+          borderRadius: 2,
+        },
+        axisStatusMatch: {
+          color: colors.primary,
+          fontWeight: '600',
+        },
+        axisStatusConflict: {
+          color: colors.error,
+          fontWeight: '600',
+        },
+        axisStatusNeutral: {
+          color: colors.onSurfaceVariant,
+        },
+        legendRow: {
+          flexDirection: 'row',
+          gap: spacing.md,
+          marginTop: spacing.xs,
+        },
+        legendDot: {
+          width: 10,
+          height: 10,
+          borderRadius: 2,
+        },
+        legendUserDot: {
+          backgroundColor: colors.tertiary,
+        },
+        legendCoffeeDot: {
+          backgroundColor: colors.primary,
+        },
+        legendItem: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.xs,
+        },
+        legendText: {
+          ...typescale.bodySmall,
+          color: colors.onSurfaceVariant,
+        },
         ratingBlock: {
           marginTop: spacing.md,
         },
@@ -164,7 +264,18 @@ function VerdictCardInner({
     [colors, typescale, shape, spacing, tierColors.bg, tierColors.border, matchResult.matchScore],
   );
 
-  const ratingDisabled = !scanId || ratingState === 'submitting' || ratingState === 'saved';
+  // Stars remain tappable after save so the user can correct a misclick; the
+  // only lock is while a request is in flight.
+  const ratingDisabled = !scanId || ratingState === 'submitting';
+
+  const ratingHint =
+    ratingState === 'submitting'
+      ? 'Ukladám hodnotenie…'
+      : ratingState === 'saved'
+      ? `Uložené${ratingValue ? ` (${ratingValue}★)` : ''} · ${formatTimeAgo(ratingSavedAt) || 'teraz'} · klikni na iný počet hviezd pre zmenu.`
+      : !scanId && ratingState === 'idle'
+      ? 'Hodnotenie bude dostupné po uložení skenu.'
+      : null;
 
   return (
     <>
@@ -184,6 +295,77 @@ function VerdictCardInner({
         <View style={s.scoreBarBackground}>
           <View style={s.scoreBarFill} />
         </View>
+
+        {hasBreakdown ? (
+          <>
+            <Pressable
+              onPress={() => setBreakdownExpanded(prev => !prev)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                breakdownExpanded ? 'Skryť detail chuťových osí' : 'Zobraziť prečo'
+              }
+            >
+              <Text style={s.breakdownToggle}>
+                {breakdownExpanded ? 'Skryť detail ▲' : 'Prečo tento verdikt? ▼'}
+              </Text>
+            </Pressable>
+            {breakdownExpanded ? (
+              <View style={s.breakdownBlock}>
+                <View style={s.legendRow}>
+                  <View style={s.legendItem}>
+                    <View style={[s.legendDot, s.legendUserDot]} />
+                    <Text style={s.legendText}>Ty</Text>
+                  </View>
+                  <View style={s.legendItem}>
+                    <View style={[s.legendDot, s.legendCoffeeDot]} />
+                    <Text style={s.legendText}>Táto káva</Text>
+                  </View>
+                </View>
+                {axes.map(axis => (
+                  <View key={axis.axis} style={s.axisRow}>
+                    <View style={s.axisHeaderRow}>
+                      <Text style={s.axisLabel}>{axis.label}</Text>
+                      <Text
+                        style={[
+                          s.axisMeta,
+                          axis.status === 'match'
+                            ? s.axisStatusMatch
+                            : axis.status === 'conflict'
+                            ? s.axisStatusConflict
+                            : s.axisStatusNeutral,
+                        ]}
+                      >
+                        {axis.status === 'match'
+                          ? 'sedí'
+                          : axis.status === 'conflict'
+                          ? 'rozdiel'
+                          : 'neutrálne'}
+                        {` · rozdiel ${Math.abs(Math.round(axis.diff))}`}
+                      </Text>
+                    </View>
+                    <View style={s.axisBarTrack}>
+                      <View
+                        style={[
+                          s.axisUserDot,
+                          { left: `${Math.max(0, Math.min(100, axis.userValue))}%` },
+                        ]}
+                      />
+                      <View
+                        style={[
+                          s.axisCoffeeDot,
+                          { left: `${Math.max(0, Math.min(100, axis.coffeeValue))}%` },
+                        ]}
+                      />
+                    </View>
+                    <Text style={s.axisMeta}>
+                      Tolerancia: {axis.tolerance}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </>
+        ) : null}
       </View>
       <View style={s.ratingBlock}>
         <Text style={s.ratingTitle}>Ako ti káva v skutočnosti chutila?</Text>
@@ -203,16 +385,8 @@ function VerdictCardInner({
             );
           })}
         </View>
-        {ratingState === 'saved' ? (
-          <Text style={s.ratingHint}>Ďakujeme za spätnú väzbu.</Text>
-        ) : null}
-        {ratingState === 'submitting' ? (
-          <Text style={s.ratingHint}>Ukladám hodnotenie…</Text>
-        ) : null}
+        {ratingHint ? <Text style={s.ratingHint}>{ratingHint}</Text> : null}
         {ratingState === 'error' ? <Text style={s.ratingError}>{ratingError}</Text> : null}
-        {!scanId && ratingState === 'idle' ? (
-          <Text style={s.ratingHint}>Hodnotenie bude dostupné po uložení skenu.</Text>
-        ) : null}
       </View>
       {matchResult.adventureNote ? (
         <View style={s.adventureNoteBlock}>

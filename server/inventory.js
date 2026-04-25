@@ -793,7 +793,16 @@ const insertMatchFeedback = async ({ res, session, kind, targetId, body }) => {
   const coffeeId = kind === 'scan' ? null : targetId;
   const scanId = kind === 'scan' ? targetId : null;
 
-  const insertResult = await db.query(
+  // The two partial unique indexes from
+  // `20260424_match_feedback_unique_indexes.sql` let users overwrite their
+  // rating in place instead of spawning a new row per tap. xmax=0 on the
+  // returned row means "insert", non-zero means the ON CONFLICT branch fired
+  // (we map that to HTTP 200 so the client can distinguish).
+  const conflictTarget = kind === 'scan'
+    ? '(user_id, user_coffee_scan_id) WHERE user_coffee_scan_id IS NOT NULL'
+    : '(user_id, user_coffee_id) WHERE user_coffee_id IS NOT NULL';
+
+  const upsertResult = await db.query(
     `INSERT INTO user_coffee_match_feedback (
        user_id,
        user_coffee_id,
@@ -805,7 +814,15 @@ const insertMatchFeedback = async ({ res, session, kind, targetId, body }) => {
        algorithm_version
      )
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-     RETURNING id, created_at`,
+     ON CONFLICT ${conflictTarget}
+     DO UPDATE SET
+       predicted_score = EXCLUDED.predicted_score,
+       predicted_tier = EXCLUDED.predicted_tier,
+       actual_rating = EXCLUDED.actual_rating,
+       notes = EXCLUDED.notes,
+       algorithm_version = EXCLUDED.algorithm_version,
+       created_at = now()
+     RETURNING id, created_at, (xmax = 0) AS inserted`,
     [
       session.uid,
       coffeeId,
@@ -818,9 +835,12 @@ const insertMatchFeedback = async ({ res, session, kind, targetId, body }) => {
     ],
   );
 
-  return res.status(201).json({
+  const row = upsertResult.rows[0];
+  const status = row.inserted ? 201 : 200;
+
+  return res.status(status).json({
     feedback: {
-      id: insertResult.rows[0].id,
+      id: row.id,
       userCoffeeId: coffeeId,
       userCoffeeScanId: scanId,
       predictedScore: normalizedPredicted,
@@ -828,7 +848,8 @@ const insertMatchFeedback = async ({ res, session, kind, targetId, body }) => {
       actualRating: normalizedRating,
       notes: normalizedNotes,
       algorithmVersion: normalizedAlgorithm,
-      createdAt: insertResult.rows[0].created_at,
+      createdAt: row.created_at,
+      updated: !row.inserted,
     },
   });
 };

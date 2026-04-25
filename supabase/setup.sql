@@ -120,6 +120,14 @@ create index if not exists user_coffee_match_feedback_coffee_idx
 create index if not exists user_coffee_match_feedback_scan_idx
   on public.user_coffee_match_feedback (user_coffee_scan_id);
 
+create unique index if not exists user_coffee_match_feedback_scan_unique_idx
+  on public.user_coffee_match_feedback (user_id, user_coffee_scan_id)
+  where user_coffee_scan_id is not null;
+
+create unique index if not exists user_coffee_match_feedback_coffee_unique_idx
+  on public.user_coffee_match_feedback (user_id, user_coffee_id)
+  where user_coffee_id is not null;
+
 create table if not exists public.user_coffee_images (
   user_coffee_id uuid primary key
     references public.user_coffee (id) on delete cascade,
