@@ -197,6 +197,16 @@ export class ApiError extends Error {
   }
 }
 
+type AuthErrorHandler = (error: ApiError) => void;
+let onAuthError: AuthErrorHandler | null = null;
+
+// Registers a global handler invoked whenever a backend response signals an
+// expired/invalid session. The host app wires this to navigation.reset →
+// Login. Pass null to detach (mostly for tests).
+export const setOnAuthError = (handler: AuthErrorHandler | null) => {
+  onAuthError = handler;
+};
+
 export const parseApiError = async (response: Response): Promise<ApiError> => {
   let body: ApiErrorBody;
   try {
@@ -204,7 +214,7 @@ export const parseApiError = async (response: Response): Promise<ApiError> => {
   } catch {
     body = { error: `Request failed with status ${response.status}.` };
   }
-  return new ApiError(
+  const apiError = new ApiError(
     {
       error: body?.error || `Request failed with status ${response.status}.`,
       code: body?.code,
@@ -213,6 +223,16 @@ export const parseApiError = async (response: Response): Promise<ApiError> => {
     },
     response.status,
   );
+
+  if (apiError.code === 'auth_error' && onAuthError) {
+    try {
+      onAuthError(apiError);
+    } catch (handlerErr) {
+      console.warn('[API] auth handler threw', handlerErr);
+    }
+  }
+
+  return apiError;
 };
 
 export const apiFetch = async (

@@ -51,3 +51,33 @@ state.
 
 For older additive-only migrations (pre-P2) we have not authored `.down.sql`
 companions; revert them by dropping the objects they create.
+
+## Maintenance jobs
+
+### Storage backfill (one-shot)
+
+`scripts/backfill-image-storage.js` migrates legacy inline `image_base64` rows
+in `user_coffee_images` into Supabase Storage and nulls out the legacy column.
+It is **idempotent** — re-runs skip rows that already have `storage_path` set.
+
+Run order after deploying P6+ to a new environment:
+
+```bash
+# Dry run first — prints rows it would migrate without touching storage or DB.
+node scripts/backfill-image-storage.js --dry-run --limit 100
+
+# Real run — bounded so you can checkpoint progress between batches.
+node scripts/backfill-image-storage.js --limit 500 --batch-size 25
+```
+
+Required env: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+`SUPABASE_STORAGE_BUCKET` (optional, defaults to `coffee-label-images`).
+
+The script logs a per-row line and a final summary `{ migrated, failed,
+skipped, scanned }`. Failures are non-fatal — the row stays on the legacy
+fallback path and a future run will retry it.
+
+Once `select count(*) from user_coffee_images where image_base64 is not null
+and storage_path is null` returns 0 across all environments, a follow-up PR
+can drop the `image_base64` column and remove the legacy fallback in
+`server/inventory.js`'s `GET /api/user-coffee/:id/image`.

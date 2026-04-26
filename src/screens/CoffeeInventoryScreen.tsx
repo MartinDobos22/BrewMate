@@ -2,6 +2,7 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,6 +19,7 @@ import {elevation} from '../theme/theme';
 import {CoffeeBeanIcon, FlameIcon} from '../components/icons';
 import {Chip, MD3Button} from '../components/md3';
 import {BOTTOM_NAV_SAFE_PADDING} from '../constants/ui';
+import {useSignedImageUrl} from '../hooks/useSignedImageUrl';
 
 type InventoryStatus = 'active' | 'empty' | 'archived';
 type TrackingMode = 'manual' | 'estimated';
@@ -38,6 +40,7 @@ type InventoryItem = {
     laymanSummary?: string;
   } | null;
   labelImageBase64: string | null;
+  hasImage?: boolean;
   loved: boolean;
   packageSizeG: number | null;
   remainingG: number | null;
@@ -57,6 +60,46 @@ const STATUS_CHIP_ROLE = {
   empty: 'neutral',
   archived: 'secondary',
 } as const;
+
+type ThumbnailStyles = {
+  thumbnail: object;
+  thumbnailPlaceholder: object;
+  thumbnailInitial: object;
+};
+
+function InventoryRowThumbnail({
+  itemId,
+  hasImage,
+  initial,
+  styles,
+}: {
+  itemId: string;
+  hasImage: boolean;
+  initial: string;
+  styles: ThumbnailStyles;
+}) {
+  const {uri, handleImageError} = useSignedImageUrl(hasImage ? itemId : null);
+
+  if (hasImage && uri) {
+    return (
+      <Image
+        source={{uri}}
+        style={styles.thumbnail}
+        onError={handleImageError}
+        accessibilityIgnoresInvertColors
+      />
+    );
+  }
+
+  return (
+    <View
+      style={styles.thumbnailPlaceholder}
+      accessibilityElementsHidden
+      importantForAccessibility="no">
+      <Text style={styles.thumbnailInitial}>{initial}</Text>
+    </View>
+  );
+}
 
 function CoffeeInventoryScreen() {
   const {colors, typescale, shape, stateLayer} = useTheme();
@@ -501,6 +544,24 @@ function CoffeeInventoryScreen() {
           marginBottom: 10,
           gap: 8,
         },
+        thumbnail: {
+          width: 56,
+          height: 56,
+          borderRadius: 8,
+          backgroundColor: colors.surfaceContainerHighest,
+        },
+        thumbnailPlaceholder: {
+          width: 56,
+          height: 56,
+          borderRadius: 8,
+          backgroundColor: colors.surfaceContainerHighest,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        thumbnailInitial: {
+          ...typescale.titleMedium,
+          color: colors.onSurfaceVariant,
+        },
         itemTitleWrap: {
           flex: 1,
         },
@@ -689,9 +750,21 @@ function CoffeeInventoryScreen() {
             item.status === 'active' ? 'Aktívna' : item.status === 'empty' ? 'Prázdna' : 'Archivovaná';
           const itemName = item.correctedText || item.rawText || 'Neznáma káva';
 
+          const initial = (itemName.trim().charAt(0) || '?').toUpperCase();
+
           return (
             <View key={item.id} style={s.itemCard}>
               <View style={s.itemHeader}>
+                <InventoryRowThumbnail
+                  itemId={item.id}
+                  hasImage={Boolean(item.hasImage)}
+                  initial={initial}
+                  styles={{
+                    thumbnail: s.thumbnail,
+                    thumbnailPlaceholder: s.thumbnailPlaceholder,
+                    thumbnailInitial: s.thumbnailInitial,
+                  }}
+                />
                 <View style={s.itemTitleWrap}>
                   <Text style={s.itemTitle}>{itemName}</Text>
                   <Text style={s.date}>

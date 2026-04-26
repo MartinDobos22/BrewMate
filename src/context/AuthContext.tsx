@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
+import { apiFetch, DEFAULT_API_HOST, setOnAuthError } from '../utils/api';
 
 export type AuthUser = {
   id: string;
@@ -78,6 +78,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     loadSession(true);
   }, [loadSession]);
+
+  // Any backend `auth_error` (expired/invalid session cookie) collapses the
+  // local user state, which flips AppNavigator to the AuthNavigator (Login).
+  useEffect(() => {
+    setOnAuthError(() => {
+      clearSession().catch(() => {});
+    });
+    return () => setOnAuthError(null);
+  }, [clearSession]);
 
   const value = useMemo(
     () => ({

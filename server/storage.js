@@ -10,7 +10,10 @@ import { createClient } from '@supabase/supabase-js';
 import { log } from './logger.js';
 
 const DEFAULT_BUCKET = 'coffee-label-images';
-const DEFAULT_DOWNLOAD_TTL = 5 * 60; // 5 min
+// 1 h is enough to ride out a typical session of inventory browsing without
+// re-signing on every list mount, while still being short enough that a leaked
+// URL stops working within the same day.
+const DEFAULT_DOWNLOAD_TTL = 60 * 60; // 1 h
 
 let client = null;
 
