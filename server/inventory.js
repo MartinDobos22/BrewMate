@@ -9,6 +9,7 @@ import {
   buildStoragePath,
   createDownloadSignedUrl,
   createUploadSignedUrl,
+  deleteStorageObject,
   isPathOwnedByUser,
   storageEnabled,
 } from './storage.js';
@@ -844,6 +845,19 @@ router.delete('/api/user-coffee/:id', async (req, res, next) => {
     const session = await requireSession(req);
     const { id } = req.params;
 
+    // Capture storage paths before the cascade nukes the join rows. We can't
+    // rely on RETURNING from the DELETE itself because user_coffee_images
+    // disappears via ON DELETE CASCADE, not via this query.
+    const { rows: imageRows } = await db.query(
+      `SELECT uci.storage_path
+         FROM user_coffee_images uci
+         JOIN user_coffee uc ON uc.id = uci.user_coffee_id
+        WHERE uci.user_coffee_id = $1
+          AND uc.user_id = $2
+          AND uci.storage_path IS NOT NULL`,
+      [id, session.uid],
+    );
+
     const result = await db.query(
       `DELETE FROM user_coffee
        WHERE id = $1 AND user_id = $2
@@ -853,6 +867,24 @@ router.delete('/api/user-coffee/:id', async (req, res, next) => {
 
     if (!result.rowCount) {
       return errorResponse(res, 404, 'not_found', 'Káva nebola nájdená.');
+    }
+
+    for (const row of imageRows) {
+      try {
+        const ok = await deleteStorageObject(row.storage_path);
+        if (!ok) {
+          log.warn('storage_delete_failed', {
+            storagePath: row.storage_path,
+            userCoffeeId: id,
+          });
+        }
+      } catch (storageError) {
+        log.warn('storage_delete_failed', {
+          storagePath: row.storage_path,
+          userCoffeeId: id,
+          error: storageError?.message || storageError,
+        });
+      }
     }
 
     return res.status(204).send();
