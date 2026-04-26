@@ -1,6 +1,7 @@
 // Resilient wrapper for OpenAI API calls with timeout, retry, and schema validation.
 
 import { log } from './logger.js';
+import { recordUsage } from './aiBudget.js';
 
 const AI_REQUEST_TIMEOUT_MS = 30_000;
 const MAX_RETRIES = 2;
@@ -44,7 +45,9 @@ const fetchWithTimeout = async (url, options, timeoutMs = AI_REQUEST_TIMEOUT_MS)
 };
 
 // Call OpenAI with automatic retry on transient failures.
-const callOpenAI = async ({ apiKey, payload, label = 'AI' }) => {
+// `uid` is optional and used to charge the per-user daily budget after a
+// successful response — pass `session.uid` from the route handler.
+const callOpenAI = async ({ apiKey, payload, label = 'AI', uid = null }) => {
   let lastError = null;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -131,6 +134,11 @@ const callOpenAI = async ({ apiKey, payload, label = 'AI' }) => {
       });
     }
 
+    if (uid && usage?.total_tokens) {
+      // Best-effort: failures inside the budget store are logged there and
+      // must not break the AI call.
+      recordUsage(uid, usage.total_tokens).catch(() => {});
+    }
     return { content, raw: data, durationMs, usage };
   }
 

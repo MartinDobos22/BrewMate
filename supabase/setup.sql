@@ -132,13 +132,21 @@ create table if not exists public.user_coffee_images (
   user_coffee_id uuid primary key
     references public.user_coffee (id) on delete cascade,
   user_id text not null references public.app_users (id) on delete cascade,
-  image_base64 text not null,
+  image_base64 text,
   content_type text,
-  created_at timestamptz not null default now()
+  storage_path text,
+  content_type_v2 text,
+  created_at timestamptz not null default now(),
+  constraint user_coffee_images_storage_check
+    check (image_base64 is not null or storage_path is not null)
 );
 
 create index if not exists user_coffee_images_user_idx
   on public.user_coffee_images (user_id);
+
+create index if not exists user_coffee_images_storage_path_idx
+  on public.user_coffee_images (storage_path)
+  where storage_path is not null;
 
 create table if not exists public.user_questionnaires (
   id uuid primary key default gen_random_uuid(),
@@ -383,3 +391,32 @@ create policy "Users can delete their coffee scans"
   on public.user_coffee_scans
   for delete
   using (auth.uid()::text = user_id and public.is_valid_firebase_jwt());
+
+create or replace function public.cleanup_user_coffee_scans()
+returns integer
+language plpgsql
+as $$
+declare
+  age_deleted integer := 0;
+  cap_deleted integer := 0;
+begin
+  delete from public.user_coffee_scans
+  where created_at < now() - interval '90 days';
+  get diagnostics age_deleted = row_count;
+
+  with ranked as (
+    select id,
+      row_number() over (
+        partition by user_id
+        order by created_at desc, id desc
+      ) as rn
+    from public.user_coffee_scans
+  )
+  delete from public.user_coffee_scans s
+  using ranked r
+  where s.id = r.id and r.rn > 200;
+  get diagnostics cap_deleted = row_count;
+
+  return age_deleted + cap_deleted;
+end;
+$$;

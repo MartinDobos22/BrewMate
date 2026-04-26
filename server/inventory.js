@@ -4,6 +4,14 @@ import { db, ensureAppUserExists } from './db.js';
 import { requireSession } from './session.js';
 import { callOpenAI, aiErrorToResponse } from './aiFetch.js';
 import { ERROR_CODES } from './errors.js';
+import { log } from './logger.js';
+import {
+  buildStoragePath,
+  createDownloadSignedUrl,
+  createUploadSignedUrl,
+  isPathOwnedByUser,
+  storageEnabled,
+} from './storage.js';
 
 const router = express.Router();
 
@@ -211,7 +219,7 @@ router.get('/api/user-coffee', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[UserCoffee] Failed to load user inventory', error);
+    log.error('UserCoffee Failed to load user inventory', { error: error?.message || error });
     return next(error);
   }
 });
@@ -313,7 +321,7 @@ router.post('/api/user-coffee', async (req, res, next) => {
     try {
       await ensureAppUserExists(session.uid, session.email ?? null);
     } catch (dbError) {
-      console.error('[UserCoffee] Failed to ensure user in DB', dbError);
+      log.error('UserCoffee Failed to ensure user in DB', { error: dbError?.message || dbError });
       return errorResponse(res, 500, 'db_error', 'Nepodarilo sa uložiť používateľa do databázy.');
     }
 
@@ -398,7 +406,7 @@ router.post('/api/user-coffee', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[UserCoffee] Unexpected error', error);
+    log.error('UserCoffee Unexpected error', { error: error?.message || error });
     return next(error);
   } finally {
     if (client) { client.release(); }
@@ -432,7 +440,7 @@ router.patch('/api/user-coffee/:id', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[UserCoffee] Failed to update coffee', error);
+    log.error('UserCoffee Failed to update coffee', { error: error?.message || error });
     return next(error);
   }
 });
@@ -556,7 +564,7 @@ router.patch('/api/user-coffee/:id/consume', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[UserCoffee] Failed to consume coffee grams', error);
+    log.error('UserCoffee Failed to consume coffee grams', { error: error?.message || error });
     return next(error);
   } finally {
     client.release();
@@ -619,7 +627,7 @@ router.patch('/api/user-coffee/:id/remaining', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[UserCoffee] Failed to update remaining grams', error);
+    log.error('UserCoffee Failed to update remaining grams', { error: error?.message || error });
     return next(error);
   }
 });
@@ -671,7 +679,7 @@ router.patch('/api/user-coffee/:id/status', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[UserCoffee] Failed to update status', error);
+    log.error('UserCoffee Failed to update status', { error: error?.message || error });
     return next(error);
   }
 });
@@ -682,7 +690,7 @@ router.get('/api/user-coffee/:id/image', async (req, res, next) => {
     const { id } = req.params;
 
     const imgResult = await db.query(
-      `SELECT image_base64, content_type
+      `SELECT image_base64, content_type, storage_path, content_type_v2
        FROM user_coffee_images
        WHERE user_coffee_id = $1 AND user_id = $2
        LIMIT 1`,
@@ -694,15 +702,139 @@ router.get('/api/user-coffee/:id/image', async (req, res, next) => {
     }
 
     const row = imgResult.rows[0];
+    const contentType = row.content_type_v2 ?? row.content_type ?? null;
+
+    // Storage-resident: prefer signed download URL.
+    if (row.storage_path && storageEnabled()) {
+      const signed = await createDownloadSignedUrl(row.storage_path);
+      if (signed?.url) {
+        return res.status(200).json({
+          url: signed.url,
+          expiresIn: signed.expiresIn,
+          contentType,
+        });
+      }
+      log.warn('UserCoffee storage download failed, falling back to base64', {
+        userCoffeeId: id,
+      });
+    }
+
+    // Legacy or fallback: inline base64 still in DB.
+    if (row.image_base64) {
+      return res.status(200).json({
+        imageBase64: row.image_base64,
+        contentType,
+      });
+    }
+
+    return errorResponse(res, 404, 'not_found', 'Káva nemá uloženú fotku etikety.');
+  } catch (error) {
+    if (error?.status) {
+      return authErrorResponse(res, error);
+    }
+    log.error('UserCoffee Failed to load coffee image', { error: error?.message || error });
+    return next(error);
+  }
+});
+
+// Issues a short-lived signed PUT URL for the client to upload an image
+// directly to Supabase Storage. 501 when storage isn't configured — the
+// client falls back to inline base64 via `POST /api/user-coffee`.
+router.post('/api/user-coffee/:id/image-upload-url', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+    const { id } = req.params;
+    const contentType =
+      typeof req.body?.contentType === 'string' && req.body.contentType.trim().length > 0
+        ? req.body.contentType.trim()
+        : 'image/jpeg';
+
+    if (!storageEnabled()) {
+      return errorResponse(
+        res,
+        501,
+        'config_error',
+        'Object storage nie je nakonfigurované; pošli base64 v /api/user-coffee.',
+      );
+    }
+
+    const ownership = await db.query(
+      `SELECT id FROM user_coffee WHERE id = $1 AND user_id = $2`,
+      [id, session.uid],
+    );
+    if (ownership.rowCount === 0) {
+      return errorResponse(res, 404, 'not_found', 'Káva nebola nájdená.');
+    }
+
+    const signed = await createUploadSignedUrl({
+      userId: session.uid,
+      userCoffeeId: id,
+      contentType,
+    });
+    if (!signed?.uploadUrl) {
+      return errorResponse(res, 502, 'config_error', 'Storage je dočasne nedostupné.');
+    }
+
     return res.status(200).json({
-      imageBase64: row.image_base64,
-      contentType: row.content_type ?? null,
+      uploadUrl: signed.uploadUrl,
+      token: signed.token,
+      storagePath: signed.storagePath,
+      contentType,
     });
   } catch (error) {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[UserCoffee] Failed to load coffee image', error);
+    log.error('UserCoffee image-upload-url failed', { error: error?.message || error });
+    return next(error);
+  }
+});
+
+// Records a finished upload: the client tells the server which storage_path
+// it just wrote. We validate the path prefix (path must start with the
+// caller's uid) before persisting to the row.
+router.post('/api/user-coffee/:id/image-confirm', async (req, res, next) => {
+  try {
+    const session = await requireSession(req);
+    const { id } = req.params;
+    const { storagePath, contentType } = req.body || {};
+
+    if (typeof storagePath !== 'string' || storagePath.length === 0) {
+      return errorResponse(res, 400, 'validation_error', 'storagePath is required.');
+    }
+    if (!isPathOwnedByUser(storagePath, session.uid)) {
+      return errorResponse(res, 400, 'validation_error', 'storagePath does not belong to caller.');
+    }
+    const expectedPrefix = buildStoragePath(session.uid, id, contentType).split('.')[0];
+    if (!storagePath.startsWith(expectedPrefix)) {
+      return errorResponse(res, 400, 'validation_error', 'storagePath does not match user-coffee id.');
+    }
+
+    const ownership = await db.query(
+      `SELECT id FROM user_coffee WHERE id = $1 AND user_id = $2`,
+      [id, session.uid],
+    );
+    if (ownership.rowCount === 0) {
+      return errorResponse(res, 404, 'not_found', 'Káva nebola nájdená.');
+    }
+
+    await db.query(
+      `INSERT INTO user_coffee_images (user_coffee_id, user_id, image_base64, storage_path, content_type_v2)
+       VALUES ($1, $2, NULL, $3, $4)
+       ON CONFLICT (user_coffee_id) DO UPDATE
+         SET image_base64 = NULL,
+             storage_path = EXCLUDED.storage_path,
+             content_type_v2 = EXCLUDED.content_type_v2,
+             user_id = EXCLUDED.user_id`,
+      [id, session.uid, storagePath, typeof contentType === 'string' ? contentType : null],
+    );
+
+    return res.status(200).json({ ok: true, storagePath });
+  } catch (error) {
+    if (error?.status) {
+      return authErrorResponse(res, error);
+    }
+    log.error('UserCoffee image-confirm failed', { error: error?.message || error });
     return next(error);
   }
 });
@@ -728,7 +860,7 @@ router.delete('/api/user-coffee/:id', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[UserCoffee] Failed to delete coffee', error);
+    log.error('UserCoffee Failed to delete coffee', { error: error?.message || error });
     return next(error);
   }
 });
@@ -775,7 +907,7 @@ const insertMatchFeedback = async ({ res, session, kind, targetId, body }) => {
   try {
     await ensureAppUserExists(session.uid, session.email ?? null);
   } catch (dbError) {
-    console.error('[CoffeeMatchFeedback] Failed to ensure user', dbError);
+    log.error('CoffeeMatchFeedback Failed to ensure user', { error: dbError?.message || dbError });
     return errorResponse(res, 500, 'db_error', 'Nepodarilo sa uložiť používateľa do databázy.');
   }
 
@@ -868,7 +1000,7 @@ router.post('/api/user-coffee/:id/match-feedback', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[CoffeeMatchFeedback] Failed to persist feedback', error);
+    log.error('CoffeeMatchFeedback Failed to persist feedback', { error: error?.message || error });
     return next(error);
   }
 });
@@ -906,7 +1038,7 @@ router.get('/api/coffee-scans', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[CoffeeScans] Failed to load scans', error);
+    log.error('CoffeeScans Failed to load scans', { error: error?.message || error });
     return next(error);
   }
 });
@@ -923,7 +1055,7 @@ router.post('/api/coffee-scans', async (req, res, next) => {
     try {
       await ensureAppUserExists(session.uid, session.email ?? null);
     } catch (dbError) {
-      console.error('[CoffeeScans] Failed to ensure user in DB', dbError);
+      log.error('CoffeeScans Failed to ensure user in DB', { error: dbError?.message || dbError });
       return errorResponse(res, 500, 'db_error', 'Nepodarilo sa uložiť používateľa do databázy.');
     }
 
@@ -963,7 +1095,7 @@ router.post('/api/coffee-scans', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[CoffeeScans] Failed to persist scan', error);
+    log.error('CoffeeScans Failed to persist scan', { error: error?.message || error });
     return next(error);
   }
 });
@@ -982,7 +1114,28 @@ router.post('/api/coffee-scans/:id/match-feedback', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[CoffeeMatchFeedback] Failed to persist scan feedback', error);
+    log.error('CoffeeMatchFeedback Failed to persist scan feedback', { error: error?.message || error });
+    return next(error);
+  }
+});
+
+// Admin-only: triggers `cleanup_user_coffee_scans()` from
+// `20260427_user_coffee_scans_retention.sql`. Wire to a Render Scheduled Task
+// or pg_cron — see `supabase/MIGRATIONS.md` (Maintenance jobs).
+router.post('/api/admin/cleanup-old-scans', async (req, res, next) => {
+  try {
+    const expected = process.env.ADMIN_TOKEN?.trim();
+    const provided = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+    if (!expected || !provided || provided !== expected) {
+      return errorResponse(res, 401, 'auth_error', 'Invalid admin token.');
+    }
+
+    const result = await db.query('SELECT public.cleanup_user_coffee_scans() AS deleted');
+    const deletedRows = Number(result.rows[0]?.deleted ?? 0);
+    log.info('admin cleanup-old-scans', { deletedRows });
+    return res.status(200).json({ deletedRows });
+  } catch (error) {
+    log.error('admin cleanup-old-scans failed', { error: error?.message || error });
     return next(error);
   }
 });
@@ -1028,7 +1181,7 @@ router.get('/api/user-questionnaire', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[UserQuestionnaire] Failed to load latest questionnaire', error);
+    log.error('UserQuestionnaire Failed to load latest questionnaire', { error: error?.message || error });
     return next(error);
   }
 });
@@ -1056,7 +1209,7 @@ router.post('/api/user-questionnaire', async (req, res, next) => {
     try {
       await ensureAppUserExists(session.uid, session.email ?? null);
     } catch (dbError) {
-      console.error('[UserQuestionnaire] Failed to ensure user in DB', dbError);
+      log.error('UserQuestionnaire Failed to ensure user in DB', { error: dbError?.message || dbError });
       return errorResponse(res, 500, 'db_error', 'Nepodarilo sa uložiť používateľa do databázy.');
     }
 
@@ -1079,7 +1232,7 @@ router.post('/api/user-questionnaire', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[UserQuestionnaire] Unexpected error', error);
+    log.error('UserQuestionnaire Unexpected error', { error: error?.message || error });
     return next(error);
   }
 });
@@ -1116,7 +1269,7 @@ router.get('/api/coffee-journal', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[CoffeeJournal] Failed to load brew logs', error);
+    log.error('CoffeeJournal Failed to load brew logs', { error: error?.message || error });
     return next(error);
   }
 });
@@ -1155,7 +1308,7 @@ router.post('/api/coffee-journal', async (req, res, next) => {
     try {
       await ensureAppUserExists(session.uid, session.email ?? null);
     } catch (dbError) {
-      console.error('[CoffeeJournal] Failed to ensure user in DB', dbError);
+      log.error('CoffeeJournal Failed to ensure user in DB', { error: dbError?.message || dbError });
       return errorResponse(res, 500, 'db_error', 'Nepodarilo sa uložiť používateľa do databázy.');
     }
 
@@ -1199,7 +1352,7 @@ router.post('/api/coffee-journal', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[CoffeeJournal] Failed to create brew log', error);
+    log.error('CoffeeJournal Failed to create brew log', { error: error?.message || error });
     return next(error);
   }
 });
@@ -1292,7 +1445,7 @@ router.get('/api/coffee-journal/insights', async (req, res, next) => {
           aiSummary = result.content;
         }
       } catch (aiError) {
-        console.warn('[CoffeeJournal] Falling back to local summary', aiError);
+        log.warn('CoffeeJournal Falling back to local summary', { error: aiError?.message || aiError });
       }
     }
 
@@ -1305,7 +1458,7 @@ router.get('/api/coffee-journal/insights', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[CoffeeJournal] Failed to load insights', error);
+    log.error('CoffeeJournal Failed to load insights', { error: error?.message || error });
     return next(error);
   }
 });
@@ -1346,7 +1499,7 @@ router.get('/api/coffee-recipes', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[CoffeeRecipes] Failed to load recipes', error);
+    log.error('CoffeeRecipes Failed to load recipes', { error: error?.message || error });
     return next(error);
   }
 });
@@ -1408,7 +1561,7 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
         [session.uid, idempotencyKey.trim()],
       );
       if (existing.rows.length > 0) {
-        console.log('[CoffeeRecipes] Idempotent duplicate detected', { idempotencyKey });
+        log.info('CoffeeRecipes Idempotent duplicate detected', { idempotencyKey });
         return res.status(200).json({ item: mapSavedRecipeRow(existing.rows[0]), duplicate: true });
       }
     }
@@ -1421,7 +1574,7 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
     try {
       await ensureAppUserExists(session.uid, session.email ?? null);
     } catch (dbError) {
-      console.error('[CoffeeRecipes] Failed to ensure user in DB', dbError);
+      log.error('CoffeeRecipes Failed to ensure user in DB', { error: dbError?.message || dbError });
       return res.status(500).json({ error: 'Nepodarilo sa uložiť používateľa do databázy.', code: 'db_error', retryable: true });
     }
 
@@ -1462,7 +1615,7 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
     if (error?.status) {
       return res.status(error.status).json({ error: error.message, code: 'auth_error', retryable: false });
     }
-    console.error('[CoffeeRecipes] Failed to save recipe', error);
+    log.error('CoffeeRecipes Failed to save recipe', { error: error?.message || error });
     return next(error);
   }
 });
@@ -1493,7 +1646,7 @@ router.delete('/api/coffee-recipes/:id', async (req, res, next) => {
     if (error?.status) {
       return res.status(error.status).json({ error: error.message, code: 'auth_error', retryable: false });
     }
-    console.error('[CoffeeRecipes] Failed to delete recipe', error);
+    log.error('CoffeeRecipes Failed to delete recipe', { error: error?.message || error });
     return next(error);
   }
 });
@@ -1566,7 +1719,7 @@ router.post('/api/coffee-recipes/:id/feedback', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[CoffeeRecipes] Failed to save feedback', error);
+    log.error('CoffeeRecipes Failed to save feedback', { error: error?.message || error });
     return next(error);
   }
 });
@@ -1622,7 +1775,7 @@ router.get('/api/coffee-recipes/insights', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    console.error('[CoffeeRecipes] Failed to load insights', error);
+    log.error('CoffeeRecipes Failed to load insights', { error: error?.message || error });
     return next(error);
   }
 });

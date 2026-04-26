@@ -164,10 +164,30 @@ function PhotoInputCard({ hasImage, onImageSelected, onError }: Props) {
           { feature: 'PhotoRecipe', action: 'inventory-image-load' },
         );
         const payload = await response.json().catch(() => null);
-        if (!response.ok || !payload?.imageBase64) {
+        if (!response.ok) {
           throw new Error(payload?.error || 'Nepodarilo sa načítať fotku etikety.');
         }
-        rawImage = payload.imageBase64 as string;
+        if (typeof payload?.imageBase64 === 'string' && payload.imageBase64.length > 0) {
+          rawImage = payload.imageBase64 as string;
+        } else if (typeof payload?.url === 'string' && payload.url.length > 0) {
+          // Storage-resident image — fetch the signed URL and convert to base64.
+          const blobResp = await fetch(payload.url);
+          if (!blobResp.ok) {
+            throw new Error('Nepodarilo sa stiahnuť fotku z úložiska.');
+          }
+          const blob = await blobResp.blob();
+          rawImage = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = () => reject(reader.error || new Error('FileReader failed.'));
+            reader.onload = () => {
+              const result = reader.result;
+              resolve(typeof result === 'string' ? result : '');
+            };
+            reader.readAsDataURL(blob);
+          });
+        } else {
+          throw new Error(payload?.error || 'Nepodarilo sa načítať fotku etikety.');
+        }
       } catch (error) {
         onError(error instanceof Error ? error.message : 'Nepodarilo sa načítať fotku etikety.');
         return;
