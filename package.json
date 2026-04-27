@@ -8,7 +8,10 @@
     "ios": "react-native run-ios --config metro.config.cjs",
     "lint": "eslint .",
     "start": "react-native start --config metro.config.cjs",
-    "test": "jest"
+    "test": "npm run test:client && npm run test:server",
+    "test:client": "jest --config jest.config.cjs",
+    "test:server": "jest --config jest.server.config.cjs",
+    "test:coverage": "jest --config jest.config.cjs --coverage && jest --config jest.server.config.cjs --coverage"
   },
   "dependencies": {
     "@invertase/react-native-apple-authentication": "^2.3.0",
@@ -39,10 +42,14 @@
     "@react-native/typescript-config": "0.83.1",
     "@sentry/node": "^8.50.0",
     "@supabase/supabase-js": "^2.45.0",
+    "@testing-library/react-native": "^12.6.0",
     "@types/jest": "^29.5.13",
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.0",
     "@types/react-test-renderer": "^19.1.0",
+    "@types/supertest": "^6.0.2",
+    "babel-jest": "^29.7.0",
+    "babel-plugin-transform-import-meta": "^2.3.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "eslint": "^8.19.0",
@@ -53,6 +60,7 @@
     "pg": "^8.17.1",
     "prettier": "2.8.8",
     "react-test-renderer": "19.2.0",
+    "supertest": "^7.0.0",
     "typescript": "^5.8.3"
   },
   "engines": {
