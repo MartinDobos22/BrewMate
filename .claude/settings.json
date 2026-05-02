@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run lint)",
+      "Bash(npm test)",
+      "Bash(npm run test:client)",
+      "Bash(npm run test:server)",
+      "Bash(npm run test:coverage)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"try{const i=JSON.parse(require('fs').readFileSync(0,'utf8'));const p=(i.tool_input||{}).file_path||'';if(p.replace(/\\\\/g,'/').match(/supabase\\/.+\\.sql$/)&&!p.includes('setup.sql')&&!p.includes('.down.sql'))console.log('HOOK: Nezabudni aktualizovať supabase/setup.sql v tom istom PR!');}catch(e){}\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"console.log('Tip: npm run lint | npm test');\""
+          }
+        ]
+      }
+    ]
+  }
+}
