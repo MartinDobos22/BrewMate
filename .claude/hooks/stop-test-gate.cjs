@@ -1,6 +1,7 @@
 // Runs tests if JS/TS files were changed. Exits with code 1 to block Claude if tests fail.
 const { execSync } = require('child_process');
-const CWD = 'C:/Users/dobos/WebstormProjects/BrewMate';
+const path = require('path');
+const CWD = path.resolve(__dirname, '../..');
 
 let changedFiles;
 try {
