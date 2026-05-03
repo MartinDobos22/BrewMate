@@ -1,0 +1,18 @@
+# gitleaks config — extends the default ruleset with project-specific allowlists.
+# https://github.com/gitleaks/gitleaks#configuration
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Project-level allowlist"
+
+# Test fixtures that contain placeholder secrets (clearly fake values).
+paths = [
+  '''__tests__/server/env\.js''',
+]
+
+# Generic placeholders that are not real secrets.
+regexes = [
+  '''-----BEGIN PRIVATE KEY-----\\nFAKE\\n-----END PRIVATE KEY-----''',
+]
