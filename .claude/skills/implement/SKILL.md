@@ -7,6 +7,15 @@ description: Kompletný implementačný pipeline pre BrewMate. Použi vždy keď
 
 Tento skill orchestruje kompletný vývojový cyklus. Dodržuj tieto fázy PRESNE v tomto poradí. Nikdy nepreskakuj fázu.
 
+## Fáza 0: CLARIFY (povinná — Opus)
+
+Spusti `task-clarifier` subagent s pôvodným vstupom používateľa. Počkaj na výsledok.
+
+Predlož výstup používateľovi a počkaj na potvrdenie alebo úpravu.
+**ZASTAV SA** — nepokračuj do Fázy 1 kým používateľ neodsúhlasí zdokonalenú špecifikáciu.
+
+---
+
 ## Fáza 1: EXPLORE (povinná)
 
 Spusti `explorer` subagent s popisom úlohy. Počkaj na výsledok.

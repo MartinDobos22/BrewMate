@@ -1,7 +1,8 @@
 // After tests pass, lists changed TS/TSX files and prompts to run code-reviewer.
 // Does NOT auto-invoke Claude (avoids infinite loops); just surfaces the info.
 const { execSync } = require('child_process');
-const CWD = 'C:/Users/dobos/WebstormProjects/BrewMate';
+const path = require('path');
+const CWD = path.resolve(__dirname, '../..');
 
 let changedFiles;
 try {
