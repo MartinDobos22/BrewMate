@@ -45,6 +45,17 @@ Dostaneš zoznam zmenených súborov alebo popis zmeny. Pre každý relevantný 
 - Null safety (`?.` operátor kde treba)?
 - API error handling cez `ApiError` z `src/utils/api.ts`?
 
+## 6. Testové pokrytie
+
+Pre každý **nový** súbor skontroluj či existuje zodpovedajúci test v `__tests__/client/` alebo `__tests__/server/`:
+
+- Nový hook s business logikou (výpočty, API volania, transformácie dát) → test **povinný** → 🔴 Critical ak chýba
+- Nová utility funkcia → test **povinný** → 🔴 Critical ak chýba
+- Čistý display komponent bez logiky → test voliteľný → 🟡 Warning ak chýba
+- Zmena existujúceho súboru → skontroluj či existujúce testy pokrývajú zmenené cesty → 🟡 Warning ak nie
+
+Použi `Glob` na overenie: `__tests__/client/**/*<NázovSúboru>*`
+
 ---
 
 ## Výstupný formát
