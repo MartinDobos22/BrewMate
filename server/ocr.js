@@ -1577,13 +1577,11 @@ router.post('/api/coffee-photo-recipe', aiRateLimit, async (req, res, next) => {
       calibration,
     });
 
-    return res
-      .status(200)
-      .json({
-        recipe,
-        likePrediction,
-        personalizedForUser: Boolean(userQuestionnaire),
-      });
+    return res.status(200).json({
+      recipe,
+      likePrediction,
+      personalizedForUser: Boolean(userQuestionnaire),
+    });
   } catch (error) {
     if (error instanceof BudgetExceededError) {
       return sendError(res, 'daily_budget_exhausted', error.message, {
@@ -1919,3 +1917,23 @@ router.post('/api/coffee-match', aiRateLimit, async (req, res, next) => {
 });
 
 export default router;
+
+// Exported for unit testing — keep in sync with the const declarations above.
+export {
+  AXIS_LABELS,
+  CALIBRATION_MAX_OFFSET,
+  CALIBRATION_RATING_MAP,
+  MATCH_ALGORITHM_VERSION,
+  MATCH_CACHE_VERSION,
+  MATCH_TIER_THRESHOLDS,
+  TASTE_AXES,
+  TIER_VERDICTS,
+  TOLERANCE_WEIGHTS,
+  buildVectorMatchReason,
+  clampAxis,
+  computeCalibrationOffset,
+  extractVisionText,
+  matchScoreToTier,
+  stripDataUrlPrefix,
+  toNumberOrNull,
+};
