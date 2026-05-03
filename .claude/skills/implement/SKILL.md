@@ -1,0 +1,101 @@
+---
+name: implement
+description: Kompletný implementačný pipeline pre BrewMate. Použi vždy keď používateľ chce pridať novú funkciu, zmeniť existujúcu, alebo refaktorovať kód. Orchestruje explore → plan → implement → test → review flow.
+---
+
+# BrewMate Implementation Pipeline
+
+Tento skill orchestruje kompletný vývojový cyklus. Dodržuj tieto fázy PRESNE v tomto poradí. Nikdy nepreskakuj fázu.
+
+## Fáza 1: EXPLORE (povinná)
+
+Spusti `explorer` subagent s popisom úlohy. Počkaj na výsledok.
+
+Identifikuj:
+- Existujúce komponenty, hooks, utility ktoré možno znovupoužiť
+- Design tokeny a vzory (`useTheme()`, `appTheme.colors.*`, `appTheme.spacing.*`)
+- Typy a interfaces (navigácia, API responses)
+- Existujúce testy pre dané moduly
+
+## Fáza 2: PLAN (povinná — zastav pred implementáciou)
+
+Na základe explorácie vytvor štruktúrovaný plán v tomto formáte:
+
+```
+### Plán: [názov úlohy]
+
+**Scope**
+- Zmenené súbory: [zoznam]
+- Nové súbory: [zoznam]
+
+**Kroky**
+1. [krok] — [jednoduchý / stredný / zložitý]
+2. ...
+
+**Riziká**
+- [potenciálne problémy, mirrored files, breaking changes]
+
+**Testy**
+- [aké testy treba napísať alebo upraviť]
+```
+
+**ZASTAV SA** a počkaj na schválenie používateľa. Ak plán odmietne alebo upraví, prepracuj ho a znova požiadaj o schválenie.
+
+## Fáza 3: IMPLEMENT
+
+Implementuj PRESNE podľa schváleného plánu.
+
+Povinné pravidlá:
+- Farby: `theme.colors.primary`, `theme.colors.tertiary`, … — nikdy raw hex
+- Spacing: `theme.spacing.md`, `theme.spacing.lg`, … — nikdy čísla priamo
+- Shape: `theme.shape.medium`, `theme.shape.large`, … — nikdy raw border radius
+- Typografia: `theme.typescale.bodyLarge`, `theme.typescale.titleMedium`, … — nikdy raw fontSize
+- Vždy `useTheme()` z `src/theme/useTheme.ts`, nie priamy import `appTheme`
+- `Props` interface pre každý nový komponent
+- `StyleSheet.create()` pre statické štýly; inline `style=` len pre dynamické hodnoty
+- Žiadne `any` typy — explicitné typy alebo generics
+- Mirrored files (`src/utils/brewCalc.ts` ↔ `server/brewCalc.js`, `src/constants/apiVersion.ts` ↔ `server/apiVersion.js`) menia sa vždy súčasne
+
+PostToolUse hook automaticky formátuje každý uložený súbor cez Prettier.
+
+## Fáza 4: TEST
+
+1. Napíš unit testy pre novú logiku (ak existuje testovateľná logika)
+2. Spusti relevantné testy:
+   - Zmeny v `src/` → `npm run test:client`
+   - Zmeny v `server/` → `npm run test:server`
+   - Oboje → `npm test`
+3. Ak testy zlyhávajú → analyzuj, oprav, spusti znova
+4. **Nepokračuj kým VŠETKY testy neprechádzajú**
+
+## Fáza 5: REVIEW
+
+Spusti `code-reviewer` subagent. Predaj mu zoznam zmenených súborov a kontext úlohy.
+
+Postup po review:
+- 🔴 **Critical** → oprav vždy pred dokončením, potom retest
+- 🟡 **Warning** → oprav ak je zmena jednoduchá; inak pridaj `// TODO: <popis>`
+- 🟢 **Info** → zaznameň do summary
+
+## Fáza 6: SUMMARY
+
+Záverečné zhrnutie v tomto formáte:
+
+```
+### Hotovo: [názov úlohy]
+
+**Zmenené súbory**
+- `cesta/k/súboru.ts` — čo sa zmenilo
+
+**Nové súbory**
+- `cesta/k/súboru.ts` — čo robí
+
+**Kľúčové rozhodnutia**
+- [dôvod pre netriviálne voľby]
+
+**TODO (ak nejaké)**
+- [ ] [zostatok]
+
+**Odporúčané ďalšie kroky**
+- [čo prirodzene nasleduje]
+```
