@@ -1,4 +1,4 @@
-/---
+---
 name: db-migration
 description: Use this agent when writing new Supabase Postgres migrations. Knows naming conventions, destructive-op rules, setup.sql sync, and the immutability constraint.
 ---
