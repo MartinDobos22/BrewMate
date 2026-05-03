@@ -1,0 +1,13 @@
+appId: com.brewmate
+name: "Navigate from Login to Register"
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    text: "Prihlásenie"
+- tapOn:
+    text: "Zaregistruj sa"
+- assertVisible:
+    text: "Registrácia"
