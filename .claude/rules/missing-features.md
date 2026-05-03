@@ -9,6 +9,7 @@ alwaysApply: true
 - **Type-check** — `npm run type-check` (`tsc --project tsconfig.check.json`) runs in strict mode against the client. Server (`server/`) and `__tests__/` are excluded.
 - **Security review pipeline** — `security-reviewer` subagent + `stop-security-gate.cjs` Stop hook flag server/ changes for review.
 - **E2E (smoke) tests** — Maestro flows under `.maestro/flows/` run on an Android emulator in `.github/workflows/e2e.yml` (currently `continue-on-error: true` while the pipeline stabilises). Local: `npm run test:e2e`.
+- **Secrets scanning in CI** — `secrets-scan` job in `.github/workflows/ci.yml` runs `gitleaks` on every PR (diff) and push to `main` (full history). Project allowlist is in `.gitleaks.toml`. **Note:** GitHub-native Secret Scanning + Push Protection must be enabled separately in repo Settings → Code security.
 
 ## Still missing
 
