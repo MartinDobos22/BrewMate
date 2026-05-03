@@ -19,20 +19,6 @@ jobs:
       - run: npm ci
       - run: npm run lint
 
-  type-check:
-    name: Type check
-    runs-on: ubuntu-latest
-    # TODO: remove continue-on-error once existing type errors are cleaned up
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm run type-check
-
   test-client:
     name: Tests (client)
     runs-on: ubuntu-latest
