@@ -48,7 +48,7 @@ const errorResponse = (res, status, code, message, extra) =>
 const authErrorResponse = (res, error) =>
   errorResponse(res, error.status || 401, 'auth_error', error.message);
 
-const toPositiveInteger = (value) => {
+const toPositiveInteger = value => {
   if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
     return value;
   }
@@ -61,7 +61,7 @@ const toPositiveInteger = (value) => {
   return null;
 };
 
-const toNonNegativeInteger = (value) => {
+const toNonNegativeInteger = value => {
   if (typeof value === 'number' && Number.isInteger(value) && value >= 0) {
     return value;
   }
@@ -74,8 +74,13 @@ const toNonNegativeInteger = (value) => {
   return null;
 };
 
-const toRatingInteger = (value) => {
-  if (typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 5) {
+const toRatingInteger = value => {
+  if (
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= 1 &&
+    value <= 5
+  ) {
     return value;
   }
   if (typeof value === 'string') {
@@ -87,7 +92,7 @@ const toRatingInteger = (value) => {
   return null;
 };
 
-const mapJournalRow = (row) => ({
+const mapJournalRow = row => ({
   id: row.id,
   userCoffeeId: row.user_coffee_id,
   method: row.brew_method,
@@ -113,9 +118,13 @@ const buildLocalSummary = ({ days, totals }) => {
 
   const parts = [
     `Za posledných ${days} dní si zalogoval(a) ${totals.logsCount} príprav.`,
-    topMethod ? `Najčastejšie pripravuješ metódou ${topMethod.label} (${topMethod.count}x).` : null,
+    topMethod
+      ? `Najčastejšie pripravuješ metódou ${topMethod.label} (${topMethod.count}x).`
+      : null,
     bestRatedMethod
-      ? `Najlepší priemer hodnotenia má ${bestRatedMethod.label} (${bestRatedMethod.avgRating.toFixed(1)}/5).`
+      ? `Najlepší priemer hodnotenia má ${
+          bestRatedMethod.label
+        } (${bestRatedMethod.avgRating.toFixed(1)}/5).`
       : null,
     topOrigin ? `Najviac ti chutia kávy z pôvodu ${topOrigin.label}.` : null,
     topRoast ? `Preferované praženie: ${topRoast.label}.` : null,
@@ -124,7 +133,7 @@ const buildLocalSummary = ({ days, totals }) => {
   return parts.join(' ');
 };
 
-const mapSavedRecipeRow = (row) => ({
+const mapSavedRecipeRow = row => ({
   id: row.id,
   title: row.title,
   method: row.method,
@@ -152,7 +161,9 @@ const buildRecipeInsightsSummary = ({ days, totals }) => {
 
   const parts = [
     `Za posledných ${days} dní máš uložených ${totals.recipesCount} receptov, ktoré majú chutiť.`,
-    topMethod ? `Najčastejšie volíš metódu ${topMethod.label} (${topMethod.count}x).` : null,
+    topMethod
+      ? `Najčastejšie volíš metódu ${topMethod.label} (${topMethod.count}x).`
+      : null,
     topStrength ? `Najviac ti sedí sila ${topStrength.label}.` : null,
     topTaste ? `Preferovaný chuťový profil: ${topTaste.label}.` : null,
   ].filter(Boolean);
@@ -160,7 +171,7 @@ const buildRecipeInsightsSummary = ({ days, totals }) => {
   return parts.join(' ');
 };
 
-const mapCoffeeRow = (row) => ({
+const mapCoffeeRow = row => ({
   id: row.id,
   rawText: row.raw_text,
   correctedText: row.corrected_text,
@@ -220,7 +231,9 @@ router.get('/api/user-coffee', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('UserCoffee Failed to load user inventory', { error: error?.message || error });
+    log.error('UserCoffee Failed to load user inventory', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -245,7 +258,12 @@ router.post('/api/user-coffee', async (req, res, next) => {
     } = req.body || {};
 
     if (!coffeeProfile || typeof coffeeProfile !== 'object') {
-      return errorResponse(res, 400, 'validation_error', 'coffeeProfile is required.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'coffeeProfile is required.',
+      );
     }
 
     const normalizedPackageSize =
@@ -253,11 +271,16 @@ router.post('/api/user-coffee', async (req, res, next) => {
         ? null
         : toPositiveInteger(packageSizeG);
     if (
-      typeof packageSizeG !== 'undefined'
-      && packageSizeG !== null
-      && normalizedPackageSize === null
+      typeof packageSizeG !== 'undefined' &&
+      packageSizeG !== null &&
+      normalizedPackageSize === null
     ) {
-      return errorResponse(res, 400, 'validation_error', 'packageSizeG must be positive integer.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'packageSizeG must be positive integer.',
+      );
     }
 
     const normalizedRemaining =
@@ -265,11 +288,16 @@ router.post('/api/user-coffee', async (req, res, next) => {
         ? null
         : toNonNegativeInteger(remainingG);
     if (
-      typeof remainingG !== 'undefined'
-      && remainingG !== null
-      && normalizedRemaining === null
+      typeof remainingG !== 'undefined' &&
+      remainingG !== null &&
+      normalizedRemaining === null
     ) {
-      return errorResponse(res, 400, 'validation_error', 'remainingG must be non-negative integer.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'remainingG must be non-negative integer.',
+      );
     }
 
     const normalizedPreferredDose =
@@ -277,11 +305,16 @@ router.post('/api/user-coffee', async (req, res, next) => {
         ? null
         : toPositiveInteger(preferredDoseG);
     if (
-      typeof preferredDoseG !== 'undefined'
-      && preferredDoseG !== null
-      && normalizedPreferredDose === null
+      typeof preferredDoseG !== 'undefined' &&
+      preferredDoseG !== null &&
+      normalizedPreferredDose === null
     ) {
-      return errorResponse(res, 400, 'validation_error', 'preferredDoseG must be positive integer.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'preferredDoseG must be positive integer.',
+      );
     }
 
     const resolvedStatus =
@@ -289,41 +322,68 @@ router.post('/api/user-coffee', async (req, res, next) => {
         ? status
         : 'active';
     if (typeof status === 'string' && !COFFEE_STATUSES.has(status)) {
-      return errorResponse(res, 400, 'validation_error', 'status has unsupported value.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'status has unsupported value.',
+      );
     }
 
     const resolvedTrackingMode =
       typeof trackingMode === 'string' && TRACKING_MODES.has(trackingMode)
         ? trackingMode
-        : (normalizedPackageSize ? 'manual' : 'estimated');
+        : normalizedPackageSize
+        ? 'manual'
+        : 'estimated';
     if (typeof trackingMode === 'string' && !TRACKING_MODES.has(trackingMode)) {
-      return errorResponse(res, 400, 'validation_error', 'trackingMode has unsupported value.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'trackingMode has unsupported value.',
+      );
     }
 
     const resolvedBrewMethodDefault =
-      typeof brewMethodDefault === 'string' && BREW_METHODS.has(brewMethodDefault)
+      typeof brewMethodDefault === 'string' &&
+      BREW_METHODS.has(brewMethodDefault)
         ? brewMethodDefault
         : null;
     if (
-      typeof brewMethodDefault !== 'undefined'
-      && brewMethodDefault !== null
-      && !resolvedBrewMethodDefault
+      typeof brewMethodDefault !== 'undefined' &&
+      brewMethodDefault !== null &&
+      !resolvedBrewMethodDefault
     ) {
-      return errorResponse(res, 400, 'validation_error', 'brewMethodDefault has unsupported value.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'brewMethodDefault has unsupported value.',
+      );
     }
 
     const normalizedOpenedAt =
-      typeof openedAt === 'string' && openedAt.trim().length > 0 ? openedAt : null;
+      typeof openedAt === 'string' && openedAt.trim().length > 0
+        ? openedAt
+        : null;
 
     const resolvedRemaining =
-      normalizedRemaining
-      ?? (normalizedPackageSize !== null ? normalizedPackageSize : null);
+      normalizedRemaining ??
+      (normalizedPackageSize !== null ? normalizedPackageSize : null);
 
     try {
       await ensureAppUserExists(session.uid, session.email ?? null);
     } catch (dbError) {
-      log.error('UserCoffee Failed to ensure user in DB', { error: dbError?.message || dbError });
-      return errorResponse(res, 500, 'db_error', 'Nepodarilo sa uložiť používateľa do databázy.');
+      log.error('UserCoffee Failed to ensure user in DB', {
+        error: dbError?.message || dbError,
+      });
+      return errorResponse(
+        res,
+        500,
+        'db_error',
+        'Nepodarilo sa uložiť používateľa do databázy.',
+      );
     }
 
     const normalizedImage =
@@ -371,7 +431,9 @@ router.post('/api/user-coffee', async (req, res, next) => {
         typeof rawText === 'string' ? rawText : null,
         typeof correctedText === 'string' ? correctedText : null,
         JSON.stringify(coffeeProfile),
-        aiMatchResult && typeof aiMatchResult === 'object' ? JSON.stringify(aiMatchResult) : null,
+        aiMatchResult && typeof aiMatchResult === 'object'
+          ? JSON.stringify(aiMatchResult)
+          : null,
         normalizedPackageSize,
         resolvedRemaining,
         normalizedOpenedAt,
@@ -398,19 +460,30 @@ router.post('/api/user-coffee', async (req, res, next) => {
     await client.query('COMMIT');
 
     return res.status(201).json({
-      item: mapCoffeeRow({ ...insertedRow, has_image: Boolean(normalizedImage) }),
+      item: mapCoffeeRow({
+        ...insertedRow,
+        has_image: Boolean(normalizedImage),
+      }),
     });
   } catch (error) {
     if (client) {
-      try { await client.query('ROLLBACK'); } catch (_rollbackError) { /* ignore */ }
+      try {
+        await client.query('ROLLBACK');
+      } catch (_rollbackError) {
+        /* ignore */
+      }
     }
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('UserCoffee Unexpected error', { error: error?.message || error });
+    log.error('UserCoffee Unexpected error', {
+      error: error?.message || error,
+    });
     return next(error);
   } finally {
-    if (client) { client.release(); }
+    if (client) {
+      client.release();
+    }
   }
 });
 
@@ -421,7 +494,12 @@ router.patch('/api/user-coffee/:id', async (req, res, next) => {
     const { loved } = req.body || {};
 
     if (typeof loved !== 'boolean') {
-      return errorResponse(res, 400, 'validation_error', 'loved must be boolean.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'loved must be boolean.',
+      );
     }
 
     const result = await db.query(
@@ -441,7 +519,9 @@ router.patch('/api/user-coffee/:id', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('UserCoffee Failed to update coffee', { error: error?.message || error });
+    log.error('UserCoffee Failed to update coffee', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -456,15 +536,30 @@ router.patch('/api/user-coffee/:id/consume', async (req, res, next) => {
 
     const normalizedConsumed = toPositiveInteger(consumedG);
     if (!normalizedConsumed) {
-      return errorResponse(res, 400, 'validation_error', 'consumedG must be positive integer.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'consumedG must be positive integer.',
+      );
     }
 
     if (brewMethod && !BREW_METHODS.has(brewMethod)) {
-      return errorResponse(res, 400, 'validation_error', 'brewMethod has unsupported value.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'brewMethod has unsupported value.',
+      );
     }
 
     if (source && !CONSUMPTION_SOURCES.has(source)) {
-      return errorResponse(res, 400, 'validation_error', 'source has unsupported value.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'source has unsupported value.',
+      );
     }
 
     const normalizedPreferredDose =
@@ -472,11 +567,16 @@ router.patch('/api/user-coffee/:id/consume', async (req, res, next) => {
         ? null
         : toPositiveInteger(preferredDoseG);
     if (
-      typeof preferredDoseG !== 'undefined'
-      && preferredDoseG !== null
-      && normalizedPreferredDose === null
+      typeof preferredDoseG !== 'undefined' &&
+      preferredDoseG !== null &&
+      normalizedPreferredDose === null
     ) {
-      return errorResponse(res, 400, 'validation_error', 'preferredDoseG must be positive integer.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'preferredDoseG must be positive integer.',
+      );
     }
 
     await client.query('BEGIN');
@@ -495,7 +595,8 @@ router.patch('/api/user-coffee/:id/consume', async (req, res, next) => {
     }
 
     const item = selectResult.rows[0];
-    const currentRemaining = typeof item.remaining_g === 'number' ? item.remaining_g : 0;
+    const currentRemaining =
+      typeof item.remaining_g === 'number' ? item.remaining_g : 0;
     const nextRemaining = Math.max(0, currentRemaining - normalizedConsumed);
     const nextStatus = nextRemaining === 0 ? 'empty' : 'active';
 
@@ -565,7 +666,9 @@ router.patch('/api/user-coffee/:id/consume', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('UserCoffee Failed to consume coffee grams', { error: error?.message || error });
+    log.error('UserCoffee Failed to consume coffee grams', {
+      error: error?.message || error,
+    });
     return next(error);
   } finally {
     client.release();
@@ -580,11 +683,21 @@ router.patch('/api/user-coffee/:id/remaining', async (req, res, next) => {
 
     const normalizedRemaining = toNonNegativeInteger(remainingG);
     if (normalizedRemaining === null) {
-      return errorResponse(res, 400, 'validation_error', 'remainingG must be non-negative integer.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'remainingG must be non-negative integer.',
+      );
     }
 
     if (source && !CONSUMPTION_SOURCES.has(source)) {
-      return errorResponse(res, 400, 'validation_error', 'source has unsupported value.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'source has unsupported value.',
+      );
     }
 
     const result = await db.query(
@@ -628,7 +741,9 @@ router.patch('/api/user-coffee/:id/remaining', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('UserCoffee Failed to update remaining grams', { error: error?.message || error });
+    log.error('UserCoffee Failed to update remaining grams', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -640,7 +755,12 @@ router.patch('/api/user-coffee/:id/status', async (req, res, next) => {
     const { status } = req.body || {};
 
     if (typeof status !== 'string' || !COFFEE_STATUSES.has(status)) {
-      return errorResponse(res, 400, 'validation_error', 'status has unsupported value.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'status has unsupported value.',
+      );
     }
 
     const result = await db.query(
@@ -680,7 +800,9 @@ router.patch('/api/user-coffee/:id/status', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('UserCoffee Failed to update status', { error: error?.message || error });
+    log.error('UserCoffee Failed to update status', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -699,7 +821,12 @@ router.get('/api/user-coffee/:id/image', async (req, res, next) => {
     );
 
     if (imgResult.rowCount === 0) {
-      return errorResponse(res, 404, 'not_found', 'Káva nemá uloženú fotku etikety.');
+      return errorResponse(
+        res,
+        404,
+        'not_found',
+        'Káva nemá uloženú fotku etikety.',
+      );
     }
 
     const row = imgResult.rows[0];
@@ -728,12 +855,19 @@ router.get('/api/user-coffee/:id/image', async (req, res, next) => {
       });
     }
 
-    return errorResponse(res, 404, 'not_found', 'Káva nemá uloženú fotku etikety.');
+    return errorResponse(
+      res,
+      404,
+      'not_found',
+      'Káva nemá uloženú fotku etikety.',
+    );
   } catch (error) {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('UserCoffee Failed to load coffee image', { error: error?.message || error });
+    log.error('UserCoffee Failed to load coffee image', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -746,7 +880,8 @@ router.post('/api/user-coffee/:id/image-upload-url', async (req, res, next) => {
     const session = await requireSession(req);
     const { id } = req.params;
     const contentType =
-      typeof req.body?.contentType === 'string' && req.body.contentType.trim().length > 0
+      typeof req.body?.contentType === 'string' &&
+      req.body.contentType.trim().length > 0
         ? req.body.contentType.trim()
         : 'image/jpeg';
 
@@ -773,7 +908,12 @@ router.post('/api/user-coffee/:id/image-upload-url', async (req, res, next) => {
       contentType,
     });
     if (!signed?.uploadUrl) {
-      return errorResponse(res, 502, 'config_error', 'Storage je dočasne nedostupné.');
+      return errorResponse(
+        res,
+        502,
+        'config_error',
+        'Storage je dočasne nedostupné.',
+      );
     }
 
     return res.status(200).json({
@@ -786,7 +926,9 @@ router.post('/api/user-coffee/:id/image-upload-url', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('UserCoffee image-upload-url failed', { error: error?.message || error });
+    log.error('UserCoffee image-upload-url failed', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -801,14 +943,31 @@ router.post('/api/user-coffee/:id/image-confirm', async (req, res, next) => {
     const { storagePath, contentType } = req.body || {};
 
     if (typeof storagePath !== 'string' || storagePath.length === 0) {
-      return errorResponse(res, 400, 'validation_error', 'storagePath is required.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'storagePath is required.',
+      );
     }
     if (!isPathOwnedByUser(storagePath, session.uid)) {
-      return errorResponse(res, 400, 'validation_error', 'storagePath does not belong to caller.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'storagePath does not belong to caller.',
+      );
     }
-    const expectedPrefix = buildStoragePath(session.uid, id, contentType).split('.')[0];
+    const expectedPrefix = buildStoragePath(session.uid, id, contentType).split(
+      '.',
+    )[0];
     if (!storagePath.startsWith(expectedPrefix)) {
-      return errorResponse(res, 400, 'validation_error', 'storagePath does not match user-coffee id.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'storagePath does not match user-coffee id.',
+      );
     }
 
     const ownership = await db.query(
@@ -827,7 +986,12 @@ router.post('/api/user-coffee/:id/image-confirm', async (req, res, next) => {
              storage_path = EXCLUDED.storage_path,
              content_type_v2 = EXCLUDED.content_type_v2,
              user_id = EXCLUDED.user_id`,
-      [id, session.uid, storagePath, typeof contentType === 'string' ? contentType : null],
+      [
+        id,
+        session.uid,
+        storagePath,
+        typeof contentType === 'string' ? contentType : null,
+      ],
     );
 
     return res.status(200).json({ ok: true, storagePath });
@@ -835,7 +999,9 @@ router.post('/api/user-coffee/:id/image-confirm', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('UserCoffee image-confirm failed', { error: error?.message || error });
+    log.error('UserCoffee image-confirm failed', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -892,7 +1058,9 @@ router.delete('/api/user-coffee/:id', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('UserCoffee Failed to delete coffee', { error: error?.message || error });
+    log.error('UserCoffee Failed to delete coffee', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -927,7 +1095,8 @@ const insertMatchFeedback = async ({ res, session, kind, targetId, body }) => {
   }
 
   const ownershipTable = kind === 'scan' ? 'user_coffee_scans' : 'user_coffee';
-  const notFoundMessage = kind === 'scan' ? 'Sken nebol nájdený.' : 'Káva nebola nájdená.';
+  const notFoundMessage =
+    kind === 'scan' ? 'Sken nebol nájdený.' : 'Káva nebola nájdená.';
   const ownershipCheck = await db.query(
     `SELECT id FROM ${ownershipTable} WHERE id = $1 AND user_id = $2`,
     [targetId, session.uid],
@@ -939,8 +1108,15 @@ const insertMatchFeedback = async ({ res, session, kind, targetId, body }) => {
   try {
     await ensureAppUserExists(session.uid, session.email ?? null);
   } catch (dbError) {
-    log.error('CoffeeMatchFeedback Failed to ensure user', { error: dbError?.message || dbError });
-    return errorResponse(res, 500, 'db_error', 'Nepodarilo sa uložiť používateľa do databázy.');
+    log.error('CoffeeMatchFeedback Failed to ensure user', {
+      error: dbError?.message || dbError,
+    });
+    return errorResponse(
+      res,
+      500,
+      'db_error',
+      'Nepodarilo sa uložiť používateľa do databázy.',
+    );
   }
 
   const normalizedTier =
@@ -962,9 +1138,10 @@ const insertMatchFeedback = async ({ res, session, kind, targetId, body }) => {
   // rating in place instead of spawning a new row per tap. xmax=0 on the
   // returned row means "insert", non-zero means the ON CONFLICT branch fired
   // (we map that to HTTP 200 so the client can distinguish).
-  const conflictTarget = kind === 'scan'
-    ? '(user_id, user_coffee_scan_id) WHERE user_coffee_scan_id IS NOT NULL'
-    : '(user_id, user_coffee_id) WHERE user_coffee_id IS NOT NULL';
+  const conflictTarget =
+    kind === 'scan'
+      ? '(user_id, user_coffee_scan_id) WHERE user_coffee_scan_id IS NOT NULL'
+      : '(user_id, user_coffee_id) WHERE user_coffee_id IS NOT NULL';
 
   const upsertResult = await db.query(
     `INSERT INTO user_coffee_match_feedback (
@@ -1032,12 +1209,14 @@ router.post('/api/user-coffee/:id/match-feedback', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('CoffeeMatchFeedback Failed to persist feedback', { error: error?.message || error });
+    log.error('CoffeeMatchFeedback Failed to persist feedback', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
 
-const mapScanRow = (row) => ({
+const mapScanRow = row => ({
   id: row.id,
   rawText: row.raw_text,
   correctedText: row.corrected_text,
@@ -1070,7 +1249,9 @@ router.get('/api/coffee-scans', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('CoffeeScans Failed to load scans', { error: error?.message || error });
+    log.error('CoffeeScans Failed to load scans', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -1078,23 +1259,37 @@ router.get('/api/coffee-scans', async (req, res, next) => {
 router.post('/api/coffee-scans', async (req, res, next) => {
   try {
     const session = await requireSession(req);
-    const { rawText, correctedText, coffeeProfile, aiMatchResult } = req.body || {};
+    const { rawText, correctedText, coffeeProfile, aiMatchResult } =
+      req.body || {};
 
     if (!coffeeProfile || typeof coffeeProfile !== 'object') {
-      return errorResponse(res, 400, 'validation_error', 'coffeeProfile is required.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'coffeeProfile is required.',
+      );
     }
 
     try {
       await ensureAppUserExists(session.uid, session.email ?? null);
     } catch (dbError) {
-      log.error('CoffeeScans Failed to ensure user in DB', { error: dbError?.message || dbError });
-      return errorResponse(res, 500, 'db_error', 'Nepodarilo sa uložiť používateľa do databázy.');
+      log.error('CoffeeScans Failed to ensure user in DB', {
+        error: dbError?.message || dbError,
+      });
+      return errorResponse(
+        res,
+        500,
+        'db_error',
+        'Nepodarilo sa uložiť používateľa do databázy.',
+      );
     }
 
     const algorithmVersion =
-      aiMatchResult && typeof aiMatchResult === 'object'
-      && typeof aiMatchResult.algorithmVersion === 'string'
-      && aiMatchResult.algorithmVersion.trim().length > 0
+      aiMatchResult &&
+      typeof aiMatchResult === 'object' &&
+      typeof aiMatchResult.algorithmVersion === 'string' &&
+      aiMatchResult.algorithmVersion.trim().length > 0
         ? aiMatchResult.algorithmVersion.trim()
         : null;
 
@@ -1127,7 +1322,9 @@ router.post('/api/coffee-scans', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('CoffeeScans Failed to persist scan', { error: error?.message || error });
+    log.error('CoffeeScans Failed to persist scan', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -1146,7 +1343,9 @@ router.post('/api/coffee-scans/:id/match-feedback', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('CoffeeMatchFeedback Failed to persist scan feedback', { error: error?.message || error });
+    log.error('CoffeeMatchFeedback Failed to persist scan feedback', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -1157,17 +1356,23 @@ router.post('/api/coffee-scans/:id/match-feedback', async (req, res, next) => {
 router.post('/api/admin/cleanup-old-scans', async (req, res, next) => {
   try {
     const expected = process.env.ADMIN_TOKEN?.trim();
-    const provided = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+    const provided = (req.headers.authorization || '')
+      .replace(/^Bearer\s+/i, '')
+      .trim();
     if (!expected || !provided || provided !== expected) {
       return errorResponse(res, 401, 'auth_error', 'Invalid admin token.');
     }
 
-    const result = await db.query('SELECT public.cleanup_user_coffee_scans() AS deleted');
+    const result = await db.query(
+      'SELECT public.cleanup_user_coffee_scans() AS deleted',
+    );
     const deletedRows = Number(result.rows[0]?.deleted ?? 0);
     log.info('admin cleanup-old-scans', { deletedRows });
     return res.status(200).json({ deletedRows });
   } catch (error) {
-    log.error('admin cleanup-old-scans failed', { error: error?.message || error });
+    log.error('admin cleanup-old-scans failed', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -1190,7 +1395,8 @@ router.get('/api/user-questionnaire', async (req, res, next) => {
     }
 
     const row = result.rows[0];
-    const answers = typeof row.answers === 'string' ? JSON.parse(row.answers) : row.answers;
+    const answers =
+      typeof row.answers === 'string' ? JSON.parse(row.answers) : row.answers;
     const profile =
       typeof row.questionnaire_profile === 'string'
         ? JSON.parse(row.questionnaire_profile)
@@ -1213,7 +1419,9 @@ router.get('/api/user-questionnaire', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('UserQuestionnaire Failed to load latest questionnaire', { error: error?.message || error });
+    log.error('UserQuestionnaire Failed to load latest questionnaire', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -1224,25 +1432,49 @@ router.post('/api/user-questionnaire', async (req, res, next) => {
     const { answers, profile, tasteProfile } = req.body || {};
 
     if (!Array.isArray(answers) || answers.length === 0) {
-      return errorResponse(res, 400, 'validation_error', 'answers are required.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'answers are required.',
+      );
     }
 
     if (!profile || typeof profile !== 'object') {
-      return errorResponse(res, 400, 'validation_error', 'profile is required.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'profile is required.',
+      );
     }
 
     const resolvedTasteProfile =
-      tasteProfile && typeof tasteProfile === 'object' ? tasteProfile : profile.tasteVector;
+      tasteProfile && typeof tasteProfile === 'object'
+        ? tasteProfile
+        : profile.tasteVector;
 
     if (!resolvedTasteProfile || typeof resolvedTasteProfile !== 'object') {
-      return errorResponse(res, 400, 'validation_error', 'tasteProfile is required.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'tasteProfile is required.',
+      );
     }
 
     try {
       await ensureAppUserExists(session.uid, session.email ?? null);
     } catch (dbError) {
-      log.error('UserQuestionnaire Failed to ensure user in DB', { error: dbError?.message || dbError });
-      return errorResponse(res, 500, 'db_error', 'Nepodarilo sa uložiť používateľa do databázy.');
+      log.error('UserQuestionnaire Failed to ensure user in DB', {
+        error: dbError?.message || dbError,
+      });
+      return errorResponse(
+        res,
+        500,
+        'db_error',
+        'Nepodarilo sa uložiť používateľa do databázy.',
+      );
     }
 
     const insertResult = await db.query(
@@ -1264,7 +1496,9 @@ router.post('/api/user-questionnaire', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('UserQuestionnaire Unexpected error', { error: error?.message || error });
+    log.error('UserQuestionnaire Unexpected error', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -1301,7 +1535,9 @@ router.get('/api/coffee-journal', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('CoffeeJournal Failed to load brew logs', { error: error?.message || error });
+    log.error('CoffeeJournal Failed to load brew logs', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -1309,39 +1545,60 @@ router.get('/api/coffee-journal', async (req, res, next) => {
 router.post('/api/coffee-journal', async (req, res, next) => {
   try {
     const session = await requireSession(req);
-    const {
-      userCoffeeId,
-      method,
-      doseG,
-      brewTimeSeconds,
-      tasteRating,
-      notes,
-    } = req.body || {};
+    const { userCoffeeId, method, doseG, brewTimeSeconds, tasteRating, notes } =
+      req.body || {};
 
     if (typeof method !== 'string' || !JOURNAL_BREW_METHODS.has(method)) {
-      return errorResponse(res, 400, 'validation_error', 'method has unsupported value.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'method has unsupported value.',
+      );
     }
 
     const normalizedDose = toPositiveInteger(doseG);
     if (!normalizedDose) {
-      return errorResponse(res, 400, 'validation_error', 'doseG must be positive integer.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'doseG must be positive integer.',
+      );
     }
 
     const normalizedBrewTime = toPositiveInteger(brewTimeSeconds);
     if (!normalizedBrewTime) {
-      return errorResponse(res, 400, 'validation_error', 'brewTimeSeconds must be positive integer.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'brewTimeSeconds must be positive integer.',
+      );
     }
 
     const normalizedRating = toRatingInteger(tasteRating);
     if (!normalizedRating) {
-      return errorResponse(res, 400, 'validation_error', 'tasteRating must be integer between 1 and 5.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'tasteRating must be integer between 1 and 5.',
+      );
     }
 
     try {
       await ensureAppUserExists(session.uid, session.email ?? null);
     } catch (dbError) {
-      log.error('CoffeeJournal Failed to ensure user in DB', { error: dbError?.message || dbError });
-      return errorResponse(res, 500, 'db_error', 'Nepodarilo sa uložiť používateľa do databázy.');
+      log.error('CoffeeJournal Failed to ensure user in DB', {
+        error: dbError?.message || dbError,
+      });
+      return errorResponse(
+        res,
+        500,
+        'db_error',
+        'Nepodarilo sa uložiť používateľa do databázy.',
+      );
     }
 
     const insertResult = await db.query(
@@ -1368,12 +1625,16 @@ router.post('/api/coffee-journal', async (req, res, next) => {
                  'Neznáme praženie' as roast_level`,
       [
         session.uid,
-        typeof userCoffeeId === 'string' && userCoffeeId.trim().length > 0 ? userCoffeeId : null,
+        typeof userCoffeeId === 'string' && userCoffeeId.trim().length > 0
+          ? userCoffeeId
+          : null,
         method,
         normalizedDose,
         normalizedBrewTime,
         normalizedRating,
-        typeof notes === 'string' && notes.trim().length > 0 ? notes.trim() : null,
+        typeof notes === 'string' && notes.trim().length > 0
+          ? notes.trim()
+          : null,
       ],
     );
 
@@ -1384,7 +1645,9 @@ router.post('/api/coffee-journal', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('CoffeeJournal Failed to create brew log', { error: error?.message || error });
+    log.error('CoffeeJournal Failed to create brew log', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -1406,23 +1669,24 @@ router.get('/api/coffee-journal/insights', async (req, res, next) => {
       [session.uid, days],
     );
 
-    const aggregate = (rows, key) => Object.entries(
-      rows.reduce((acc, row) => {
-        const label = row[key] || 'Neznáme';
-        const item = acc[label] || { label, count: 0, ratingSum: 0 };
-        item.count += 1;
-        item.ratingSum += Number(row.taste_rating) || 0;
-        acc[label] = item;
-        return acc;
-      }, {}),
-    )
-      .map(([, value]) => ({
-        label: value.label,
-        count: value.count,
-        avgRating: value.count ? value.ratingSum / value.count : 0,
-      }))
-      .sort((a, b) => b.count - a.count || b.avgRating - a.avgRating)
-      .slice(0, 5);
+    const aggregate = (rows, key) =>
+      Object.entries(
+        rows.reduce((acc, row) => {
+          const label = row[key] || 'Neznáme';
+          const item = acc[label] || { label, count: 0, ratingSum: 0 };
+          item.count += 1;
+          item.ratingSum += Number(row.taste_rating) || 0;
+          acc[label] = item;
+          return acc;
+        }, {}),
+      )
+        .map(([, value]) => ({
+          label: value.label,
+          count: value.count,
+          avgRating: value.count ? value.ratingSum / value.count : 0,
+        }))
+        .sort((a, b) => b.count - a.count || b.avgRating - a.avgRating)
+        .slice(0, 5);
 
     const methods = aggregate(logsResult.rows, 'brew_method');
     const origins = aggregate(logsResult.rows, 'origin');
@@ -1477,7 +1741,9 @@ router.get('/api/coffee-journal/insights', async (req, res, next) => {
           aiSummary = result.content;
         }
       } catch (aiError) {
-        log.warn('CoffeeJournal Falling back to local summary', { error: aiError?.message || aiError });
+        log.warn('CoffeeJournal Falling back to local summary', {
+          error: aiError?.message || aiError,
+        });
       }
     }
 
@@ -1490,11 +1756,12 @@ router.get('/api/coffee-journal/insights', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('CoffeeJournal Failed to load insights', { error: error?.message || error });
+    log.error('CoffeeJournal Failed to load insights', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
-
 
 router.get('/api/coffee-recipes', async (req, res, next) => {
   try {
@@ -1531,7 +1798,9 @@ router.get('/api/coffee-recipes', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('CoffeeRecipes Failed to load recipes', { error: error?.message || error });
+    log.error('CoffeeRecipes Failed to load recipes', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -1552,15 +1821,27 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
     } = req.body || {};
 
     if (!analysis || typeof analysis !== 'object') {
-      return res.status(400).json({ error: 'analysis is required.', code: 'validation_error', retryable: false });
+      return res.status(400).json({
+        error: 'analysis is required.',
+        code: 'validation_error',
+        retryable: false,
+      });
     }
     if (!recipe || typeof recipe !== 'object') {
-      return res.status(400).json({ error: 'recipe is required.', code: 'validation_error', retryable: false });
+      return res.status(400).json({
+        error: 'recipe is required.',
+        code: 'validation_error',
+        retryable: false,
+      });
     }
 
     const normalizedLikeScore = toNonNegativeInteger(likeScore);
     if (normalizedLikeScore === null || normalizedLikeScore > 100) {
-      return res.status(400).json({ error: 'likeScore must be integer between 0 and 100.', code: 'validation_error', retryable: false });
+      return res.status(400).json({
+        error: 'likeScore must be integer between 0 and 100.',
+        code: 'validation_error',
+        retryable: false,
+      });
     }
 
     if (normalizedLikeScore < APPROVAL_THRESHOLD) {
@@ -1593,21 +1874,35 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
         [session.uid, idempotencyKey.trim()],
       );
       if (existing.rows.length > 0) {
-        log.info('CoffeeRecipes Idempotent duplicate detected', { idempotencyKey });
-        return res.status(200).json({ item: mapSavedRecipeRow(existing.rows[0]), duplicate: true });
+        log.info('CoffeeRecipes Idempotent duplicate detected', {
+          idempotencyKey,
+        });
+        return res
+          .status(200)
+          .json({ item: mapSavedRecipeRow(existing.rows[0]), duplicate: true });
       }
     }
 
     const sanitizedPredictionMetadata =
-      predictionMetadata && typeof predictionMetadata === 'object' ? predictionMetadata : null;
+      predictionMetadata && typeof predictionMetadata === 'object'
+        ? predictionMetadata
+        : null;
     const sanitizedBrewPreferences =
-      brewPreferences && typeof brewPreferences === 'object' ? brewPreferences : null;
+      brewPreferences && typeof brewPreferences === 'object'
+        ? brewPreferences
+        : null;
 
     try {
       await ensureAppUserExists(session.uid, session.email ?? null);
     } catch (dbError) {
-      log.error('CoffeeRecipes Failed to ensure user in DB', { error: dbError?.message || dbError });
-      return res.status(500).json({ error: 'Nepodarilo sa uložiť používateľa do databázy.', code: 'db_error', retryable: true });
+      log.error('CoffeeRecipes Failed to ensure user in DB', {
+        error: dbError?.message || dbError,
+      });
+      return res.status(500).json({
+        error: 'Nepodarilo sa uložiť používateľa do databázy.',
+        code: 'db_error',
+        retryable: true,
+      });
     }
 
     const insertResult = await db.query(
@@ -1636,30 +1931,47 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
         typeof strengthPreference === 'string' ? strengthPreference : null,
         normalizedLikeScore,
         approved !== false,
-        sanitizedPredictionMetadata ? JSON.stringify(sanitizedPredictionMetadata) : null,
-        sanitizedBrewPreferences ? JSON.stringify(sanitizedBrewPreferences) : null,
-        typeof idempotencyKey === 'string' && idempotencyKey.trim() ? idempotencyKey.trim() : null,
+        sanitizedPredictionMetadata
+          ? JSON.stringify(sanitizedPredictionMetadata)
+          : null,
+        sanitizedBrewPreferences
+          ? JSON.stringify(sanitizedBrewPreferences)
+          : null,
+        typeof idempotencyKey === 'string' && idempotencyKey.trim()
+          ? idempotencyKey.trim()
+          : null,
       ],
     );
 
-    return res.status(201).json({ item: mapSavedRecipeRow(insertResult.rows[0]) });
+    return res
+      .status(201)
+      .json({ item: mapSavedRecipeRow(insertResult.rows[0]) });
   } catch (error) {
     if (error?.status) {
-      return res.status(error.status).json({ error: error.message, code: 'auth_error', retryable: false });
+      return res
+        .status(error.status)
+        .json({ error: error.message, code: 'auth_error', retryable: false });
     }
-    log.error('CoffeeRecipes Failed to save recipe', { error: error?.message || error });
+    log.error('CoffeeRecipes Failed to save recipe', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
 
-const RECIPE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const RECIPE_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 router.delete('/api/coffee-recipes/:id', async (req, res, next) => {
   try {
     const session = await requireSession(req);
     const recipeId = String(req.params.id || '').trim();
     if (!RECIPE_ID_PATTERN.test(recipeId)) {
-      return res.status(400).json({ error: 'Invalid recipe id.', code: 'validation_error', retryable: false });
+      return res.status(400).json({
+        error: 'Invalid recipe id.',
+        code: 'validation_error',
+        retryable: false,
+      });
     }
 
     const result = await db.query(
@@ -1670,15 +1982,23 @@ router.delete('/api/coffee-recipes/:id', async (req, res, next) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Recipe not found.', code: 'not_found', retryable: false });
+      return res.status(404).json({
+        error: 'Recipe not found.',
+        code: 'not_found',
+        retryable: false,
+      });
     }
 
     return res.status(200).json({ ok: true, id: recipeId });
   } catch (error) {
     if (error?.status) {
-      return res.status(error.status).json({ error: error.message, code: 'auth_error', retryable: false });
+      return res
+        .status(error.status)
+        .json({ error: error.message, code: 'auth_error', retryable: false });
     }
-    log.error('CoffeeRecipes Failed to delete recipe', { error: error?.message || error });
+    log.error('CoffeeRecipes Failed to delete recipe', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -1694,10 +2014,16 @@ router.post('/api/coffee-recipes/:id/feedback', async (req, res, next) => {
     const { actualRating, notes } = req.body || {};
     const rating = Number(actualRating);
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-      return errorResponse(res, 400, 'validation_error', 'actualRating must be integer between 1 and 5.');
+      return errorResponse(
+        res,
+        400,
+        'validation_error',
+        'actualRating must be integer between 1 and 5.',
+      );
     }
 
-    const sanitizedNotes = typeof notes === 'string' ? notes.trim().slice(0, 500) : null;
+    const sanitizedNotes =
+      typeof notes === 'string' ? notes.trim().slice(0, 500) : null;
 
     const recipeRow = await db.query(
       `SELECT like_score, prediction_metadata
@@ -1711,9 +2037,16 @@ router.post('/api/coffee-recipes/:id/feedback', async (req, res, next) => {
 
     const predictedScore = Number(recipeRow.rows[0].like_score) || 0;
     const metadata = recipeRow.rows[0].prediction_metadata;
-    const parsedMetadata = typeof metadata === 'string' ? (() => {
-      try { return JSON.parse(metadata); } catch { return null; }
-    })() : metadata;
+    const parsedMetadata =
+      typeof metadata === 'string'
+        ? (() => {
+            try {
+              return JSON.parse(metadata);
+            } catch {
+              return null;
+            }
+          })()
+        : metadata;
     const algorithmVersion =
       (parsedMetadata && typeof parsedMetadata.algorithmVersion === 'string'
         ? parsedMetadata.algorithmVersion
@@ -1732,7 +2065,14 @@ router.post('/api/coffee-recipes/:id/feedback', async (req, res, next) => {
          algorithm_version = excluded.algorithm_version,
          created_at = now()
        RETURNING id, recipe_id, predicted_score, actual_rating, notes, algorithm_version, created_at`,
-      [session.uid, recipeId, predictedScore, rating, sanitizedNotes, algorithmVersion],
+      [
+        session.uid,
+        recipeId,
+        predictedScore,
+        rating,
+        sanitizedNotes,
+        algorithmVersion,
+      ],
     );
 
     const row = result.rows[0];
@@ -1751,7 +2091,9 @@ router.post('/api/coffee-recipes/:id/feedback', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('CoffeeRecipes Failed to save feedback', { error: error?.message || error });
+    log.error('CoffeeRecipes Failed to save feedback', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
@@ -1773,23 +2115,24 @@ router.get('/api/coffee-recipes/insights', async (req, res, next) => {
       [session.uid, days],
     );
 
-    const aggregate = (rows, key) => Object.entries(
-      rows.reduce((acc, row) => {
-        const label = row[key] || 'Neznáme';
-        const item = acc[label] || { label, count: 0, likeSum: 0 };
-        item.count += 1;
-        item.likeSum += Number(row.like_score) || 0;
-        acc[label] = item;
-        return acc;
-      }, {}),
-    )
-      .map(([, value]) => ({
-        label: value.label,
-        count: value.count,
-        avgLikeScore: value.count ? value.likeSum / value.count : 0,
-      }))
-      .sort((a, b) => b.count - a.count || b.avgLikeScore - a.avgLikeScore)
-      .slice(0, 5);
+    const aggregate = (rows, key) =>
+      Object.entries(
+        rows.reduce((acc, row) => {
+          const label = row[key] || 'Neznáme';
+          const item = acc[label] || { label, count: 0, likeSum: 0 };
+          item.count += 1;
+          item.likeSum += Number(row.like_score) || 0;
+          acc[label] = item;
+          return acc;
+        }, {}),
+      )
+        .map(([, value]) => ({
+          label: value.label,
+          count: value.count,
+          avgLikeScore: value.count ? value.likeSum / value.count : 0,
+        }))
+        .sort((a, b) => b.count - a.count || b.avgLikeScore - a.avgLikeScore)
+        .slice(0, 5);
 
     const totals = {
       recipesCount: rowsResult.rows.length,
@@ -1807,10 +2150,30 @@ router.get('/api/coffee-recipes/insights', async (req, res, next) => {
     if (error?.status) {
       return authErrorResponse(res, error);
     }
-    log.error('CoffeeRecipes Failed to load insights', { error: error?.message || error });
+    log.error('CoffeeRecipes Failed to load insights', {
+      error: error?.message || error,
+    });
     return next(error);
   }
 });
 
-
 export default router;
+
+// Exported for unit testing — keep this list in sync with the helpers above.
+export {
+  APPROVAL_THRESHOLD,
+  BREW_METHODS,
+  COFFEE_STATUSES,
+  CONSUMPTION_SOURCES,
+  JOURNAL_BREW_METHODS,
+  TRACKING_MODES,
+  buildLocalSummary,
+  buildRecipeInsightsSummary,
+  mapCoffeeRow,
+  mapJournalRow,
+  mapSavedRecipeRow,
+  mapScanRow,
+  toNonNegativeInteger,
+  toPositiveInteger,
+  toRatingInteger,
+};
