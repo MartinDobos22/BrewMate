@@ -86,6 +86,15 @@ Postup po review:
 - 🟡 **Warning** → oprav ak je zmena jednoduchá; inak pridaj `// TODO: <popis>`
 - 🟢 **Info** → zaznameň do summary
 
+## Fáza 5b: SECURITY REVIEW (len ak sú zmenené `server/` súbory)
+
+Ak úloha mení akýkoľvek súbor v `server/`, spusti `security-reviewer` subagent.
+Predaj mu zoznam zmenených `server/` súborov.
+
+Postup po review:
+- 🔴 **Critical** → oprav vždy pred dokončením, potom retest
+- 🟡 **Warning** → oprav ak je zmena jednoduchá; inak pridaj `// TODO: <popis>`
+
 ## Fáza 6: SUMMARY
 
 Záverečné zhrnutie v tomto formáte:
