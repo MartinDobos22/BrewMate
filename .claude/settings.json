@@ -47,6 +47,15 @@
             "timeout_ms": 60000
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/stop-security-gate.cjs",
+            "timeout_ms": 60000
+          }
+        ]
       }
     ]
   }
