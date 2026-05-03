@@ -7,7 +7,8 @@ Detailed rules are split into focused files under `.claude/rules/`:
 | Rule file | Scope |
 |---|---|
 | `repo-shape.md` | Repo structure, mirrored files, language conventions |
-| `commands.md` | Dev, build, lint, test, migration commands |
+| `commands.md` | Dev, build, lint, test (client vs server configs), migration commands |
+| `env-vars.md` | All environment variables — required, optional, defaults |
 | `backend-architecture.md` | Express middleware, routers, cross-cutting modules |
 | `client-architecture.md` | Auth gate, apiFetch, hooks, theme |
 | `database-migrations.md` | Migration naming, destructive ops, setup.sql, rollback |

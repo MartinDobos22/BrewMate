@@ -15,7 +15,16 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"try{const i=JSON.parse(require('fs').readFileSync(0,'utf8'));const p=(i.tool_input||{}).file_path||'';if(p.replace(/\\\\/g,'/').match(/supabase\\/.+\\.sql$/)&&!p.includes('setup.sql')&&!p.includes('.down.sql'))console.log('HOOK: Nezabudni aktualizovať supabase/setup.sql v tom istom PR!');}catch(e){}\""
+            "command": "node .claude/hooks/post-write-migration.cjs"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/post-write-prettier.cjs"
           }
         ]
       }
@@ -25,7 +34,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"console.log('Tip: npm run lint | npm test');\""
+            "command": "node .claude/hooks/stop-test-gate.cjs",
+            "timeout_ms": 120000
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/stop-review-gate.cjs",
+            "timeout_ms": 60000
           }
         ]
       }
