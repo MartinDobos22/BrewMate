@@ -1821,33 +1821,27 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
     } = req.body || {};
 
     if (!analysis || typeof analysis !== 'object') {
-      return res
-        .status(400)
-        .json({
-          error: 'analysis is required.',
-          code: 'validation_error',
-          retryable: false,
-        });
+      return res.status(400).json({
+        error: 'analysis is required.',
+        code: 'validation_error',
+        retryable: false,
+      });
     }
     if (!recipe || typeof recipe !== 'object') {
-      return res
-        .status(400)
-        .json({
-          error: 'recipe is required.',
-          code: 'validation_error',
-          retryable: false,
-        });
+      return res.status(400).json({
+        error: 'recipe is required.',
+        code: 'validation_error',
+        retryable: false,
+      });
     }
 
     const normalizedLikeScore = toNonNegativeInteger(likeScore);
     if (normalizedLikeScore === null || normalizedLikeScore > 100) {
-      return res
-        .status(400)
-        .json({
-          error: 'likeScore must be integer between 0 and 100.',
-          code: 'validation_error',
-          retryable: false,
-        });
+      return res.status(400).json({
+        error: 'likeScore must be integer between 0 and 100.',
+        code: 'validation_error',
+        retryable: false,
+      });
     }
 
     if (normalizedLikeScore < APPROVAL_THRESHOLD) {
@@ -1904,13 +1898,11 @@ router.post('/api/coffee-recipes', async (req, res, next) => {
       log.error('CoffeeRecipes Failed to ensure user in DB', {
         error: dbError?.message || dbError,
       });
-      return res
-        .status(500)
-        .json({
-          error: 'Nepodarilo sa uložiť používateľa do databázy.',
-          code: 'db_error',
-          retryable: true,
-        });
+      return res.status(500).json({
+        error: 'Nepodarilo sa uložiť používateľa do databázy.',
+        code: 'db_error',
+        retryable: true,
+      });
     }
 
     const insertResult = await db.query(
@@ -1975,13 +1967,11 @@ router.delete('/api/coffee-recipes/:id', async (req, res, next) => {
     const session = await requireSession(req);
     const recipeId = String(req.params.id || '').trim();
     if (!RECIPE_ID_PATTERN.test(recipeId)) {
-      return res
-        .status(400)
-        .json({
-          error: 'Invalid recipe id.',
-          code: 'validation_error',
-          retryable: false,
-        });
+      return res.status(400).json({
+        error: 'Invalid recipe id.',
+        code: 'validation_error',
+        retryable: false,
+      });
     }
 
     const result = await db.query(
@@ -1992,13 +1982,11 @@ router.delete('/api/coffee-recipes/:id', async (req, res, next) => {
     );
 
     if (result.rows.length === 0) {
-      return res
-        .status(404)
-        .json({
-          error: 'Recipe not found.',
-          code: 'not_found',
-          retryable: false,
-        });
+      return res.status(404).json({
+        error: 'Recipe not found.',
+        code: 'not_found',
+        retryable: false,
+      });
     }
 
     return res.status(200).json({ ok: true, id: recipeId });
@@ -2170,3 +2158,22 @@ router.get('/api/coffee-recipes/insights', async (req, res, next) => {
 });
 
 export default router;
+
+// Exported for unit testing — keep this list in sync with the helpers above.
+export {
+  APPROVAL_THRESHOLD,
+  BREW_METHODS,
+  COFFEE_STATUSES,
+  CONSUMPTION_SOURCES,
+  JOURNAL_BREW_METHODS,
+  TRACKING_MODES,
+  buildLocalSummary,
+  buildRecipeInsightsSummary,
+  mapCoffeeRow,
+  mapJournalRow,
+  mapSavedRecipeRow,
+  mapScanRow,
+  toNonNegativeInteger,
+  toPositiveInteger,
+  toRatingInteger,
+};
