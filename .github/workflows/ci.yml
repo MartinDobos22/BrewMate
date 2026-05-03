@@ -46,8 +46,6 @@ jobs:
   type-check:
     name: Type check (strict)
     runs-on: ubuntu-latest
-    # TODO: remove continue-on-error once existing type errors are cleaned up
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
