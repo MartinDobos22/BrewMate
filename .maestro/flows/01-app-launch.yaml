@@ -1,0 +1,17 @@
+appId: com.brewmate
+name: "App Launch — Login screen visible"
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    text: "Prihlásenie"
+- assertVisible:
+    text: "Vitaj späť v BrewMate."
+- assertVisible:
+    text: "Email"
+- assertVisible:
+    text: "Heslo"
+- assertVisible:
+    text: "Prihlásiť"

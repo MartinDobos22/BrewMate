@@ -12,6 +12,7 @@
     "test:client": "jest --config jest.config.cjs",
     "test:server": "jest --config jest.server.config.cjs",
     "test:coverage": "jest --config jest.config.cjs --coverage && jest --config jest.server.config.cjs --coverage",
+    "test:e2e": "maestro test .maestro/flows",
     "type-check": "tsc --project tsconfig.check.json"
   },
   "dependencies": {
