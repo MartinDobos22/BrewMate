@@ -11,7 +11,8 @@
     "test": "npm run test:client && npm run test:server",
     "test:client": "jest --config jest.config.cjs",
     "test:server": "jest --config jest.server.config.cjs",
-    "test:coverage": "jest --config jest.config.cjs --coverage && jest --config jest.server.config.cjs --coverage"
+    "test:coverage": "jest --config jest.config.cjs --coverage && jest --config jest.server.config.cjs --coverage",
+    "type-check": "tsc --project tsconfig.check.json"
   },
   "dependencies": {
     "@invertase/react-native-apple-authentication": "^2.3.0",
