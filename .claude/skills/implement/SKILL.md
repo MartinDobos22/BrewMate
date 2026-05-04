@@ -14,6 +14,26 @@ Tento skill orchestruje kompletný vývojový cyklus. Dodržuj tieto fázy PRESN
 - **Dve povinné zastávky**: po Fáze 0 a po Fáze 2 — vždy čakaj na odpoveď používateľa.
 - **Priebežné aktualizácie**: pri každom väčšom kroku v implementácii napíš jednu vetu čo sa práve deje.
 
+### Kontext status (povinný po každej fáze)
+
+Po dokončení každej fázy pridaj riadok v tomto formáte:
+
+```
+> **Kontext:** ~XX% využitý — zostatok ~YYk tokenov  (`/cost` pre presné API náklady)
+```
+
+**Ako odhadnúť:**
+- Model: claude-sonnet-4-6, okno: **200 000 tokenov**
+- Krátka konverzácia (< 5 správ, málo súborov): ~5–15 %
+- Po Clarify + Explore (subagenti, čítanie súborov): ~15–30 %
+- Po Plan (ďalší subagent): ~25–40 %
+- Po Implement (veľa editov, dlhé súbory): ~40–65 %
+- Po Test + Review (výstup testov, ďalší subagent): ~55–80 %
+- Komprimovaný kontext (objavil sa summary na začiatku): odpočítaj ~30–40 % — konverzácia bola skomprimovaná
+
+Ak odhad prekročí **75 %**, pridaj varovanie:
+`⚠️ Kontext je z viac ako 75 % využitý — pri ďalšej dlhej fáze zvážte /compact.`
+
 ---
 
 ## Fáza 0: CLARIFY (povinná — Opus)
