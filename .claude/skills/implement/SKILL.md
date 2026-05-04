@@ -18,21 +18,20 @@ Predlož výstup používateľovi a počkaj na potvrdenie alebo úpravu.
 
 ## Fáza 0.5: BRANCH (povinná — hneď po schválení špecifikácie)
 
-Vždy odraz novú branch od aktuálneho `main`, bez ohľadu na to kde si:
-
+Zisti aktuálnu branch:
 ```bash
-git fetch origin main
-git checkout main
-git pull origin main
+git branch --show-current
 ```
 
-Potom vytvor novú branch:
-1. Z názvu úlohy vytvor kebab-case slug (max 40 znakov, len `a-z`, `0-9`, `-`)
-2. Vytvor a prepni sa:
-   ```bash
-   git checkout -b claude/<slug>
-   ```
+**Ak si na `main` alebo `master`** — odraz od čerstvého main:
+1. `git fetch origin main`
+2. `git pull origin main`
+3. Z názvu úlohy vytvor kebab-case slug (max 40 znakov, len `a-z`, `0-9`, `-`)
+4. `git checkout -b claude/<slug>`
+
    Príklady: `claude/pridaj-filter-podla-intenzity`, `claude/oprav-ocr-timeout`, `claude/refactor-inventory-hook`
+
+**Ak si už na feature branchi (nie main/master)** — zostań na nej a pokračuj. Nevytvára sa nová branch, nerobia sa žiadne git operácie.
 
 Informuj používateľa na akej branch pracuješ.
 
