@@ -5,10 +5,23 @@
       "Bash(npm test)",
       "Bash(npm run test:client)",
       "Bash(npm run test:server)",
-      "Bash(npm run test:coverage)"
+      "Bash(npm run test:coverage)",
+      "Bash(git branch --show-current)",
+      "Bash(git checkout -b*)"
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/pre-write-branch-guard.cjs"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write",
