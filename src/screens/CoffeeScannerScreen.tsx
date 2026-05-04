@@ -17,7 +17,7 @@ import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import BottomNavBar from '../components/BottomNavBar';
 import { useTheme } from '../theme/useTheme';
 import { elevation } from '../theme/theme';
-import { ScanIcon } from '../components/icons';
+import { ScanIcon, WarningIcon } from '../components/icons';
 import { MD3Button } from '../components/md3';
 import { ProgressIndicator } from '../components/ProgressIndicator';
 import { BOTTOM_NAV_SAFE_PADDING } from '../constants/ui';
@@ -26,7 +26,7 @@ import { useImagePicker } from '../hooks/useImagePicker';
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeeScanner'>;
 
 function CoffeeScannerScreen({ navigation }: Props) {
-  const { colors, typescale, shape } = useTheme();
+  const { colors, typescale, shape, spacing } = useTheme();
   const picker = useImagePicker();
   const [languageHints, setLanguageHints] = useState('sk, en');
   // Submit-path errors are tracked separately from picker errors so the
@@ -328,10 +328,20 @@ function CoffeeScannerScreen({ navigation }: Props) {
           ...typescale.bodyMedium,
           color: colors.onSurface,
         },
-        errorText: {
+        errorChip: {
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: spacing.xs,
+          backgroundColor: colors.errorContainer,
+          borderRadius: shape.medium,
+          paddingVertical: spacing.sm,
+          paddingHorizontal: spacing.md,
+          marginBottom: spacing.md,
+        },
+        errorChipText: {
           ...typescale.bodySmall,
-          color: colors.error,
-          marginBottom: 12,
+          color: colors.onErrorContainer,
+          flex: 1,
         },
         statusText: {
           ...typescale.labelLarge,
@@ -349,7 +359,7 @@ function CoffeeScannerScreen({ navigation }: Props) {
           color: colors.onPrimary,
         },
       }),
-    [colors, shape, typescale],
+    [colors, shape, spacing, typescale],
   );
 
   // ---------------------------------------------------------------------------
@@ -419,13 +429,16 @@ function CoffeeScannerScreen({ navigation }: Props) {
           ) : null}
 
           {submitError || picker.errorMessage ? (
-            <Text
-              style={s.errorText}
+            <View
+              style={s.errorChip}
               accessibilityRole="alert"
-              accessibilityLiveRegion="polite"
+              accessibilityLiveRegion="assertive"
             >
-              {submitError || picker.errorMessage}
-            </Text>
+              <WarningIcon size={16} color={colors.onErrorContainer} />
+              <Text style={s.errorChipText}>
+                {submitError || picker.errorMessage}
+              </Text>
+            </View>
           ) : null}
 
           {isSubmitting ? (
