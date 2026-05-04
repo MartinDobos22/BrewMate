@@ -49,7 +49,7 @@ Predlož výstup používateľovi a počkaj na potvrdenie alebo úpravu.
 
 ## Fáza 0.5: BRANCH (povinná — hneď po schválení špecifikácie)
 
-Skontroluj aktuálnu branch:
+Zisti aktuálnu branch:
 ```bash
 git branch --show-current
 ```
@@ -62,7 +62,7 @@ Ak je výsledok `main` alebo `master`:
    ```
    Príklady: `mdobos/pridaj-filter-podla-intenzity`, `mdobos/oprav-ocr-timeout`, `mdobos/refactor-inventory-hook`
 
-Ak si už na inej branch ako main/master → pokračuj bez zmeny.
+**Ak si už na feature branchi (nie main/master)** — zostań na nej a pokračuj. Nevytvára sa nová branch, nerobia sa žiadne git operácie.
 
 Informuj používateľa na akej branch pracuješ.
 

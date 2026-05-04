@@ -7,7 +7,10 @@
       "Bash(npm run test:server)",
       "Bash(npm run test:coverage)",
       "Bash(git branch --show-current)",
-      "Bash(git checkout -b*)"
+      "Bash(git checkout -b*)",
+      "Bash(git checkout main)",
+      "Bash(git fetch origin main)",
+      "Bash(git pull origin main)"
     ]
   },
   "hooks": {
