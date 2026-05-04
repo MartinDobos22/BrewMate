@@ -1,28 +1,36 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import {RootStackParamList} from '../navigation/types';
-import {useAuth} from '../context/AuthContext';
-import {useLogout} from '../hooks/useLogout';
-import {loadLatestQuestionnaireResult, QuestionnaireResultPayload} from '../utils/localSave';
+import { RootStackParamList } from '../navigation/types';
+import { useAuth } from '../context/AuthContext';
+import { useLogout } from '../hooks/useLogout';
+import {
+  loadLatestQuestionnaireResult,
+  QuestionnaireResultPayload,
+} from '../utils/localSave';
 import TasteProfileBars from '../components/TasteProfileBars';
-import {DEFAULT_TASTE_VECTOR, normalizeTasteVector} from '../utils/tasteVector';
+import {
+  DEFAULT_TASTE_VECTOR,
+  normalizeTasteVector,
+} from '../utils/tasteVector';
 import BottomNavBar from '../components/BottomNavBar';
-import {MD3Button} from '../components/md3';
-import {SparklesIcon} from '../components/icons';
-import {useTheme} from '../theme/useTheme';
-import {elevation} from '../theme/theme';
-import {BOTTOM_NAV_SAFE_PADDING} from '../constants/ui';
+import { MD3Button } from '../components/md3';
+import { SparklesIcon } from '../components/icons';
+import { useTheme } from '../theme/useTheme';
+import { elevation } from '../theme/theme';
+import { BOTTOM_NAV_SAFE_PADDING } from '../constants/ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
-function ProfileScreen({navigation}: Props) {
-  const {user} = useAuth();
-  const {logout, isLoggingOut} = useLogout();
-  const {colors, typescale, shape} = useTheme();
-  const [profile, setProfile] = useState<QuestionnaireResultPayload['profile'] | null>(null);
+function ProfileScreen({ navigation }: Props) {
+  const { user } = useAuth();
+  const { logout, isLoggingOut } = useLogout();
+  const { colors, typescale, shape } = useTheme();
+  const [profile, setProfile] = useState<
+    QuestionnaireResultPayload['profile'] | null
+  >(null);
 
   const loadProfile = useCallback(async () => {
     const latest = await loadLatestQuestionnaireResult();
@@ -34,7 +42,9 @@ function ProfileScreen({navigation}: Props) {
     return navigation.addListener('focus', loadProfile);
   }, [loadProfile, navigation]);
 
-  const userVector = normalizeTasteVector(profile?.tasteVector ?? DEFAULT_TASTE_VECTOR);
+  const userVector = normalizeTasteVector(
+    profile?.tasteVector ?? DEFAULT_TASTE_VECTOR,
+  );
 
   const initial = useMemo(() => {
     const fromName = user?.name?.trim().charAt(0);
@@ -162,7 +172,9 @@ function ProfileScreen({navigation}: Props) {
               </View>
               <View style={styles.profileBlock}>
                 <Text style={styles.profileLabel}>Odporúčaný štýl</Text>
-                <Text style={styles.profileText}>{profile.recommendedStyle}</Text>
+                <Text style={styles.profileText}>
+                  {profile.recommendedStyle}
+                </Text>
               </View>
               <TasteProfileBars vector={userVector} />
             </>
@@ -175,7 +187,9 @@ function ProfileScreen({navigation}: Props) {
 
           <View style={styles.buttonRow}>
             <MD3Button
-              label={profile ? 'Vyplniť dotazník znova' : 'Vyplniť chuťový dotazník'}
+              label={
+                profile ? 'Vyplniť dotazník znova' : 'Vyplniť chuťový dotazník'
+              }
               variant="filled"
               icon={<SparklesIcon size={18} color={colors.onPrimary} />}
               onPress={() => navigation.navigate('CoffeeQuestionnaire')}

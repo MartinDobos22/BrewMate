@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -10,16 +10,16 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import {apiFetch, DEFAULT_API_HOST} from '../utils/api';
+import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import BottomNavBar from '../components/BottomNavBar';
-import {useTheme} from '../theme/useTheme';
-import {elevation} from '../theme/theme';
-import {CoffeeBeanIcon, FlameIcon} from '../components/icons';
-import {Chip, MD3Button} from '../components/md3';
-import {BOTTOM_NAV_SAFE_PADDING} from '../constants/ui';
-import {useSignedImageUrl} from '../hooks/useSignedImageUrl';
+import { useTheme } from '../theme/useTheme';
+import { elevation } from '../theme/theme';
+import { CoffeeBeanIcon } from '../components/icons';
+import { Chip, MD3Button } from '../components/md3';
+import { BOTTOM_NAV_SAFE_PADDING } from '../constants/ui';
+import { useSignedImageUrl } from '../hooks/useSignedImageUrl';
 
 type InventoryStatus = 'active' | 'empty' | 'archived';
 type TrackingMode = 'manual' | 'estimated';
@@ -78,12 +78,12 @@ function InventoryRowThumbnail({
   initial: string;
   styles: ThumbnailStyles;
 }) {
-  const {uri, handleImageError} = useSignedImageUrl(hasImage ? itemId : null);
+  const { uri, handleImageError } = useSignedImageUrl(hasImage ? itemId : null);
 
   if (hasImage && uri) {
     return (
       <Image
-        source={{uri}}
+        source={{ uri }}
         style={styles.thumbnail}
         onError={handleImageError}
         accessibilityIgnoresInvertColors
@@ -95,20 +95,27 @@ function InventoryRowThumbnail({
     <View
       style={styles.thumbnailPlaceholder}
       accessibilityElementsHidden
-      importantForAccessibility="no">
+      importantForAccessibility="no"
+    >
       <Text style={styles.thumbnailInitial}>{initial}</Text>
     </View>
   );
 }
 
 function CoffeeInventoryScreen() {
-  const {colors, typescale, shape, stateLayer} = useTheme();
+  const { colors, typescale, shape, stateLayer } = useTheme();
   const [items, setItems] = useState<InventoryItem[]>([]);
-  const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'error'>(
+    'idle',
+  );
   const [errorMessage, setErrorMessage] = useState('');
   const [activeFilter, setActiveFilter] = useState<InventoryStatus>('active');
-  const [customDoseById, setCustomDoseById] = useState<Record<string, string>>({});
-  const [customRemainingById, setCustomRemainingById] = useState<Record<string, string>>({});
+  const [customDoseById, setCustomDoseById] = useState<Record<string, string>>(
+    {},
+  );
+  const [customRemainingById, setCustomRemainingById] = useState<
+    Record<string, string>
+  >({});
 
   // ---------------------------------------------------------------------------
   // Data loading & mutations (unchanged logic)
@@ -140,7 +147,11 @@ function CoffeeInventoryScreen() {
       setState('ready');
     } catch (error) {
       setState('error');
-      setErrorMessage(error instanceof Error ? error.message : 'Nepodarilo sa načítať inventár.');
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Nepodarilo sa načítať inventár.',
+      );
     }
   }, []);
 
@@ -149,12 +160,14 @@ function CoffeeInventoryScreen() {
   }, [loadInventory]);
 
   const replaceItem = useCallback((item: InventoryItem) => {
-    setItems(current => current.map(existing => (existing.id === item.id ? item : existing)));
+    setItems(current =>
+      current.map(existing => (existing.id === item.id ? item : existing)),
+    );
   }, []);
 
   const handleDelete = useCallback((id: string) => {
     Alert.alert('Vymazať kávu?', 'Táto káva sa natrvalo odstráni.', [
-      {text: 'Zrušiť', style: 'cancel'},
+      { text: 'Zrušiť', style: 'cancel' },
       {
         text: 'Vymazať',
         style: 'destructive',
@@ -181,7 +194,9 @@ function CoffeeInventoryScreen() {
           } catch (error) {
             Alert.alert(
               'Chyba',
-              error instanceof Error ? error.message : 'Nepodarilo sa vymazať kávu.',
+              error instanceof Error
+                ? error.message
+                : 'Nepodarilo sa vymazať kávu.',
             );
           }
         },
@@ -199,7 +214,7 @@ function CoffeeInventoryScreen() {
             'Content-Type': 'application/json',
           },
           credentials: 'include',
-          body: JSON.stringify({loved}),
+          body: JSON.stringify({ loved }),
         },
         {
           feature: 'CoffeeInventory',
@@ -209,20 +224,30 @@ function CoffeeInventoryScreen() {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error || 'Nepodarilo sa upraviť hodnotenie kávy.');
+        throw new Error(
+          payload?.error || 'Nepodarilo sa upraviť hodnotenie kávy.',
+        );
       }
 
-      setItems(current => current.map(item => (item.id === id ? {...item, loved} : item)));
+      setItems(current =>
+        current.map(item => (item.id === id ? { ...item, loved } : item)),
+      );
     } catch (error) {
       Alert.alert(
         'Chyba',
-        error instanceof Error ? error.message : 'Nepodarilo sa upraviť hodnotenie kávy.',
+        error instanceof Error
+          ? error.message
+          : 'Nepodarilo sa upraviť hodnotenie kávy.',
       );
     }
   }, []);
 
   const handleConsume = useCallback(
-    async (item: InventoryItem, consumedG: number, source: 'quick_action' | 'custom') => {
+    async (
+      item: InventoryItem,
+      consumedG: number,
+      source: 'quick_action' | 'custom',
+    ) => {
       try {
         const response = await apiFetch(
           `${DEFAULT_API_HOST}/api/user-coffee/${item.id}/consume`,
@@ -247,7 +272,9 @@ function CoffeeInventoryScreen() {
 
         const payload = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(payload?.error || 'Nepodarilo sa aktualizovať spotrebu.');
+          throw new Error(
+            payload?.error || 'Nepodarilo sa aktualizovať spotrebu.',
+          );
         }
 
         if (payload?.item) {
@@ -256,7 +283,9 @@ function CoffeeInventoryScreen() {
       } catch (error) {
         Alert.alert(
           'Chyba',
-          error instanceof Error ? error.message : 'Nepodarilo sa aktualizovať spotrebu.',
+          error instanceof Error
+            ? error.message
+            : 'Nepodarilo sa aktualizovať spotrebu.',
         );
       }
     },
@@ -273,7 +302,7 @@ function CoffeeInventoryScreen() {
       }
 
       await handleConsume(item, parsed, 'custom');
-      setCustomDoseById(current => ({...current, [item.id]: ''}));
+      setCustomDoseById(current => ({ ...current, [item.id]: '' }));
     },
     [customDoseById, handleConsume],
   );
@@ -296,7 +325,7 @@ function CoffeeInventoryScreen() {
               'Content-Type': 'application/json',
             },
             credentials: 'include',
-            body: JSON.stringify({remainingG: parsed, source: 'slider'}),
+            body: JSON.stringify({ remainingG: parsed, source: 'slider' }),
           },
           {
             feature: 'CoffeeInventory',
@@ -306,18 +335,22 @@ function CoffeeInventoryScreen() {
 
         const payload = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(payload?.error || 'Nepodarilo sa upraviť zostávajúce gramy.');
+          throw new Error(
+            payload?.error || 'Nepodarilo sa upraviť zostávajúce gramy.',
+          );
         }
 
         if (payload?.item) {
           replaceItem(payload.item);
         }
 
-        setCustomRemainingById(current => ({...current, [item.id]: ''}));
+        setCustomRemainingById(current => ({ ...current, [item.id]: '' }));
       } catch (error) {
         Alert.alert(
           'Chyba',
-          error instanceof Error ? error.message : 'Nepodarilo sa upraviť zostávajúce gramy.',
+          error instanceof Error
+            ? error.message
+            : 'Nepodarilo sa upraviť zostávajúce gramy.',
         );
       }
     },
@@ -335,7 +368,7 @@ function CoffeeInventoryScreen() {
               'Content-Type': 'application/json',
             },
             credentials: 'include',
-            body: JSON.stringify({status}),
+            body: JSON.stringify({ status }),
           },
           {
             feature: 'CoffeeInventory',
@@ -345,7 +378,9 @@ function CoffeeInventoryScreen() {
 
         const payload = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(payload?.error || 'Nepodarilo sa upraviť stav položky.');
+          throw new Error(
+            payload?.error || 'Nepodarilo sa upraviť stav položky.',
+          );
         }
 
         if (payload?.item) {
@@ -354,7 +389,9 @@ function CoffeeInventoryScreen() {
       } catch (error) {
         Alert.alert(
           'Chyba',
-          error instanceof Error ? error.message : 'Nepodarilo sa upraviť stav položky.',
+          error instanceof Error
+            ? error.message
+            : 'Nepodarilo sa upraviť stav položky.',
         );
       }
     },
@@ -388,7 +425,10 @@ function CoffeeInventoryScreen() {
   const totalAvailableG = useMemo(
     () =>
       items
-        .filter(item => item.status === 'active' && typeof item.remainingG === 'number')
+        .filter(
+          item =>
+            item.status === 'active' && typeof item.remainingG === 'number',
+        )
         .reduce((sum, item) => sum + (item.remainingG ?? 0), 0),
     [items],
   );
@@ -396,7 +436,10 @@ function CoffeeInventoryScreen() {
   const lowStockCount = useMemo(
     () =>
       items.filter(
-        item => item.status === 'active' && typeof item.remainingG === 'number' && item.remainingG <= 60,
+        item =>
+          item.status === 'active' &&
+          typeof item.remainingG === 'number' &&
+          item.remainingG <= 60,
       ).length,
     [items],
   );
@@ -684,7 +727,9 @@ function CoffeeInventoryScreen() {
             <Text style={s.overline}>BrewMate Inventory</Text>
           </View>
           <Text style={s.title}>Tvoj coffee inventár</Text>
-          <Text style={s.subtitle}>Sleduj zásoby, dávkovanie a stav balíkov na jednom mieste.</Text>
+          <Text style={s.subtitle}>
+            Sleduj zásoby, dávkovanie a stav balíkov na jednom mieste.
+          </Text>
 
           <View style={s.heroStatsRow}>
             <View style={s.heroStatPill}>
@@ -706,7 +751,9 @@ function CoffeeInventoryScreen() {
         <View style={s.sectionCard}>
           <View style={s.sectionHeader}>
             <Text style={s.sectionTitle}>Filtre inventára</Text>
-            {state === 'loading' ? <ActivityIndicator color={colors.primary} /> : null}
+            {state === 'loading' ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : null}
           </View>
 
           <View style={s.filterTabs}>
@@ -722,8 +769,14 @@ function CoffeeInventoryScreen() {
                 <Pressable
                   key={filter}
                   style={[s.filterButton, isActive && s.filterButtonActive]}
-                  onPress={() => setActiveFilter(filter)}>
-                  <Text style={[s.filterButtonText, isActive && s.filterButtonTextActive]}>
+                  onPress={() => setActiveFilter(filter)}
+                >
+                  <Text
+                    style={[
+                      s.filterButtonText,
+                      isActive && s.filterButtonTextActive,
+                    ]}
+                  >
                     {label}
                   </Text>
                 </Pressable>
@@ -732,22 +785,34 @@ function CoffeeInventoryScreen() {
           </View>
 
           <Text style={s.caption}>Zobrazená kategória: {filterLabel}</Text>
-          {state === 'error' ? <Text style={s.error}>{errorMessage}</Text> : null}
+          {state === 'error' ? (
+            <Text style={s.error}>{errorMessage}</Text>
+          ) : null}
         </View>
 
         {/* Empty state */}
         {state === 'ready' && renderedItems.length === 0 ? (
           <View style={s.sectionCard}>
-            <Text style={s.empty}>V kategórii {filterLabel.toLowerCase()} zatiaľ nemáš žiadne kávy.</Text>
+            <Text style={s.empty}>
+              V kategórii {filterLabel.toLowerCase()} zatiaľ nemáš žiadne kávy.
+            </Text>
           </View>
         ) : null}
 
         {/* Item cards */}
         {renderedItems.map(item => {
-          const remainingLabel = item.remainingG === null ? 'Odhad bez gramov' : `${item.remainingG} g`;
-          const packageLabel = item.packageSizeG === null ? 'Nezadaná' : `${item.packageSizeG} g`;
+          const remainingLabel =
+            item.remainingG === null
+              ? 'Odhad bez gramov'
+              : `${item.remainingG} g`;
+          const packageLabel =
+            item.packageSizeG === null ? 'Nezadaná' : `${item.packageSizeG} g`;
           const statusLabel =
-            item.status === 'active' ? 'Aktívna' : item.status === 'empty' ? 'Prázdna' : 'Archivovaná';
+            item.status === 'active'
+              ? 'Aktívna'
+              : item.status === 'empty'
+              ? 'Prázdna'
+              : 'Archivovaná';
           const itemName = item.correctedText || item.rawText || 'Neznáma káva';
 
           const initial = (itemName.trim().charAt(0) || '?').toUpperCase();
@@ -768,10 +833,14 @@ function CoffeeInventoryScreen() {
                 <View style={s.itemTitleWrap}>
                   <Text style={s.itemTitle}>{itemName}</Text>
                   <Text style={s.date}>
-                    Uložené: {new Date(item.createdAt).toLocaleDateString('sk-SK')}
+                    Uložené:{' '}
+                    {new Date(item.createdAt).toLocaleDateString('sk-SK')}
                   </Text>
                 </View>
-                <Chip role={STATUS_CHIP_ROLE[item.status]} label={statusLabel} />
+                <Chip
+                  role={STATUS_CHIP_ROLE[item.status]}
+                  label={statusLabel}
+                />
               </View>
 
               <View style={s.metaGrid}>
@@ -792,15 +861,20 @@ function CoffeeInventoryScreen() {
               </View>
 
               <Text style={s.label}>Chuťový profil</Text>
-              <Text style={s.text}>{item.coffeeProfile?.tasteProfile || 'Neuvedené'}</Text>
+              <Text style={s.text}>
+                {item.coffeeProfile?.tasteProfile || 'Neuvedené'}
+              </Text>
               {item.coffeeProfile?.flavorNotes?.length ? (
-                <Text style={s.text}>Tóny: {item.coffeeProfile.flavorNotes.join(', ')}</Text>
+                <Text style={s.text}>
+                  Tóny: {item.coffeeProfile.flavorNotes.join(', ')}
+                </Text>
               ) : null}
 
               <Text style={s.label}>Rýchle odpočítanie</Text>
               <View style={s.quickActionsWrap}>
                 {[
-                  item.preferredDoseG && !QUICK_DOSES.includes(item.preferredDoseG)
+                  item.preferredDoseG &&
+                  !QUICK_DOSES.includes(item.preferredDoseG)
                     ? item.preferredDoseG
                     : null,
                   ...QUICK_DOSES,
@@ -810,8 +884,12 @@ function CoffeeInventoryScreen() {
                   .map(dose => (
                     <Pressable
                       key={`${item.id}-${dose}`}
-                      style={({pressed}) => [s.quickAction, pressed && s.quickActionPressed]}
-                      onPress={() => handleConsume(item, dose, 'quick_action')}>
+                      style={({ pressed }) => [
+                        s.quickAction,
+                        pressed && s.quickActionPressed,
+                      ]}
+                      onPress={() => handleConsume(item, dose, 'quick_action')}
+                    >
                       <Text style={s.quickActionText}>-{dose} g</Text>
                     </Pressable>
                   ))}
@@ -822,7 +900,10 @@ function CoffeeInventoryScreen() {
                   style={s.input}
                   value={customDoseById[item.id] ?? ''}
                   onChangeText={value =>
-                    setCustomDoseById(current => ({...current, [item.id]: value}))
+                    setCustomDoseById(current => ({
+                      ...current,
+                      [item.id]: value,
+                    }))
                   }
                   placeholder="Custom minus g"
                   placeholderTextColor={colors.onSurfaceVariant}
@@ -840,7 +921,10 @@ function CoffeeInventoryScreen() {
                   style={s.input}
                   value={customRemainingById[item.id] ?? ''}
                   onChangeText={value =>
-                    setCustomRemainingById(current => ({...current, [item.id]: value}))
+                    setCustomRemainingById(current => ({
+                      ...current,
+                      [item.id]: value,
+                    }))
                   }
                   placeholder="Nastaviť zostávajúce g"
                   placeholderTextColor={colors.onSurfaceVariant}
@@ -856,7 +940,8 @@ function CoffeeInventoryScreen() {
               <View style={s.actions}>
                 <Pressable
                   style={[s.badge, item.loved && s.badgeActive]}
-                  onPress={() => handleLovedChange(item.id, !item.loved)}>
+                  onPress={() => handleLovedChange(item.id, !item.loved)}
+                >
                   <Text style={[s.badgeText, item.loved && s.badgeTextActive]}>
                     {item.loved ? 'Fantastická ⭐' : 'Označiť ako fantastickú'}
                   </Text>
@@ -885,7 +970,7 @@ function CoffeeInventoryScreen() {
                 <MD3Button
                   label="Vymazať natrvalo"
                   variant="filled"
-                  style={{backgroundColor: colors.error}}
+                  style={{ backgroundColor: colors.error }}
                   onPress={() => handleDelete(item.id)}
                 />
               </View>

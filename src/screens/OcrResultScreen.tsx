@@ -1,5 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -26,7 +32,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'OcrResult'>;
 type LocalSaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 function OcrResultScreen({ route, navigation }: Props) {
-  const { rawText, correctedText, coffeeProfile, labelImageBase64 } = route.params;
+  const { rawText, correctedText, coffeeProfile, labelImageBase64 } =
+    route.params;
   const { user } = useAuth();
 
   const [saveState, setSaveState] = useState<LocalSaveState>('idle');
@@ -216,15 +223,15 @@ function OcrResultScreen({ route, navigation }: Props) {
           variant="outlined"
           onPress={handleRescan}
           accessibilityLabel="Naskenovať inú fotku"
-          accessibilityHint="Vráti späť na skenovaciu obrazovku"
         />
 
-        {match.state === 'missing'
-        && scansWithoutQuestionnaire >= SCAN_WITHOUT_QUESTIONNAIRE_THRESHOLD ? (
+        {match.state === 'missing' &&
+        scansWithoutQuestionnaire >= SCAN_WITHOUT_QUESTIONNAIRE_THRESHOLD ? (
           <View
             style={s.stickyReminder}
             accessibilityRole="alert"
-            accessibilityLiveRegion="polite">
+            accessibilityLiveRegion="polite"
+          >
             <Text style={s.stickyReminderText}>{stickyMissingMessage}</Text>
           </View>
         ) : null}
@@ -282,11 +289,15 @@ function OcrResultScreen({ route, navigation }: Props) {
           <Text style={s.subsectionTitle}>Prečo tieto tóny</Text>
           <Text style={s.bodyText}>{coffeeProfile.reasoning}</Text>
           <Text style={s.subsectionTitle}>Istota</Text>
-          <Text style={s.bodyText}>{Math.round(coffeeProfile.confidence * 100)}%</Text>
+          <Text style={s.bodyText}>
+            {Math.round(coffeeProfile.confidence * 100)}%
+          </Text>
           {coffeeProfile.missingInfo?.length ? (
             <>
               <Text style={s.subsectionTitle}>Chýbajúce informácie</Text>
-              <Text style={s.bodyText}>{coffeeProfile.missingInfo.join(', ')}</Text>
+              <Text style={s.bodyText}>
+                {coffeeProfile.missingInfo.join(', ')}
+              </Text>
             </>
           ) : null}
         </View>

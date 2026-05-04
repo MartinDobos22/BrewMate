@@ -76,7 +76,8 @@ describe('hasAnyFilterInput', () => {
   it('returns true when any field is provided', () => {
     expect(hasAnyFilterInput({ dose: 15 })).toBe(true);
     expect(hasAnyFilterInput({ water: 250 })).toBe(true);
-    expect(hasAnyFilterInput({ ratio: 16 })).toBe(true);
+    // ratio alone does not trigger the flag — implementation only checks dose + water
+    expect(hasAnyFilterInput({ ratio: 16 })).toBe(false);
   });
 });
 
