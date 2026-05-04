@@ -119,11 +119,11 @@ describe('matchScoreToTier', () => {
 
   it('covers all tiers', () => {
     const tiers = new Set([
-      matchScoreToTier(100),
-      matchScoreToTier(85),
-      matchScoreToTier(70),
-      matchScoreToTier(55),
-      matchScoreToTier(20),
+      matchScoreToTier(100), // perfect_match  (>=85)
+      matchScoreToTier(75), // great_choice   (>=70, <85)
+      matchScoreToTier(55), // worth_trying   (>=50, <70)
+      matchScoreToTier(35), // interesting_experiment (>=30, <50)
+      matchScoreToTier(20), // not_for_you    (<30)
     ]);
     expect(tiers.size).toBe(5);
   });

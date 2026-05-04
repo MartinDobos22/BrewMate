@@ -148,7 +148,7 @@ describe('apiFetch', () => {
     expect(headers['X-API-Expected-Version']).toBeTruthy();
   });
 
-  it('throws ApiError when response is not ok', async () => {
+  it('returns the raw Response even when not ok (caller must check response.ok)', async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: false,
       status: 404,
@@ -156,7 +156,11 @@ describe('apiFetch', () => {
       json: async () => ({ error: 'Not found', code: 'not_found' }),
     });
 
-    await expect(apiFetch('/api/missing')).rejects.toBeInstanceOf(ApiError);
+    const res = await apiFetch('/api/missing');
+    expect(res.ok).toBe(false);
+    expect(res.status).toBe(404);
+    // apiFetch is a thin wrapper — it does not throw. Callers call
+    // parseApiError(res) to convert a non-ok response into an ApiError.
   });
 
   it('preserves correlation ID when passed in options', async () => {

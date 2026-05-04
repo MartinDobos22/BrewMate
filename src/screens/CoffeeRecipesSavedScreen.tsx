@@ -1,14 +1,22 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import {apiFetch, DEFAULT_API_HOST} from '../utils/api';
+import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import BottomNavBar from '../components/BottomNavBar';
-import {useTheme} from '../theme/useTheme';
-import {elevation} from '../theme/theme';
-import {CoffeeCupIcon, SparklesIcon} from '../components/icons';
-import {Chip} from '../components/md3';
-import {BOTTOM_NAV_SAFE_PADDING} from '../constants/ui';
+import { useTheme } from '../theme/useTheme';
+import { elevation } from '../theme/theme';
+import { CoffeeCupIcon, SparklesIcon } from '../components/icons';
+import { Chip } from '../components/md3';
+import { BOTTOM_NAV_SAFE_PADDING } from '../constants/ui';
 
 type Item = {
   id: string;
@@ -33,7 +41,7 @@ type DeleteState = {
   error: string | null;
 };
 
-type Bucket = {label: string; count: number; avgLikeScore: number};
+type Bucket = { label: string; count: number; avgLikeScore: number };
 
 type Insights = {
   aiSummary: string;
@@ -46,21 +54,29 @@ type Insights = {
 };
 
 function CoffeeRecipesSavedScreen() {
-  const {colors, typescale, shape} = useTheme();
+  const { colors, typescale, shape } = useTheme();
   const [items, setItems] = useState<Item[]>([]);
   const [insights, setInsights] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [feedbackState, setFeedbackState] = useState<Record<string, FeedbackState>>({});
-  const [deleteState, setDeleteState] = useState<Record<string, DeleteState>>({});
+  const [feedbackState, setFeedbackState] = useState<
+    Record<string, FeedbackState>
+  >({});
+  const [deleteState, setDeleteState] = useState<Record<string, DeleteState>>(
+    {},
+  );
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
       const [itemsResponse, insightsResponse] = await Promise.all([
-        apiFetch(`${DEFAULT_API_HOST}/api/coffee-recipes?days=30`, {credentials: 'include'}),
-        apiFetch(`${DEFAULT_API_HOST}/api/coffee-recipes/insights?days=30`, {credentials: 'include'}),
+        apiFetch(`${DEFAULT_API_HOST}/api/coffee-recipes?days=30`, {
+          credentials: 'include',
+        }),
+        apiFetch(`${DEFAULT_API_HOST}/api/coffee-recipes/insights?days=30`, {
+          credentials: 'include',
+        }),
       ]);
       const itemsPayload = await itemsResponse.json().catch(() => ({}));
       const insightsPayload = await insightsResponse.json().catch(() => ({}));
@@ -69,13 +85,17 @@ function CoffeeRecipesSavedScreen() {
         throw new Error(itemsPayload.error || 'Nepodarilo sa načítať recepty.');
       }
       if (!insightsResponse.ok) {
-        throw new Error(insightsPayload.error || 'Nepodarilo sa načítať insights.');
+        throw new Error(
+          insightsPayload.error || 'Nepodarilo sa načítať insights.',
+        );
       }
 
       setItems(Array.isArray(itemsPayload.items) ? itemsPayload.items : []);
       setInsights(insightsPayload as Insights);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Načítanie zlyhalo.');
+      setError(
+        loadError instanceof Error ? loadError.message : 'Načítanie zlyhalo.',
+      );
     } finally {
       setLoading(false);
     }
@@ -85,45 +105,55 @@ function CoffeeRecipesSavedScreen() {
     loadData();
   }, [loadData]);
 
-  const submitFeedback = useCallback(async (recipeId: string, rating: number) => {
-    setFeedbackState(prev => ({
-      ...prev,
-      [recipeId]: {submitting: true, error: null},
-    }));
-    try {
-      const response = await apiFetch(
-        `${DEFAULT_API_HOST}/api/coffee-recipes/${recipeId}/feedback`,
-        {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          credentials: 'include',
-          body: JSON.stringify({actualRating: rating}),
-        },
-      );
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload.error || 'Nepodarilo sa uložiť hodnotenie.');
+  const submitFeedback = useCallback(
+    async (recipeId: string, rating: number) => {
+      setFeedbackState(prev => ({
+        ...prev,
+        [recipeId]: { submitting: true, error: null },
+      }));
+      try {
+        const response = await apiFetch(
+          `${DEFAULT_API_HOST}/api/coffee-recipes/${recipeId}/feedback`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ actualRating: rating }),
+          },
+        );
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.error || 'Nepodarilo sa uložiť hodnotenie.');
+        }
+        setItems(prev =>
+          prev.map(item =>
+            item.id === recipeId ? { ...item, actualRating: rating } : item,
+          ),
+        );
+        setFeedbackState(prev => ({
+          ...prev,
+          [recipeId]: { submitting: false, error: null },
+        }));
+      } catch (feedbackError) {
+        setFeedbackState(prev => ({
+          ...prev,
+          [recipeId]: {
+            submitting: false,
+            error:
+              feedbackError instanceof Error
+                ? feedbackError.message
+                : 'Nepodarilo sa uložiť hodnotenie.',
+          },
+        }));
       }
-      setItems(prev => prev.map(item => (item.id === recipeId ? {...item, actualRating: rating} : item)));
-      setFeedbackState(prev => ({
-        ...prev,
-        [recipeId]: {submitting: false, error: null},
-      }));
-    } catch (feedbackError) {
-      setFeedbackState(prev => ({
-        ...prev,
-        [recipeId]: {
-          submitting: false,
-          error: feedbackError instanceof Error ? feedbackError.message : 'Nepodarilo sa uložiť hodnotenie.',
-        },
-      }));
-    }
-  }, []);
+    },
+    [],
+  );
 
   const deleteRecipe = useCallback(async (recipeId: string) => {
     setDeleteState(prev => ({
       ...prev,
-      [recipeId]: {deleting: true, error: null},
+      [recipeId]: { deleting: true, error: null },
     }));
     try {
       const response = await apiFetch(
@@ -139,7 +169,8 @@ function CoffeeRecipesSavedScreen() {
       }
       setItems(prev => prev.filter(item => item.id !== recipeId));
       setDeleteState(prev => {
-        const {[recipeId]: _removed, ...rest} = prev;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [recipeId]: _deleted, ...rest } = prev;
         return rest;
       });
     } catch (deleteError) {
@@ -147,7 +178,10 @@ function CoffeeRecipesSavedScreen() {
         ...prev,
         [recipeId]: {
           deleting: false,
-          error: deleteError instanceof Error ? deleteError.message : 'Nepodarilo sa zmazať recept.',
+          error:
+            deleteError instanceof Error
+              ? deleteError.message
+              : 'Nepodarilo sa zmazať recept.',
         },
       }));
     }
@@ -159,15 +193,22 @@ function CoffeeRecipesSavedScreen() {
         'Zmazať recept?',
         `Naozaj chceš zmazať recept "${title}"? Túto akciu nie je možné vrátiť.`,
         [
-          {text: 'Zrušiť', style: 'cancel'},
-          {text: 'Zmazať', style: 'destructive', onPress: () => deleteRecipe(recipeId)},
+          { text: 'Zrušiť', style: 'cancel' },
+          {
+            text: 'Zmazať',
+            style: 'destructive',
+            onPress: () => deleteRecipe(recipeId),
+          },
         ],
       );
     },
     [deleteRecipe],
   );
 
-  const favorite = useMemo(() => insights?.totals.methods?.[0]?.label ?? null, [insights]);
+  const favorite = useMemo(
+    () => insights?.totals.methods?.[0]?.label ?? null,
+    [insights],
+  );
 
   const s = useMemo(
     () =>
@@ -338,8 +379,12 @@ function CoffeeRecipesSavedScreen() {
               <Text style={s.muted}>Načítavam...</Text>
             </View>
           ) : null}
-          {!loading && insights ? <Text style={s.text}>{insights.aiSummary}</Text> : null}
-          {favorite ? <Text style={s.favorite}>Aktuálny favorit: {favorite}</Text> : null}
+          {!loading && insights ? (
+            <Text style={s.text}>{insights.aiSummary}</Text>
+          ) : null}
+          {favorite ? (
+            <Text style={s.favorite}>Aktuálny favorit: {favorite}</Text>
+          ) : null}
         </View>
 
         <View style={s.card}>
@@ -351,7 +396,10 @@ function CoffeeRecipesSavedScreen() {
             const itemFeedback = feedbackState[item.id];
             const itemDelete = deleteState[item.id];
             return (
-              <View key={item.id} style={[s.item, index === items.length - 1 && s.itemLastChild]}>
+              <View
+                key={item.id}
+                style={[s.item, index === items.length - 1 && s.itemLastChild]}
+              >
                 <View style={s.itemHeaderRow}>
                   <View style={s.itemTitleWrap}>
                     <Text style={s.itemTitle}>{item.title}</Text>
@@ -369,7 +417,8 @@ function CoffeeRecipesSavedScreen() {
                   </Pressable>
                 </View>
                 <Text style={s.meta}>
-                  {item.method} · {item.strengthPreference} · predikcia {item.likeScore}%
+                  {item.method} · {item.strengthPreference} · predikcia{' '}
+                  {item.likeScore}%
                 </Text>
                 <Text style={s.meta}>
                   {item.dose} · {item.water} · {item.totalTime}
@@ -383,20 +432,30 @@ function CoffeeRecipesSavedScreen() {
                 ) : null}
                 <View style={s.feedbackRow}>
                   <Text style={s.feedbackLabel}>
-                    {item.actualRating ? 'Tvoje hodnotenie:' : 'Ako ti chutilo?'}
+                    {item.actualRating
+                      ? 'Tvoje hodnotenie:'
+                      : 'Ako ti chutilo?'}
                   </Text>
                   {[1, 2, 3, 4, 5].map(rating => {
                     const isActive = item.actualRating === rating;
                     return (
                       <Pressable
                         key={rating}
-                        style={[s.ratingButton, isActive && s.ratingButtonActive]}
+                        style={[
+                          s.ratingButton,
+                          isActive && s.ratingButtonActive,
+                        ]}
                         onPress={() => submitFeedback(item.id, rating)}
                         disabled={itemFeedback?.submitting}
                         accessibilityRole="button"
                         accessibilityLabel={`Hodnotenie ${rating} z 5`}
                       >
-                        <Text style={[s.ratingButtonText, isActive && s.ratingButtonTextActive]}>
+                        <Text
+                          style={[
+                            s.ratingButtonText,
+                            isActive && s.ratingButtonTextActive,
+                          ]}
+                        >
                           {rating}
                         </Text>
                       </Pressable>
@@ -406,8 +465,12 @@ function CoffeeRecipesSavedScreen() {
                 {itemFeedback?.error ? (
                   <Text style={s.feedbackError}>{itemFeedback.error}</Text>
                 ) : null}
-                {item.actualRating && !itemFeedback?.submitting && !itemFeedback?.error ? (
-                  <Text style={s.feedbackSaved}>Hodnotenie uložené — pomáha kalibrácii predikcií.</Text>
+                {item.actualRating &&
+                !itemFeedback?.submitting &&
+                !itemFeedback?.error ? (
+                  <Text style={s.feedbackSaved}>
+                    Hodnotenie uložené — pomáha kalibrácii predikcií.
+                  </Text>
                 ) : null}
                 {itemDelete?.error ? (
                   <Text style={s.feedbackError}>{itemDelete.error}</Text>

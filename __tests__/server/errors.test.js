@@ -3,9 +3,9 @@ import { ERROR_CODES, sendError } from '../../server/errors.js';
 describe('ERROR_CODES', () => {
   it('every code has status and retryable', () => {
     for (const [code, def] of Object.entries(ERROR_CODES)) {
-      expect(typeof def.status, `${code}.status`).toBe('number');
-      expect(typeof def.retryable, `${code}.retryable`).toBe('boolean');
-      expect(def.status, `${code}.status range`).toBeGreaterThanOrEqual(400);
+      expect(typeof def.status).toBe('number'); // code: ${code}
+      expect(typeof def.retryable).toBe('boolean'); // code: ${code}
+      expect(def.status).toBeGreaterThanOrEqual(400); // code: ${code}
     }
   });
 
