@@ -27,6 +27,27 @@ Predlož výstup používateľovi a počkaj na potvrdenie alebo úpravu.
 
 ---
 
+## Fáza 0.5: BRANCH (povinná — hneď po schválení špecifikácie)
+
+Skontroluj aktuálnu branch:
+```bash
+git branch --show-current
+```
+
+Ak je výsledok `main` alebo `master`:
+1. Z názvu úlohy vytvor kebab-case slug (max 40 znakov, len `a-z`, `0-9`, `-`)
+2. Vytvor a prepni sa na novú branch:
+   ```bash
+   git checkout -b claude/<slug>
+   ```
+   Príklady: `claude/pridaj-filter-podla-intenzity`, `claude/oprav-ocr-timeout`, `claude/refactor-inventory-hook`
+
+Ak si už na inej branch ako main/master → pokračuj bez zmeny.
+
+Informuj používateľa na akej branch pracuješ.
+
+---
+
 ## Fáza 1: EXPLORE (povinná)
 
 **Oznám:** `**Fáza 1 — EXPLORE:** Mapujem relevantné súbory a existujúce vzory…`
