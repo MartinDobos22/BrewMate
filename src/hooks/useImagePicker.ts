@@ -11,9 +11,10 @@ const MAX_IMAGE_DIMENSION = 1600;
 const IMAGE_QUALITY = 0.6;
 const MAX_BASE64_BYTES = 2_000_000;
 
-const estimateBase64Bytes = (base64: string) => Math.ceil((base64.length * 3) / 4);
+const estimateBase64Bytes = (base64: string) =>
+  Math.ceil((base64.length * 3) / 4);
 
-const withPickerTimeout = async <T,>(promise: Promise<T>): Promise<T> => {
+const withPickerTimeout = async <T>(promise: Promise<T>): Promise<T> => {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   try {
     return await Promise.race<T>([
@@ -54,11 +55,12 @@ export function useImagePicker(): UseImagePickerOutput {
 
   const handleResponse = useCallback((response: ImagePickerResponse) => {
     if (response.didCancel) {
-      setErrorMessage('Výber bol zrušený.');
       return;
     }
     if (response.errorCode) {
-      setErrorMessage(response.errorMessage || 'Nastala chyba pri výbere obrázka.');
+      setErrorMessage(
+        response.errorMessage || 'Nastala chyba pri výbere obrázka.',
+      );
       return;
     }
     const asset: Asset | undefined = response.assets?.[0];
@@ -91,7 +93,7 @@ export function useImagePicker(): UseImagePickerOutput {
       );
       handleResponse(response);
     } catch (err) {
-      console.error('[useImagePicker] gallery failed', err);
+      console.warn('[useImagePicker] gallery failed', err);
       setErrorMessage('Načítanie obrázka trvalo príliš dlho. Skúste znova.');
     } finally {
       setIsPicking(false);
@@ -113,7 +115,7 @@ export function useImagePicker(): UseImagePickerOutput {
       );
       handleResponse(response);
     } catch (err) {
-      console.error('[useImagePicker] camera failed', err);
+      console.warn('[useImagePicker] camera failed', err);
       setErrorMessage('Načítanie fotky trvalo príliš dlho. Skúste znova.');
     } finally {
       setIsPicking(false);

@@ -1,11 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -15,6 +9,7 @@ import BottomNavBar from '../components/BottomNavBar';
 import { useTheme } from '../theme/useTheme';
 import { SparklesIcon } from '../components/icons';
 import { MD3Button } from '../components/md3';
+import { ProgressIndicator } from '../components/ProgressIndicator';
 
 const QUESTIONNAIRE = [
   {
@@ -57,12 +52,24 @@ const QUESTIONNAIRE = [
   {
     id: 'body',
     title: 'Telo (pocit v ústach)',
-    options: ['Ľahké a čisté', 'Skôr ľahšie', 'Stredné', 'Skôr hutnejšie', 'Hutné a krémové'],
+    options: [
+      'Ľahké a čisté',
+      'Skôr ľahšie',
+      'Stredné',
+      'Skôr hutnejšie',
+      'Hutné a krémové',
+    ],
   },
   {
     id: 'intensity',
     title: 'Intenzita chuti',
-    options: ['Jemná', 'Skôr jemnejšia', 'Stredná', 'Skôr výraznejšia', 'Výrazná'],
+    options: [
+      'Jemná',
+      'Skôr jemnejšia',
+      'Stredná',
+      'Skôr výraznejšia',
+      'Výrazná',
+    ],
   },
   {
     id: 'aftertaste',
@@ -77,7 +84,11 @@ const QUESTIONNAIRE = [
   {
     id: 'clarity',
     title: 'Preferujete skôr "čistú" chuť alebo "divokejšiu" (výrazné arómy)?',
-    options: ['Čistú a jednoduchú', 'Niečo zaujímavejšie', 'Kľudne veľmi výraznú a netradičnú'],
+    options: [
+      'Čistú a jednoduchú',
+      'Niečo zaujímavejšie',
+      'Kľudne veľmi výraznú a netradičnú',
+    ],
   },
   {
     id: 'dislike',
@@ -115,12 +126,12 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const answeredCount = useMemo(
-    () => QUESTIONNAIRE.filter((question) => answers[question.id]).length,
+    () => QUESTIONNAIRE.filter(question => answers[question.id]).length,
     [answers],
   );
 
   const handleSelect = (questionId: string, option: string) => {
-    setAnswers((current) => ({ ...current, [questionId]: option }));
+    setAnswers(current => ({ ...current, [questionId]: option }));
     setErrorMessage('');
   };
 
@@ -129,7 +140,7 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
       return;
     }
 
-    const missing = QUESTIONNAIRE.filter((question) => !answers[question.id]);
+    const missing = QUESTIONNAIRE.filter(question => !answers[question.id]);
     if (missing.length > 0) {
       setErrorMessage('Prosím vyplňte všetky otázky.');
       return;
@@ -139,9 +150,12 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
     setIsSubmitting(true);
 
     try {
-      console.log('[CoffeeQuestionnaire] OpenAI questionnaire request via backend', {
-        endpoint: '/api/coffee-questionnaire',
-      });
+      console.log(
+        '[CoffeeQuestionnaire] OpenAI questionnaire request via backend',
+        {
+          endpoint: '/api/coffee-questionnaire',
+        },
+      );
       const response = await apiFetch(
         `${DEFAULT_API_HOST}/api/coffee-questionnaire`,
         {
@@ -151,7 +165,7 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
           },
           credentials: 'include',
           body: JSON.stringify({
-            answers: QUESTIONNAIRE.map((question) => ({
+            answers: QUESTIONNAIRE.map(question => ({
               id: question.id,
               question: question.title,
               answer: answers[question.id],
@@ -165,13 +179,15 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
       );
 
       const payload = await response.json();
-      console.log('[CoffeeQuestionnaire] OpenAI questionnaire response content', {
-        payload,
-      });
+      console.log(
+        '[CoffeeQuestionnaire] OpenAI questionnaire response content',
+        {
+          payload,
+        },
+      );
 
       if (!response.ok) {
-        const message =
-          payload?.error || 'Nepodarilo sa vyhodnotiť dotazník.';
+        const message = payload?.error || 'Nepodarilo sa vyhodnotiť dotazník.';
         console.error('[CoffeeQuestionnaire] Questionnaire request failed', {
           message,
           payload,
@@ -183,7 +199,7 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
       const profile = ensureQuestionnaireProfile(payload?.profile);
 
       navigation.navigate('CoffeeQuestionnaireResult', {
-        answers: QUESTIONNAIRE.map((question) => ({
+        answers: QUESTIONNAIRE.map(question => ({
           question: question.title,
           answer: answers[question.id],
         })),
@@ -227,17 +243,6 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
         subtitle: {
           ...typescale.bodyMedium,
           color: colors.onSurfaceVariant,
-        },
-        progressBar: {
-          height: 6,
-          borderRadius: 3,
-          backgroundColor: colors.outlineVariant,
-          overflow: 'hidden' as const,
-        },
-        progressFill: {
-          height: 6,
-          borderRadius: 3,
-          backgroundColor: colors.primary,
         },
         card: {
           backgroundColor: colors.surfaceContainerLow,
@@ -308,14 +313,12 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
         <Text style={s.subtitle}>
           Vyplňte všetky otázky. Stav: {answeredCount} / {QUESTIONNAIRE.length}
         </Text>
-        <View style={s.progressBar}>
-          <View style={[s.progressFill, { width: `${progressPercent}%` }]} />
-        </View>
+        <ProgressIndicator progress={progressPercent} />
 
-        {QUESTIONNAIRE.map((question) => (
+        {QUESTIONNAIRE.map(question => (
           <View key={question.id} style={s.card}>
             <Text style={s.question}>{question.title}</Text>
-            {question.options.map((option) => {
+            {question.options.map(option => {
               const isSelected = answers[question.id] === option;
               return (
                 <Pressable
@@ -326,7 +329,9 @@ function CoffeeQuestionnaireScreen({ navigation }: Props) {
                   <View style={[s.radio, isSelected && s.radioSelected]}>
                     {isSelected ? <View style={s.radioInner} /> : null}
                   </View>
-                  <Text style={[s.optionLabel, isSelected && s.optionLabelSelected]}>
+                  <Text
+                    style={[s.optionLabel, isSelected && s.optionLabelSelected]}
+                  >
                     {option}
                   </Text>
                 </Pressable>

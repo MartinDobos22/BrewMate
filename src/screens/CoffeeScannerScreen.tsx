@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useRef, useState} from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -9,30 +9,30 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {RootStackParamList} from '../navigation/types';
-import {ensureCoffeeProfile} from '../utils/tasteVector';
-import {apiFetch, DEFAULT_API_HOST} from '../utils/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
+import { ensureCoffeeProfile } from '../utils/tasteVector';
+import { apiFetch, DEFAULT_API_HOST } from '../utils/api';
 import BottomNavBar from '../components/BottomNavBar';
-import {useTheme} from '../theme/useTheme';
-import {elevation} from '../theme/theme';
-import {ScanIcon} from '../components/icons';
-import {MD3Button} from '../components/md3';
-import {BOTTOM_NAV_SAFE_PADDING} from '../constants/ui';
-import {useImagePicker} from '../hooks/useImagePicker';
+import { useTheme } from '../theme/useTheme';
+import { elevation } from '../theme/theme';
+import { ScanIcon, WarningIcon } from '../components/icons';
+import { MD3Button } from '../components/md3';
+import { ProgressIndicator } from '../components/ProgressIndicator';
+import { BOTTOM_NAV_SAFE_PADDING } from '../constants/ui';
+import { useImagePicker } from '../hooks/useImagePicker';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CoffeeScanner'>;
 
-function CoffeeScannerScreen({navigation}: Props) {
-  const {colors, typescale, shape} = useTheme();
+function CoffeeScannerScreen({ navigation }: Props) {
+  const { colors, typescale, shape, spacing } = useTheme();
   const picker = useImagePicker();
   const [languageHints, setLanguageHints] = useState('sk, en');
   // Submit-path errors are tracked separately from picker errors so the
   // hook can stay focused on image acquisition.
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitProgress, setSubmitProgress] = useState(0);
   const [submitElapsedMs, setSubmitElapsedMs] = useState(0);
   const [submitStage, setSubmitStage] = useState<
     'idle' | 'upload' | 'ocr' | 'profile' | 'done'
@@ -41,16 +41,6 @@ function CoffeeScannerScreen({navigation}: Props) {
   // Kept outside state so the Cancel button can abort the fetches without
   // triggering a re-render first.
   const submitAbortRef = useRef<AbortController | null>(null);
-
-  const submitStageTarget = useMemo(
-    () => ({
-      upload: 25,
-      ocr: 70,
-      profile: 95,
-      done: 100,
-    }),
-    [],
-  );
 
   const languageHintList = useMemo(
     () =>
@@ -64,7 +54,6 @@ function CoffeeScannerScreen({navigation}: Props) {
   useEffect(() => {
     if (!isSubmitting) {
       submitStartRef.current = null;
-      setSubmitProgress(0);
       setSubmitElapsedMs(0);
       setSubmitStage('idle');
       return;
@@ -74,23 +63,13 @@ function CoffeeScannerScreen({navigation}: Props) {
       submitStartRef.current = Date.now();
     }
 
-    const PROGRESS_TICK_MS = 500;
     const intervalId = setInterval(() => {
       const startedAt = submitStartRef.current ?? Date.now();
-      const elapsed = Date.now() - startedAt;
-      const target =
-        submitStage === 'idle' ? 0 : submitStageTarget[submitStage];
-
-      setSubmitElapsedMs(elapsed);
-      setSubmitProgress(current => {
-        if (current >= target) return current;
-        const increment = target === 100 ? 15 : 5;
-        return Math.min(target, current + increment);
-      });
-    }, PROGRESS_TICK_MS);
+      setSubmitElapsedMs(Date.now() - startedAt);
+    }, 500);
 
     return () => clearInterval(intervalId);
-  }, [isSubmitting, submitStage, submitStageTarget]);
+  }, [isSubmitting]);
 
   const handleCancel = () => {
     const controller = submitAbortRef.current;
@@ -115,7 +94,6 @@ function CoffeeScannerScreen({navigation}: Props) {
     picker.clearError();
     setIsSubmitting(true);
     setSubmitStage('upload');
-    setSubmitProgress(current => Math.max(current, 5));
     const submitStartedAt = Date.now();
 
     console.log('[CoffeeScanner] Submitting OCR request', {
@@ -134,7 +112,7 @@ function CoffeeScannerScreen({navigation}: Props) {
         `${DEFAULT_API_HOST}/api/ocr-correct`,
         {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
+          headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           signal: controller.signal,
           body: JSON.stringify({
@@ -142,7 +120,7 @@ function CoffeeScannerScreen({navigation}: Props) {
             languageHints: languageHintList,
           }),
         },
-        {feature: 'CoffeeScanner', action: 'ocr-correct'},
+        { feature: 'CoffeeScanner', action: 'ocr-correct' },
       );
 
       console.log('[CoffeeScanner] OCR response received', {
@@ -151,14 +129,20 @@ function CoffeeScannerScreen({navigation}: Props) {
       });
 
       const payload = await response.json().catch(parseError => {
-        console.warn('[CoffeeScanner] Failed to parse OCR response', parseError);
+        console.warn(
+          '[CoffeeScanner] Failed to parse OCR response',
+          parseError,
+        );
         return null;
       });
-      console.log('[CoffeeScanner] OCR response content', {payload});
+      console.log('[CoffeeScanner] OCR response content', { payload });
 
       if (!response.ok) {
         const message = payload?.error || 'OCR request failed.';
-        console.error('[CoffeeScanner] OCR request failed', {message, payload});
+        console.error('[CoffeeScanner] OCR request failed', {
+          message,
+          payload,
+        });
         setSubmitError(message);
         return;
       }
@@ -168,7 +152,7 @@ function CoffeeScannerScreen({navigation}: Props) {
         typeof payload.correctedText !== 'string' ||
         typeof payload.rawText !== 'string'
       ) {
-        console.error('[CoffeeScanner] OCR response malformed', {payload});
+        console.error('[CoffeeScanner] OCR response malformed', { payload });
         setSubmitError('Server vrátil neočakávanú OCR odpoveď.');
         return;
       }
@@ -182,7 +166,7 @@ function CoffeeScannerScreen({navigation}: Props) {
         `${DEFAULT_API_HOST}/api/coffee-profile`,
         {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
+          headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           signal: controller.signal,
           body: JSON.stringify({
@@ -190,7 +174,7 @@ function CoffeeScannerScreen({navigation}: Props) {
             rawText: payload.rawText,
           }),
         },
-        {feature: 'CoffeeScanner', action: 'coffee-profile'},
+        { feature: 'CoffeeScanner', action: 'coffee-profile' },
       );
 
       console.log('[CoffeeScanner] Coffee profile response received', {
@@ -199,7 +183,10 @@ function CoffeeScannerScreen({navigation}: Props) {
       });
 
       const profilePayload = await profileResponse.json().catch(parseError => {
-        console.warn('[CoffeeScanner] Failed to parse profile response', parseError);
+        console.warn(
+          '[CoffeeScanner] Failed to parse profile response',
+          parseError,
+        );
         return null;
       });
       console.log('[CoffeeScanner] Coffee profile response content', {
@@ -218,7 +205,6 @@ function CoffeeScannerScreen({navigation}: Props) {
       }
 
       setSubmitStage('done');
-      setSubmitProgress(100);
       console.log('[CoffeeScanner] OCR flow completed', {
         totalDurationMs: Date.now() - submitStartedAt,
       });
@@ -270,7 +256,6 @@ function CoffeeScannerScreen({navigation}: Props) {
     return `${seconds.toFixed(1)} s`;
   };
 
-
   // ---------------------------------------------------------------------------
   // Styles
   // ---------------------------------------------------------------------------
@@ -282,7 +267,7 @@ function CoffeeScannerScreen({navigation}: Props) {
           flex: 1,
           backgroundColor: colors.background,
         },
-        flex: {flex: 1},
+        flex: { flex: 1 },
         container: {
           flex: 1,
           paddingHorizontal: 20,
@@ -343,10 +328,20 @@ function CoffeeScannerScreen({navigation}: Props) {
           ...typescale.bodyMedium,
           color: colors.onSurface,
         },
-        errorText: {
+        errorChip: {
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: spacing.xs,
+          backgroundColor: colors.errorContainer,
+          borderRadius: shape.medium,
+          paddingVertical: spacing.sm,
+          paddingHorizontal: spacing.md,
+          marginBottom: spacing.md,
+        },
+        errorChipText: {
           ...typescale.bodySmall,
-          color: colors.error,
-          marginBottom: 12,
+          color: colors.onErrorContainer,
+          flex: 1,
         },
         statusText: {
           ...typescale.labelLarge,
@@ -359,45 +354,12 @@ function CoffeeScannerScreen({navigation}: Props) {
           borderRadius: shape.full,
           alignItems: 'center',
         },
-        submitButtonDisabled: {
-          opacity: 0.7,
-        },
         submitButtonText: {
           ...typescale.labelLarge,
           color: colors.onPrimary,
         },
-        loadingContainer: {
-          alignItems: 'stretch',
-          alignSelf: 'stretch',
-          gap: 6,
-          paddingHorizontal: 16,
-        },
-        progressTrack: {
-          height: 8,
-          backgroundColor: colors.onPrimary,
-          opacity: 0.3,
-          borderRadius: shape.full,
-          overflow: 'hidden',
-        },
-        progressFill: {
-          height: '100%',
-          backgroundColor: colors.onPrimary,
-          borderRadius: shape.full,
-        },
-        loadingMetaRow: {
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-        },
-        loadingText: {
-          ...typescale.labelSmall,
-          color: colors.onPrimary,
-        },
-        loadingStageText: {
-          ...typescale.bodySmall,
-          color: colors.onPrimary,
-        },
       }),
-    [colors, shape, typescale],
+    [colors, shape, spacing, typescale],
   );
 
   // ---------------------------------------------------------------------------
@@ -408,10 +370,12 @@ function CoffeeScannerScreen({navigation}: Props) {
     <SafeAreaView style={s.safeArea} edges={['bottom']}>
       <KeyboardAvoidingView
         style={s.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         <ScrollView
           contentContainerStyle={s.container}
-          keyboardShouldPersistTaps="handled">
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={s.headerRow}>
             <ScanIcon size={22} color={colors.primary} />
             <Text style={s.overline}>BrewMate Scanner</Text>
@@ -431,14 +395,14 @@ function CoffeeScannerScreen({navigation}: Props) {
                 variant="outlined"
                 onPress={picker.pickFromGallery}
                 disabled={picker.isPicking}
-                style={{flex: 1}}
+                style={{ flex: 1 }}
               />
               <MD3Button
                 label="Odfotiť"
                 variant="tonal"
                 onPress={picker.takePhoto}
                 disabled={picker.isPicking}
-                style={{flex: 1}}
+                style={{ flex: 1 }}
               />
             </View>
             <Text style={s.helperText}>
@@ -464,45 +428,37 @@ function CoffeeScannerScreen({navigation}: Props) {
             <Text style={s.statusText}>Načítavam obrázok…</Text>
           ) : null}
 
-          {(submitError || picker.errorMessage) ? (
-            <Text
-              style={s.errorText}
+          {submitError || picker.errorMessage ? (
+            <View
+              style={s.errorChip}
               accessibilityRole="alert"
-              accessibilityLiveRegion="polite">
-              {submitError || picker.errorMessage}
-            </Text>
+              accessibilityLiveRegion="assertive"
+            >
+              <WarningIcon size={16} color={colors.onErrorContainer} />
+              <Text style={s.errorChipText}>
+                {submitError || picker.errorMessage}
+              </Text>
+            </View>
           ) : null}
 
-          <Pressable
-            style={[s.submitButton, isSubmitting && s.submitButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={isSubmitting || picker.isPicking}
-            accessibilityRole="button"
-            accessibilityLabel="Odoslať na OCR"
-            accessibilityHint="Spustí rozpoznanie textu z fotky etikety"
-            accessibilityState={{
-              disabled: isSubmitting || picker.isPicking,
-              busy: isSubmitting,
-            }}>
-            {isSubmitting ? (
-              <View style={s.loadingContainer}>
-                <View style={s.progressTrack}>
-                  <View
-                    style={[s.progressFill, {width: `${submitProgress}%`}]}
-                  />
-                </View>
-                <View style={s.loadingMetaRow}>
-                  <Text style={s.loadingText}>{submitProgress}%</Text>
-                  <Text style={s.loadingText}>
-                    Trvanie: {formatElapsed(submitElapsedMs)}
-                  </Text>
-                </View>
-                <Text style={s.loadingStageText}>{stageLabel}</Text>
-              </View>
-            ) : (
+          {isSubmitting ? (
+            <ProgressIndicator
+              stageLabel={stageLabel}
+              elapsedLabel={`Trvanie: ${formatElapsed(submitElapsedMs)}`}
+              accessibilityLabel="Spracúva sa OCR požiadavka"
+            />
+          ) : (
+            <Pressable
+              style={s.submitButton}
+              onPress={handleSubmit}
+              disabled={picker.isPicking}
+              accessibilityRole="button"
+              accessibilityLabel="Odoslať na OCR"
+              accessibilityHint="Spustí rozpoznanie textu z fotky etikety"
+            >
               <Text style={s.submitButtonText}>Odoslať na OCR</Text>
-            )}
-          </Pressable>
+            </Pressable>
+          )}
 
           {isSubmitting ? (
             <MD3Button
