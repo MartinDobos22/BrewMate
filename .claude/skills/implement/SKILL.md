@@ -40,7 +40,7 @@ Ak je výsledok `main` alebo `master`:
    ```bash
    git checkout -b claude/<slug>
    ```
-   Príklady: `claude/pridaj-filter-podla-intenzity`, `claude/oprav-ocr-timeout`, `claude/refactor-inventory-hook`
+   Príklady: `mdobos/pridaj-filter-podla-intenzity`, `mdobos/oprav-ocr-timeout`, `mdobos/refactor-inventory-hook`
 
 Ak si už na inej branch ako main/master → pokračuj bez zmeny.
 
