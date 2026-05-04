@@ -7,7 +7,18 @@ description: Kompletný implementačný pipeline pre BrewMate. Použi vždy keď
 
 Tento skill orchestruje kompletný vývojový cyklus. Dodržuj tieto fázy PRESNE v tomto poradí. Nikdy nepreskakuj fázu.
 
+## Pravidlá komunikácie (povinné počas celého flow)
+
+- **Vždy oznám začiatok každej fázy** textom napr. `**Fáza 0 — CLARIFY**` pred tým ako niečo spustíš.
+- **Nikdy nevypisuj celý kód** do chatu — píš len čo robíš: `"Vytváram komponent X"`, `"Odstraňujem starú logiku z Y"`.
+- **Dve povinné zastávky**: po Fáze 0 a po Fáze 2 — vždy čakaj na odpoveď používateľa.
+- **Priebežné aktualizácie**: pri každom väčšom kroku v implementácii napíš jednu vetu čo sa práve deje.
+
+---
+
 ## Fáza 0: CLARIFY (povinná — Opus)
+
+**Oznám:** `**Fáza 0 — CLARIFY:** Spúšťam task-clarifier agenta na upresnenie zadania…`
 
 Spusti `task-clarifier` subagent s pôvodným vstupom používateľa. Počkaj na výsledok.
 
@@ -18,6 +29,8 @@ Predlož výstup používateľovi a počkaj na potvrdenie alebo úpravu.
 
 ## Fáza 1: EXPLORE (povinná)
 
+**Oznám:** `**Fáza 1 — EXPLORE:** Mapujem relevantné súbory a existujúce vzory…`
+
 Spusti `explorer` subagent s popisom úlohy. Počkaj na výsledok.
 
 Identifikuj:
@@ -26,7 +39,11 @@ Identifikuj:
 - Typy a interfaces (navigácia, API responses)
 - Existujúce testy pre dané moduly
 
+---
+
 ## Fáza 2: PLAN (povinná — zastav pred implementáciou)
+
+**Oznám:** `**Fáza 2 — PLAN:** Vytváram plán implementácie…`
 
 Na základe explorácie vytvor štruktúrovaný plán v tomto formáte:
 
@@ -50,9 +67,13 @@ Na základe explorácie vytvor štruktúrovaný plán v tomto formáte:
 
 **ZASTAV SA** a počkaj na schválenie používateľa. Ak plán odmietne alebo upraví, prepracuj ho a znova požiadaj o schválenie.
 
+---
+
 ## Fáza 3: IMPLEMENT
 
-Implementuj PRESNE podľa schváleného plánu.
+**Oznám:** `**Fáza 3 — IMPLEMENT:** Začínam implementáciu podľa schváleného plánu.`
+
+Implementuj PRESNE podľa schváleného plánu. Pri každom kroku napíš jednu vetu čo robíš — bez toho aby si vypisoval celý kód.
 
 Povinné pravidlá:
 - Farby: `theme.colors.primary`, `theme.colors.tertiary`, … — nikdy raw hex
@@ -67,26 +88,40 @@ Povinné pravidlá:
 
 PostToolUse hook automaticky formátuje každý uložený súbor cez Prettier.
 
+---
+
 ## Fáza 4: TEST
+
+**Oznám:** `**Fáza 4 — TEST:** Spúšťam testy…`
 
 1. Napíš unit testy pre novú logiku (ak existuje testovateľná logika)
 2. Spusti relevantné testy:
    - Zmeny v `src/` → `npm run test:client`
    - Zmeny v `server/` → `npm run test:server`
    - Oboje → `npm test`
-3. Ak testy zlyhávajú → analyzuj, oprav, spusti znova
+3. Ak testy zlyhávajú → analyzuj, oprav, spusti znova — pri každej oprave napíš jednou vetou čo bolo zlé
 4. **Nepokračuj kým VŠETKY testy neprechádzajú**
+
+Výsledok oznám stručne: `✅ 46 testov prechádza` alebo `❌ X testov zlyhalo — [čo bolo zlé] — opravujem`.
+
+---
 
 ## Fáza 5: REVIEW
 
+**Oznám:** `**Fáza 5 — REVIEW:** Spúšťam nezávislý code review…`
+
 Spusti `code-reviewer` subagent. Predaj mu zoznam zmenených súborov a kontext úlohy.
 
-Postup po review:
-- 🔴 **Critical** → oprav vždy pred dokončením, potom retest
-- 🟡 **Warning** → oprav ak je zmena jednoduchá; inak pridaj `// TODO: <popis>`
+Výsledky predlož ako zoznam nálezov a povedz čo opravuješ a čo nie:
+- 🔴 **Critical** → oprav vždy pred dokončením, potom retest; oznám `"Opravujem: [popis]"`
+- 🟡 **Warning** → oprav ak je zmena jednoduchá; inak pridaj `// TODO: <popis>`; oznám rozhodnutie
 - 🟢 **Info** → zaznameň do summary
 
+---
+
 ## Fáza 5b: SECURITY REVIEW (len ak sú zmenené `server/` súbory)
+
+**Oznám:** `**Fáza 5b — SECURITY REVIEW:** Spúšťam bezpečnostný review server/ zmien…`
 
 Ak úloha mení akýkoľvek súbor v `server/`, spusti `security-reviewer` subagent.
 Predaj mu zoznam zmenených `server/` súborov.
@@ -95,7 +130,11 @@ Postup po review:
 - 🔴 **Critical** → oprav vždy pred dokončením, potom retest
 - 🟡 **Warning** → oprav ak je zmena jednoduchá; inak pridaj `// TODO: <popis>`
 
+---
+
 ## Fáza 6: SUMMARY
+
+**Oznám:** `**Fáza 6 — SUMMARY**`
 
 Záverečné zhrnutie v tomto formáte:
 
