@@ -69,7 +69,7 @@ Na základe explorácie vytvor štruktúrovaný plán v tomto formáte:
 
 ---
 
-## Fáza 3: IMPLEMENT
+## Fáza 3: IMPLEMENT (povinná)
 
 **Oznám:** `**Fáza 3 — IMPLEMENT:** Začínam implementáciu podľa schváleného plánu.`
 
@@ -90,7 +90,7 @@ PostToolUse hook automaticky formátuje každý uložený súbor cez Prettier.
 
 ---
 
-## Fáza 4: TEST
+## Fáza 4: TEST (povinná)
 
 **Oznám:** `**Fáza 4 — TEST:** Spúšťam testy…`
 
@@ -106,7 +106,7 @@ Výsledok oznám stručne: `✅ 46 testov prechádza` alebo `❌ X testov zlyhal
 
 ---
 
-## Fáza 5: REVIEW
+## Fáza 5: REVIEW (povinná)
 
 **Oznám:** `**Fáza 5 — REVIEW:** Spúšťam nezávislý code review…`
 
@@ -132,7 +132,7 @@ Postup po review:
 
 ---
 
-## Fáza 6: SUMMARY
+## Fáza 6: SUMMARY (povinná)
 
 **Oznám:** `**Fáza 6 — SUMMARY**`
 
