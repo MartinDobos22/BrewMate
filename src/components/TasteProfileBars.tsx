@@ -1,16 +1,20 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { TasteVector } from '../utils/tasteVector';
+import { TasteAxis, TasteVector } from '../utils/tasteVector';
 import { useTheme } from '../theme/useTheme';
 
-const AXES: Array<{ key: keyof TasteVector; label: string }> = [
-  { key: 'acidity', label: 'Kyslosť' },
-  { key: 'sweetness', label: 'Sladkosť' },
-  { key: 'bitterness', label: 'Horkosť' },
-  { key: 'body', label: 'Telo' },
-  { key: 'fruity', label: 'Ovocnosť' },
-  { key: 'roast', label: 'Praženie' },
+const AXES: Array<{
+  key: TasteAxis;
+  label: string;
+  colorRole: 'primary' | 'tertiary';
+}> = [
+  { key: 'acidity', label: 'Kyslosť', colorRole: 'tertiary' },
+  { key: 'sweetness', label: 'Sladkosť', colorRole: 'tertiary' },
+  { key: 'bitterness', label: 'Horkosť', colorRole: 'primary' },
+  { key: 'body', label: 'Telo', colorRole: 'primary' },
+  { key: 'fruity', label: 'Ovocnosť', colorRole: 'tertiary' },
+  { key: 'roast', label: 'Praženie', colorRole: 'primary' },
 ];
 
 type Props = {
@@ -18,16 +22,16 @@ type Props = {
 };
 
 function TasteProfileBars({ vector }: Props) {
-  const { colors, typescale, shape } = useTheme();
+  const { colors, typescale, shape, spacing } = useTheme();
 
   const styles = useMemo(
     () =>
       StyleSheet.create({
         wrapper: {
-          gap: 12,
+          gap: spacing.md,
         },
         item: {
-          gap: 6,
+          gap: spacing.sm,
         },
         row: {
           flexDirection: 'row',
@@ -37,37 +41,38 @@ function TasteProfileBars({ vector }: Props) {
           ...typescale.labelLarge,
           color: colors.onSurface,
         },
-        value: {
-          ...typescale.labelLarge,
-          color: colors.primary,
-        },
         bar: {
-          height: 10,
-          backgroundColor: colors.outlineVariant,
+          height: spacing.md,
+          backgroundColor: colors.surfaceVariant,
           borderRadius: shape.full,
           overflow: 'hidden',
         },
         barFill: {
           height: '100%',
-          backgroundColor: colors.primary,
           borderRadius: shape.full,
         },
       }),
-    [colors, shape.full, typescale],
+    [colors, shape.full, spacing.md, spacing.sm, typescale.labelLarge],
   );
 
   return (
     <View style={styles.wrapper}>
-      {AXES.map(({ key, label }) => {
+      {AXES.map(({ key, label, colorRole }) => {
         const value = vector[key] ?? 50;
+        const fillColor = colors[colorRole];
         return (
           <View key={key} style={styles.item}>
             <View style={styles.row}>
               <Text style={styles.label}>{label}</Text>
-              <Text style={styles.value}>{value}</Text>
+              <Text style={[styles.label, { color: fillColor }]}>{value}%</Text>
             </View>
             <View style={styles.bar}>
-              <View style={[styles.barFill, { width: `${value}%` }]} />
+              <View
+                style={[
+                  styles.barFill,
+                  { width: `${value}%`, backgroundColor: fillColor },
+                ]}
+              />
             </View>
           </View>
         );
